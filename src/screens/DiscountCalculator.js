@@ -10,6 +10,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
+import ScreenHeader from '../components/ScreenHeader';
 
 export default function DiscountCalculator() {
   const [originalPrice, setOriginalPrice] = useState('1500');
@@ -30,11 +31,15 @@ export default function DiscountCalculator() {
   const gstOptions = ['0', '5', '12', '18', '28'];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Discount & GST</Text>
-        <Text style={styles.subTitle}>छूट और टैक्स की त्वरित गणना</Text>
-      </View>
+    <View style={styles.container}>
+      {/* Fixed Header with subtle shadow fade */}
+      <ScreenHeader
+        title="Discount & GST"
+        subtitle="छूट और टैक्स की त्वरित गणना"
+        icon="sale"
+      />
+
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
 
       {/* Hero Result Card */}
       <LinearGradient
@@ -152,6 +157,7 @@ export default function DiscountCalculator() {
         </View>
       </View>
     </ScrollView>
+    </View>
   );
 }
 
@@ -160,23 +166,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.bgDark,
   },
+  scroll: {
+    flex: 1,
+  },
   content: {
-    padding: 16,
+    paddingHorizontal: 14,
+    paddingTop: 16,
     paddingBottom: 80,
-  },
-  header: {
-    marginBottom: 16,
-    marginTop: 4,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: Colors.text,
-  },
-  subTitle: {
-    fontSize: 12,
-    color: Colors.textMuted,
-    marginTop: 2,
   },
   heroCard: {
     borderRadius: 20,

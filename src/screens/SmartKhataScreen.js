@@ -11,6 +11,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
+import ScreenHeader from '../components/ScreenHeader';
 
 export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveItem, onAddItem }) {
   const [itemName, setItemName] = useState('');
@@ -52,12 +53,15 @@ export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveI
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Kirana Smart Khata</Text>
-        <Text style={styles.subTitle}>सामान की लिस्ट, कुल बिल एवं स्प्लिट हिसाब</Text>
-      </View>
+    <View style={styles.container}>
+      {/* Fixed Header with subtle shadow fade */}
+      <ScreenHeader
+        title="Kirana Smart Khata"
+        subtitle="सामान की लिस्ट, कुल बिल एवं स्प्लिट हिसाब"
+        icon="book-account"
+      />
+
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
 
       {/* Bill Hero Card */}
       <LinearGradient
@@ -150,7 +154,7 @@ export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveI
             <Ionicons name="receipt-outline" size={40} color={Colors.textDim} />
             <Text style={styles.emptyText}>अभी कोई सामान नहीं जोड़ा गया है।</Text>
             <Text style={styles.emptySub}>
-              "Samaa-Bhav & Kirana" कैलकुलेटर से सीधे हिसाब यहाँ सेव कर सकते हैं।
+              "Samaan-Bhav & Kirana" कैलकुलेटर से सीधे हिसाब यहाँ सेव कर सकते हैं।
             </Text>
           </View>
         ) : (
@@ -175,6 +179,7 @@ export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveI
         )}
       </View>
     </ScrollView>
+    </View>
   );
 }
 
@@ -183,23 +188,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.bgDark,
   },
+  scroll: {
+    flex: 1,
+  },
   content: {
-    padding: 16,
+    paddingHorizontal: 14,
+    paddingTop: 16,
     paddingBottom: 80,
-  },
-  header: {
-    marginBottom: 16,
-    marginTop: 4,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: Colors.text,
-  },
-  subTitle: {
-    fontSize: 12,
-    color: Colors.textMuted,
-    marginTop: 2,
   },
   heroCard: {
     borderRadius: 20,

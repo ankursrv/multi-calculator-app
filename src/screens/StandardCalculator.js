@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../theme/colors';
+import ScreenHeader from '../components/ScreenHeader';
 
 export default function StandardCalculator() {
   const [display, setDisplay] = useState('0');
@@ -129,6 +130,11 @@ export default function StandardCalculator() {
 
   return (
     <View style={styles.container}>
+      {/* Fixed Header (same style as Home) with subtle shadow fade */}
+      <ScreenHeader title="Calculator" subtitle="Quick & Accurate Maths" />
+
+      {/* Screen Body */}
+      <View style={styles.body}>
       {/* Display Card */}
       <View style={styles.displayCard}>
         <ScrollView style={styles.historyBox} contentContainerStyle={{ alignItems: 'flex-end' }}>
@@ -204,6 +210,7 @@ export default function StandardCalculator() {
           </View>
         ))}
       </View>
+      </View>
     </View>
   );
 }
@@ -211,9 +218,13 @@ export default function StandardCalculator() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
-    paddingBottom: 80,
     backgroundColor: Colors.bgDark,
+  },
+  body: {
+    flex: 1,
+    paddingHorizontal: 14,
+    paddingTop: 16,
+    paddingBottom: 80,
     justifyContent: 'space-between',
   },
   displayCard: {

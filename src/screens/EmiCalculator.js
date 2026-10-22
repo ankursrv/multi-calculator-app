@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../theme/colors';
+import ScreenHeader from '../components/ScreenHeader';
 
 export default function EmiCalculator() {
   const [loanAmount, setLoanAmount] = useState('500000');
@@ -40,11 +41,15 @@ export default function EmiCalculator() {
   ];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Loan & EMI</Text>
-        <Text style={styles.subTitle}>मासिक किस्त एवं ब्याज हिसाब</Text>
-      </View>
+    <View style={styles.container}>
+      {/* Fixed Header with subtle shadow fade */}
+      <ScreenHeader
+        title="Loan & EMI"
+        subtitle="मासिक किस्त एवं ब्याज हिसाब"
+        icon="bank"
+      />
+
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
 
       {/* Hero Card */}
       <LinearGradient
@@ -170,6 +175,7 @@ export default function EmiCalculator() {
         </View>
       </View>
     </ScrollView>
+    </View>
   );
 }
 
@@ -178,23 +184,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.bgDark,
   },
+  scroll: {
+    flex: 1,
+  },
   content: {
-    padding: 16,
+    paddingHorizontal: 14,
+    paddingTop: 16,
     paddingBottom: 80,
-  },
-  header: {
-    marginBottom: 16,
-    marginTop: 4,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: Colors.text,
-  },
-  subTitle: {
-    fontSize: 12,
-    color: Colors.textMuted,
-    marginTop: 2,
   },
   heroCard: {
     borderRadius: 20,

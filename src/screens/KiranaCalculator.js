@@ -11,18 +11,19 @@ import {
   Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
+import ScreenHeader from '../components/ScreenHeader';
 
 export default function KiranaCalculator({ onBack, onSaveToBill }) {
   // Mode: 'priceToWeight' (रुपये से वजन) or 'weightToPrice' (वजन से रुपये)
   const [mode, setMode] = useState('priceToWeight');
 
   // Input states
-  const [rate, setRate] = useState('60'); // ₹ 60
+  const [rate, setRate] = useState(''); // Empty so placeholder shows
   const [rateUnit, setRateUnit] = useState('Kilogram'); // Kilogram, 100 Gram, Litre
-  const [budget, setBudget] = useState('10'); // ₹ 10
-  const [weight, setWeight] = useState('250'); // 250 g
+  const [budget, setBudget] = useState(''); // Empty so placeholder shows
+  const [weight, setWeight] = useState(''); // Empty so placeholder shows
   const [weightUnit, setWeightUnit] = useState('Gram'); // Gram, Kilogram, Litre, Millilitre
   const [itemName, setItemName] = useState('चीनी (Sugar)');
 
@@ -37,10 +38,10 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
   ];
 
   const handleReset = () => {
-    setRate('60');
+    setRate('');
     setRateUnit('Kilogram');
-    setBudget('10');
-    setWeight('250');
+    setBudget('');
+    setWeight('');
     setWeightUnit('Gram');
     setItemName('चीनी (Sugar)');
   };
@@ -95,7 +96,6 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
   const qtyResult = calculateQuantity();
   const priceResult = calculatePrice();
 
-  const quickBudgets = ['5', '10', '20', '30', '50', '100', '200', '500'];
   const quickWeights = [
     { label: '50g', val: '50', unit: 'Gram' },
     { label: '100g', val: '100', unit: 'Gram' },
@@ -109,22 +109,17 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={{ flex: 1 }}
     >
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        {/* Top Header matching Screenshot 2 */}
-        <View style={styles.screenHeader}>
-          <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={24} color={Colors.amber} />
-          </TouchableOpacity>
+      <View style={styles.container}>
+        {/* Fixed Header with subtle shadow fade */}
+        <ScreenHeader
+          title="Samaan-Bhav & Kirana"
+          subtitle="सामान का भाव - वजन और मूल्य कैलकुलेटर"
+          icon="scale-bathroom"
+          onBack={onBack}
+          onReset={handleReset}
+        />
 
-          <View style={styles.titleWrap}>
-            <Text style={styles.mainTitle}>Samaa-Bhav & Kirana</Text>
-            <Text style={styles.subTitle}>सामान का भाव - वजन और मूल्य कैलकुलेटर</Text>
-          </View>
-
-          <TouchableOpacity onPress={handleReset} style={styles.resetBtn} activeOpacity={0.7}>
-            <Ionicons name="refresh" size={22} color={Colors.amber} />
-          </TouchableOpacity>
-        </View>
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
 
         {/* Mode Switcher Tabs */}
         <View style={styles.modeTabsCard}>
@@ -192,7 +187,7 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
                   onChangeText={setRate}
                   keyboardType="numeric"
                   placeholder="60"
-                  placeholderTextColor={Colors.textDim}
+                  placeholderTextColor="rgb(100, 116, 139)"
                 />
               </View>
             </View>
@@ -230,23 +225,8 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
                   onChangeText={setBudget}
                   keyboardType="numeric"
                   placeholder="10"
-                  placeholderTextColor={Colors.textDim}
+                  placeholderTextColor="rgb(100, 116, 139)"
                 />
-              </View>
-
-              {/* Quick Budget Chips */}
-              <View style={styles.chipRow}>
-                {quickBudgets.map((val) => (
-                  <TouchableOpacity
-                    key={val}
-                    style={[styles.chip, budget === val && styles.chipActive]}
-                    onPress={() => setBudget(val)}
-                  >
-                    <Text style={[styles.chipText, budget === val && styles.chipTextActive]}>
-                      ₹{val}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
               </View>
             </View>
           ) : (
@@ -262,7 +242,7 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
                     onChangeText={setWeight}
                     keyboardType="numeric"
                     placeholder="250"
-                    placeholderTextColor={Colors.textDim}
+                    placeholderTextColor="rgb(100, 116, 139)"
                   />
                 </View>
 
@@ -362,56 +342,6 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
           )}
         </LinearGradient>
 
-        {/* Calculation Step Breakdown */}
-        <View style={styles.formulaCard}>
-          <View style={styles.formulaHeader}>
-            <Ionicons name="calculator-outline" size={16} color={Colors.amber} />
-            <Text style={styles.formulaHeaderTitle}>हिसाब समझने के लिए (Calculation Breakdown):</Text>
-          </View>
-          {mode === 'priceToWeight' ? (
-            <Text style={styles.formulaContent}>
-              ₹{rate} में 1000g मिलता है। इसलिए ₹{budget} में:{'\n'}
-              <Text style={styles.formulaMathHighlight}>
-                ({budget} ÷ {rate}) × 1000 = {qtyResult.grams} Gram (ग्राम)
-              </Text>
-            </Text>
-          ) : (
-            <Text style={styles.formulaContent}>
-              ₹{rate}/kg के भाव से {weight} {weightUnit} का हिसाब:{'\n'}
-              <Text style={styles.formulaMathHighlight}>
-                ({priceResult.totalGrams}g ÷ 1000g) × ₹{rate} = ₹{priceResult.cost}
-              </Text>
-            </Text>
-          )}
-        </View>
-
-        {/* Quick Save to Smart Bill button */}
-        {onSaveToBill && (
-          <TouchableOpacity
-            style={styles.saveBtn}
-            onPress={() => {
-              if (mode === 'priceToWeight') {
-                onSaveToBill({
-                  name: itemName,
-                  details: `₹${rate}/${rateUnit} • ₹${budget} me`,
-                  result: `${qtyResult.grams}g`,
-                  cost: parseFloat(budget) || 0,
-                });
-              } else {
-                onSaveToBill({
-                  name: itemName,
-                  details: `₹${rate}/${rateUnit} • ${weight}${weightUnit}`,
-                  result: `₹${priceResult.cost}`,
-                  cost: parseFloat(priceResult.cost) || 0,
-                });
-              }
-            }}
-          >
-            <Ionicons name="receipt-outline" size={18} color="#030712" />
-            <Text style={styles.saveBtnText}>Smart Khata / Bill me Add Karein</Text>
-          </TouchableOpacity>
-        )}
-
         {/* Unit Dropdown Modal */}
         <Modal
           visible={unitModalVisible}
@@ -452,6 +382,7 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
           </TouchableOpacity>
         </Modal>
       </ScrollView>
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -461,40 +392,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.bgDark,
   },
-  content: {
-    padding: 16,
-    paddingBottom: 80,
-  },
-  screenHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-    marginTop: 4,
-  },
-  backBtn: {
-    padding: 6,
-    borderRadius: 10,
-    backgroundColor: 'rgba(30, 41, 59, 0.6)',
-  },
-  titleWrap: {
+  scroll: {
     flex: 1,
-    marginHorizontal: 12,
   },
-  mainTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: Colors.text,
-  },
-  subTitle: {
-    fontSize: 11,
-    color: Colors.textMuted,
-    marginTop: 2,
-  },
-  resetBtn: {
-    padding: 6,
-    borderRadius: 10,
-    backgroundColor: 'rgba(30, 41, 59, 0.6)',
+  content: {
+    paddingHorizontal: 14,
+    paddingTop: 16,
+    paddingBottom: 80,
   },
   modeTabsCard: {
     flexDirection: 'row',
@@ -648,9 +552,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   heroResultCard: {
-    borderRadius: 20,
-    padding: 22,
-    marginBottom: 16,
+    borderRadius: 22,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
     shadowColor: Colors.orange,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
@@ -658,70 +565,26 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   heroLabel: {
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '700',
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginBottom: 6,
+    color: 'rgba(255, 255, 255, 0.92)',
+    textAlign: 'center',
+    marginBottom: 8,
+    letterSpacing: 0.3,
   },
   heroMainValue: {
-    fontSize: 42,
+    fontSize: 38,
     fontWeight: '900',
     color: '#FFFFFF',
-    letterSpacing: 0.5,
+    textAlign: 'center',
+    letterSpacing: 0.6,
   },
   heroSubValue: {
     fontSize: 15,
     fontWeight: '700',
-    color: 'rgba(255, 255, 255, 0.85)',
-    marginTop: 4,
-  },
-  formulaCard: {
-    backgroundColor: Colors.cardBg,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
-    marginBottom: 16,
-  },
-  formulaHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
-  },
-  formulaHeaderTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.amber,
-  },
-  formulaContent: {
-    fontSize: 13,
-    color: Colors.textMuted,
-    lineHeight: 20,
-  },
-  formulaMathHighlight: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 14,
-  },
-  saveBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: Colors.amber,
-    paddingVertical: 14,
-    borderRadius: 14,
-    shadowColor: Colors.amber,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  saveBtnText: {
-    color: '#030712',
-    fontSize: 15,
-    fontWeight: '800',
+    color: 'rgba(255, 255, 255, 0.88)',
+    textAlign: 'center',
+    marginTop: 6,
   },
   modalOverlay: {
     flex: 1,

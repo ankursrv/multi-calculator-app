@@ -1,193 +1,117 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   StyleSheet,
   Text,
   View,
-  TextInput,
   TouchableOpacity,
   ScrollView,
-  Animated,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
+import GradientText from '../components/GradientText';
+import SamaaBhavCardGlow from '../components/SamaaBhavCardGlow';
 
 export default function HomeScreen({ onSelectScreen }) {
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const calculators = [
-    {
-      id: 'kirana',
-      title: 'Samaa-Bhav & Kirana',
-      hindiTitle: 'सामान का भाव व वजन',
-      desc: 'भाव से वजन या वजन से रुपये की त्वरित गणना',
-      icon: 'scale-bathroom',
-      iconType: 'mci',
-      activeBadge: true,
-      featured: true,
-    },
-    {
-      id: 'standard',
-      title: 'Standard Calculator',
-      hindiTitle: 'साधारण कैलकुलेटर',
-      desc: 'दैनिक जोड़, घटाव, गुणा, भाग और प्रतिशत',
-      icon: 'calculator',
-      iconType: 'ion',
-      badge: 'Classic',
-    },
-    {
-      id: 'bill',
-      title: 'Kirana Smart Khata / Bill',
-      hindiTitle: 'स्मार्ट खरीदारी बिल',
-      desc: 'सामान की लिस्ट बनाएं और कुल पर्चा (Total Bill) जोड़ें',
-      icon: 'receipt',
-      iconType: 'ion',
-      badge: 'New Feature',
-    },
-    {
-      id: 'discount',
-      title: 'Discount & GST',
-      hindiTitle: 'छूट और जीएसटी कैलकुलेटर',
-      desc: 'MRP पर बचत, % डिस्काउंट और 5/12/18% GST दर',
-      icon: 'pricetag',
-      iconType: 'ion',
-      badge: 'Shopping',
-    },
-    {
-      id: 'unit',
-      title: 'Unit Converter',
-      hindiTitle: 'इकाई परिवर्तक',
-      desc: 'किलो ↔ ग्राम, लीटर ↔ मिलीलीटर, मीटर ↔ गज/फुट',
-      icon: 'swap-horizontal',
-      iconType: 'ion',
-      badge: 'Utility',
-    },
-    {
-      id: 'emi',
-      title: 'Loan & EMI Calculator',
-      hindiTitle: 'लोन और ब्याज दर',
-      desc: 'मासिक किस्त, मूलधन और कुल ब्याज का सटीक हिसाब',
-      icon: 'cash-multiple',
-      iconType: 'mci',
-      badge: 'Finance',
-    },
-  ];
-
-  const filteredCalculators = calculators.filter(
-    (c) =>
-      c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.hindiTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.desc.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Top App Header Matching User UI */}
-      <View style={styles.header}>
-        <LinearGradient
-          colors={Colors.gradientColors}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.logoGradient}
-        >
-          <MaterialCommunityIcons name="calculator-variant" size={26} color="#FFFFFF" />
-        </LinearGradient>
-        <View style={styles.headerTextWrap}>
-          <Text style={styles.appTitle}>MultiCalc</Text>
-          <Text style={styles.appSubtitle}>सामान का भाव एवं वजन कैलकुलेटर</Text>
-        </View>
-      </View>
-
-      {/* Search Input Bar */}
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color={Colors.amber} style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Search calculator..."
-          placeholderTextColor={Colors.textDim}
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <Ionicons name="close-circle" size={18} color={Colors.textDim} />
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Calculator Cards List */}
-      <View style={styles.cardsList}>
-        {filteredCalculators.map((item) => (
-          <TouchableOpacity
-            key={item.id}
-            style={[styles.card, item.featured && styles.featuredCard]}
-            onPress={() => onSelectScreen(item.id)}
-            activeOpacity={0.8}
+    <View style={styles.container}>
+      {/* Fixed Sticky Header with Gradient, Shadow & Accent Line */}
+      <LinearGradient
+        colors={['#0B1220', '#151016', '#241307']}
+        locations={[0, 0.55, 1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0.9 }}
+        style={styles.headerWrapper}
+      >
+        <View style={styles.header}>
+          <LinearGradient
+            colors={Colors.gradientColors}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.logoGradient}
           >
-            {/* Card Left Icon */}
-            {item.featured ? (
-              <LinearGradient
-                colors={Colors.gradientColors}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.cardIconBox}
-              >
-                <MaterialCommunityIcons name={item.icon} size={26} color="#FFFFFF" />
-              </LinearGradient>
-            ) : (
-              <View style={styles.cardIconBoxRegular}>
-                {item.iconType === 'mci' ? (
-                  <MaterialCommunityIcons name={item.icon} size={24} color={Colors.amber} />
-                ) : (
-                  <Ionicons name={item.icon} size={24} color={Colors.amber} />
-                )}
-              </View>
-            )}
-
-            {/* Card Body */}
-            <View style={styles.cardBody}>
-              <View style={styles.titleRow}>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                {item.activeBadge && (
-                  <View style={styles.activeBadge}>
-                    <Text style={styles.activeBadgeText}>Active</Text>
-                  </View>
-                )}
-                {item.badge && !item.activeBadge && (
-                  <View style={styles.regularBadge}>
-                    <Text style={styles.regularBadgeText}>{item.badge}</Text>
-                  </View>
-                )}
-              </View>
-
-              <Text style={styles.cardHindiTitle}>{item.hindiTitle}</Text>
-              <Text style={styles.cardDesc} numberOfLines={1}>
-                {item.desc}
-              </Text>
-            </View>
-
-            {/* Right Arrow Chevron */}
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color={item.featured ? Colors.amber : Colors.textDim}
-              style={{ marginLeft: 6 }}
+            <MaterialCommunityIcons name="calculator-variant" size={27} color="#FFFFFF" />
+          </LinearGradient>
+          <View style={styles.headerTextWrap}>
+            <Text style={styles.headerOverline}>WELCOME 👋</Text>
+            <GradientText
+              text="All Calculators"
+              style={styles.appTitle}
+              colors={['#FBBF24', '#F97316', '#EA580C']}
             />
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Quick Summary / Kirana Tip Card */}
-      <View style={styles.infoBox}>
-        <View style={styles.infoTitleRow}>
-          <Ionicons name="bulb-outline" size={18} color={Colors.amber} />
-          <Text style={styles.infoTitle}>Kirana Quick Tip</Text>
+            <View style={styles.subtitleRow}>
+              <Ionicons name="sparkles" size={12} color="#FB923C" style={{ marginRight: 5 }} />
+              <Text style={styles.appSubtitle}>Smart Calculators Hub</Text>
+            </View>
+          </View>
         </View>
-        <Text style={styles.infoDesc}>
-          अगर चीनी का भाव ₹60/kg है और आपको ₹10 की चाहिए, तो "Samaa-Bhav & Kirana" पर टैप करें। यह तुरंत 166.67 ग्राम की सटीक मात्रा निकाल देगा!
-        </Text>
-      </View>
-    </ScrollView>
+      </LinearGradient>
+
+      {/* Fake drop-shadow fade (real shadows don't render on gradient views in Android) */}
+      <LinearGradient
+        colors={['rgba(100, 116, 139, 0.28)', 'rgba(100, 116, 139, 0)']}
+        style={styles.headerShadowFade}
+        pointerEvents="none"
+      />
+
+      {/* Scrollable Feature List (Only this scrolls when more items are added) */}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Featured Calculator Card: Samaan-Bhav & Kirana */}
+        <View style={styles.cardsList}>
+          <TouchableOpacity
+            style={styles.popularCardWrapper}
+            onPress={() => onSelectScreen('kirana')}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={['#211b1b', '#39251d', '#56270f']}
+              locations={[0, 0.55, 1]}
+              start={{ x: 0, y: 0.1 }}
+              end={{ x: 0.85, y: 1 }}
+              style={styles.popularCardGradient}
+            >
+              {/* Exact SVG glow from user's samaa-bhav-card-glow.svg */}
+              <SamaaBhavCardGlow />
+
+              {/* Left Calculator Icon */}
+              <LinearGradient
+                colors={['#FFAA00', '#FF7700', '#F54A00']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0.2, y: 1 }}
+                style={styles.popularIconBox}
+              >
+                <MaterialCommunityIcons name="calculator-variant" size={30} color="#FFFFFF" />
+              </LinearGradient>
+
+              {/* Body */}
+              <View style={styles.popularCardBody}>
+                <Text style={styles.popularCardTitle}>Samaan-Bhav & Kirana</Text>
+
+                <Text style={styles.popularCardDescHindi}>
+                  भाव से बचत या वजन से रुपये की लागत निकालें
+                </Text>
+                <Text style={styles.popularCardDescEng} numberOfLines={1}>
+                  Weight (kg/gm) to Price & Rate Variation Solver
+                </Text>
+              </View>
+
+              {/* Right Arrow Chevron */}
+              <Ionicons
+                name="chevron-forward"
+                size={26}
+                color="#F59E0B"
+                style={{ marginLeft: 8 }}
+              />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -196,43 +120,71 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.bgDark,
   },
-  content: {
-    padding: 16,
-    paddingBottom: 80,
+  headerWrapper: {
+    paddingHorizontal: 14,
+    paddingTop: 16,
+    paddingBottom: 16,
+    zIndex: 20,
+  },
+  headerShadowFade: {
+    height: 18,
+    marginTop: -2,
+    zIndex: 19,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
-    marginTop: 4,
     gap: 12,
   },
   logoGradient: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
     shadowColor: Colors.orange,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    elevation: 8,
   },
   headerTextWrap: {
     flex: 1,
+    marginLeft: 2,
+  },
+  headerOverline: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: 'rgba(248, 250, 252, 0.55)',
+    letterSpacing: 1.6,
+    marginBottom: 1,
   },
   appTitle: {
-    fontSize: 22,
+    fontSize: 23,
     fontWeight: '800',
     color: Colors.text,
     letterSpacing: 0.3,
   },
-  appSubtitle: {
-    fontSize: 12,
-    color: Colors.textMuted,
+  subtitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: 2,
-    fontWeight: '500',
+  },
+  appSubtitle: {
+    fontSize: 13,
+    color: '#FB923C',
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 14,
+    paddingTop: 18,
+    paddingBottom: 90,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -256,6 +208,66 @@ const styles = StyleSheet.create({
   },
   cardsList: {
     gap: 12,
+  },
+  popularCardWrapper: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 0,
+    elevation: 0,
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+  },
+  popularCardGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    position: 'relative',
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' && {
+      backgroundImage:
+        'radial-gradient(ellipse at 100% 100%, rgba(255, 112, 0, 0.42) 0%, rgba(143, 55, 9, 0.24) 28%, transparent 55%), linear-gradient(115deg, #211b1b 0%, #39251d 55%, #56270f 100%)',
+    }),
+  },
+  svgWave: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+  },
+  popularIconBox: {
+    width: 58,
+    height: 58,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+    shadowColor: '#F97316',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  popularCardBody: {
+    flex: 1,
+  },
+  popularCardTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+    marginBottom: 6,
+  },
+  popularCardDescHindi: {
+    fontSize: 12.5,
+    color: '#F8FAFC',
+    fontWeight: '600',
+    lineHeight: 17,
+  },
+  popularCardDescEng: {
+    fontSize: 11,
+    color: '#FB923C',
+    fontWeight: '600',
+    marginTop: 3,
   },
   card: {
     flexDirection: 'row',
