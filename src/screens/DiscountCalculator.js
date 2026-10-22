@@ -7,13 +7,14 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 
 export default function DiscountCalculator() {
   const [originalPrice, setOriginalPrice] = useState('1500');
   const [discountPercent, setDiscountPercent] = useState('20');
-  const [gstPercent, setGstPercent] = useState('0'); // 0, 5, 12, 18, 28
+  const [gstPercent, setGstPercent] = useState('0');
 
   const price = parseFloat(originalPrice) || 0;
   const discount = parseFloat(discountPercent) || 0;
@@ -29,16 +30,26 @@ export default function DiscountCalculator() {
   const gstOptions = ['0', '5', '12', '18', '28'];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-      {/* Result Hero Card */}
-      <View style={styles.heroCard}>
-        <Text style={styles.heroSubText}>Aapko Dena Hoga (Final Price):</Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Discount & GST</Text>
+        <Text style={styles.subTitle}>छूट और टैक्स की त्वरित गणना</Text>
+      </View>
+
+      {/* Hero Result Card */}
+      <LinearGradient
+        colors={Colors.gradientCardColors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.heroCard}
+      >
+        <Text style={styles.heroSubText}>आपको देना होगा (Final Payable Price):</Text>
         <Text style={styles.heroPrice}>₹{finalPrice.toFixed(2)}</Text>
 
         <View style={styles.savingsBanner}>
-          <Ionicons name="sparkles" size={16} color={Colors.primary} />
+          <Ionicons name="sparkles" size={16} color="#FFFFFF" />
           <Text style={styles.savingsText}>
-            Aapki Bachat: ₹{totalSavings.toFixed(2)} ({discountPercent}% OFF)
+            कुल बचत: ₹{totalSavings.toFixed(2)} ({discountPercent}% OFF)
           </Text>
         </View>
 
@@ -47,12 +58,12 @@ export default function DiscountCalculator() {
             (Includes {gst}% GST: +₹{gstAmount.toFixed(2)})
           </Text>
         )}
-      </View>
+      </LinearGradient>
 
       {/* Input Card */}
       <View style={styles.card}>
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Asli Daam (Original Price):</Text>
+          <Text style={styles.label}>असली दाम (Original Price):</Text>
           <View style={styles.inputWithPrefix}>
             <Text style={styles.prefix}>₹</Text>
             <TextInput
@@ -68,11 +79,11 @@ export default function DiscountCalculator() {
 
         {/* Discount % */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Discount (% Chhoot):</Text>
+          <Text style={styles.label}>डिस्काउंट (% छूट):</Text>
           <View style={styles.inputWithPrefix}>
             <Text style={styles.prefix}>%</Text>
             <TextInput
-              style={[styles.input, { color: Colors.accent }]}
+              style={[styles.input, { color: Colors.amber }]}
               value={discountPercent}
               onChangeText={setDiscountPercent}
               keyboardType="numeric"
@@ -81,7 +92,6 @@ export default function DiscountCalculator() {
             />
           </View>
 
-          {/* Quick discount chips */}
           <View style={styles.chipsRow}>
             {quickDiscounts.map((val) => (
               <TouchableOpacity
@@ -97,25 +107,17 @@ export default function DiscountCalculator() {
           </View>
         </View>
 
-        {/* Optional GST % */}
+        {/* GST % */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>GST Tax (Agar lagna ho to):</Text>
+          <Text style={styles.label}>GST Tax दर:</Text>
           <View style={styles.chipsRow}>
             {gstOptions.map((val) => (
               <TouchableOpacity
                 key={val}
-                style={[
-                  styles.chip,
-                  gstPercent === val && { backgroundColor: Colors.secondaryBg, borderColor: Colors.secondary },
-                ]}
+                style={[styles.chip, gstPercent === val && styles.chipActive]}
                 onPress={() => setGstPercent(val)}
               >
-                <Text
-                  style={[
-                    styles.chipText,
-                    gstPercent === val && { color: Colors.secondary, fontWeight: '700' },
-                  ]}
-                >
+                <Text style={[styles.chipText, gstPercent === val && styles.chipTextActive]}>
                   {val === '0' ? 'No GST' : `${val}% GST`}
                 </Text>
               </TouchableOpacity>
@@ -130,8 +132,12 @@ export default function DiscountCalculator() {
             <Text style={styles.breakdownVal}>₹{price.toFixed(2)}</Text>
           </View>
           <View style={styles.breakdownRow}>
-            <Text style={[styles.breakdownLabel, { color: Colors.primary }]}>Discount ({discount}%):</Text>
-            <Text style={[styles.breakdownVal, { color: Colors.primary }]}>- ₹{discountAmount.toFixed(2)}</Text>
+            <Text style={[styles.breakdownLabel, { color: Colors.amber }]}>
+              Discount ({discount}%):
+            </Text>
+            <Text style={[styles.breakdownVal, { color: Colors.amber }]}>
+              - ₹{discountAmount.toFixed(2)}
+            </Text>
           </View>
           {gst > 0 && (
             <View style={styles.breakdownRow}>
@@ -152,33 +158,47 @@ export default function DiscountCalculator() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: Colors.bgDark,
+  },
+  content: {
     padding: 16,
-    backgroundColor: Colors.bg,
+    paddingBottom: 80,
+  },
+  header: {
+    marginBottom: 16,
+    marginTop: 4,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: Colors.text,
+  },
+  subTitle: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginTop: 2,
   },
   heroCard: {
-    backgroundColor: '#1E2333',
     borderRadius: 20,
     padding: 22,
-    borderWidth: 1.5,
-    borderColor: Colors.accent,
     alignItems: 'center',
     marginBottom: 16,
   },
   heroSubText: {
-    fontSize: 14,
-    color: Colors.textMuted,
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.9)',
     fontWeight: '600',
   },
   heroPrice: {
     fontSize: 44,
-    fontWeight: '800',
-    color: Colors.text,
+    fontWeight: '900',
+    color: '#FFFFFF',
     marginVertical: 4,
   },
   savingsBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.primaryBg,
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
@@ -186,29 +206,29 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   savingsText: {
-    color: Colors.primary,
-    fontSize: 14,
+    color: '#FFFFFF',
+    fontSize: 13,
     fontWeight: '700',
   },
   gstNote: {
-    fontSize: 12,
-    color: Colors.textMuted,
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 8,
   },
   card: {
     backgroundColor: Colors.cardBg,
     borderRadius: 18,
-    padding: 18,
+    padding: 16,
     borderWidth: 1,
     borderColor: Colors.cardBorder,
   },
   inputGroup: {
-    marginBottom: 18,
+    marginBottom: 16,
   },
   label: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
-    color: Colors.text,
+    color: Colors.textMuted,
     marginBottom: 6,
   },
   inputWithPrefix: {
@@ -218,23 +238,23 @@ const styles = StyleSheet.create({
   },
   prefix: {
     position: 'absolute',
-    left: 14,
+    left: 12,
     zIndex: 1,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
-    color: Colors.textMuted,
+    color: Colors.amber,
   },
   input: {
     flex: 1,
-    backgroundColor: Colors.bg,
+    backgroundColor: 'rgba(11, 15, 25, 0.7)',
     borderWidth: 1,
     borderColor: Colors.cardBorder,
     borderRadius: 12,
-    paddingLeft: 34,
-    paddingRight: 14,
-    paddingVertical: 12,
+    paddingLeft: 30,
+    paddingRight: 12,
+    paddingVertical: 10,
     color: Colors.text,
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
   },
   chipsRow: {
@@ -244,7 +264,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   chip: {
-    backgroundColor: Colors.cardHighlight,
+    backgroundColor: 'rgba(11, 15, 25, 0.8)',
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 10,
@@ -252,20 +272,20 @@ const styles = StyleSheet.create({
     borderColor: Colors.cardBorder,
   },
   chipActive: {
-    backgroundColor: Colors.accentBg,
-    borderColor: Colors.accent,
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    borderColor: Colors.amber,
   },
   chipText: {
     color: Colors.textMuted,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
   },
   chipTextActive: {
-    color: Colors.accent,
-    fontWeight: '700',
+    color: Colors.amber,
+    fontWeight: '800',
   },
   breakdown: {
-    backgroundColor: Colors.bg,
+    backgroundColor: 'rgba(11, 15, 25, 0.7)',
     borderRadius: 14,
     padding: 14,
     marginTop: 4,
@@ -275,7 +295,7 @@ const styles = StyleSheet.create({
   breakdownRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 6,
+    paddingVertical: 5,
   },
   breakdownLabel: {
     color: Colors.textMuted,
@@ -283,7 +303,7 @@ const styles = StyleSheet.create({
   },
   breakdownVal: {
     color: Colors.text,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   totalRow: {
@@ -294,12 +314,12 @@ const styles = StyleSheet.create({
   },
   totalLabel: {
     color: Colors.text,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
   },
   totalVal: {
-    color: Colors.primary,
-    fontSize: 17,
+    color: Colors.amber,
+    fontSize: 16,
     fontWeight: '800',
   },
 });

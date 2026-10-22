@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../theme/colors';
 
 export default function StandardCalculator() {
@@ -23,7 +23,6 @@ export default function StandardCalculator() {
   };
 
   const handleDecimal = () => {
-    // Check if the current segment already has a decimal
     const parts = display.split(/[\+\-\×\÷]/);
     const lastPart = parts[parts.length - 1];
     if (!lastPart.includes('.')) {
@@ -58,8 +57,7 @@ export default function StandardCalculator() {
     try {
       const val = parseFloat(display);
       if (!isNaN(val)) {
-        const res = (val / 100).toString();
-        setDisplay(res);
+        setDisplay((val / 100).toString());
       }
     } catch {
       setDisplay('Error');
@@ -67,31 +65,27 @@ export default function StandardCalculator() {
   };
 
   const handleToggleSign = () => {
-    try {
-      if (display === '0' || display === 'Error') return;
-      if (display.startsWith('-')) {
-        setDisplay(display.substring(1));
-      } else {
-        setDisplay('-' + display);
-      }
-    } catch {
-      setDisplay('Error');
+    if (display === '0' || display === 'Error') return;
+    if (display.startsWith('-')) {
+      setDisplay(display.substring(1));
+    } else {
+      setDisplay('-' + display);
     }
   };
 
   const handleEqual = () => {
     try {
       const sanitized = display.replace(/×/g, '*').replace(/÷/g, '/');
-      // Validate safe math expression
       if (!/^[\d\.\+\-\*\/\(\)\s]+$/.test(sanitized)) {
         setDisplay('Error');
         return;
       }
-      // Evaluate
       // eslint-disable-next-line no-eval
       const result = Function(`"use strict"; return (${sanitized})`)();
-      const rounded = Number.isInteger(result) ? result.toString() : parseFloat(result.toFixed(6)).toString();
-      
+      const rounded = Number.isInteger(result)
+        ? result.toString()
+        : parseFloat(result.toFixed(6)).toString();
+
       setHistory([{ expr: display, res: rounded }, ...history.slice(0, 4)]);
       setExpression(display + ' =');
       setDisplay(rounded);
@@ -137,7 +131,6 @@ export default function StandardCalculator() {
     <View style={styles.container}>
       {/* Display Card */}
       <View style={styles.displayCard}>
-        {/* Recent mini history */}
         <ScrollView style={styles.historyBox} contentContainerStyle={{ alignItems: 'flex-end' }}>
           {history.map((h, i) => (
             <Text key={i} style={styles.historyLine}>
@@ -148,7 +141,7 @@ export default function StandardCalculator() {
 
         <Text style={styles.expressionText}>{expression}</Text>
         <Text
-          style={[styles.displayText, display.length > 10 && { fontSize: 32 }]}
+          style={[styles.displayText, display.length > 9 && { fontSize: 36 }]}
           numberOfLines={1}
           adjustsFontSizeToFit
         >
@@ -158,20 +151,39 @@ export default function StandardCalculator() {
 
       {/* Keypad */}
       <View style={styles.keypad}>
-        {buttons.map((row, rowIndex) => (
-          <View key={rowIndex} style={styles.row}>
-            {row.map((btn, colIndex) => {
-              const isOperator = btn.type === 'operator';
+        {buttons.map((row, rIdx) => (
+          <View key={rIdx} style={styles.row}>
+            {row.map((btn, cIdx) => {
               const isEqual = btn.type === 'equal';
+              const isOperator = btn.type === 'operator';
               const isSpecial = btn.type === 'special';
+
+              if (isEqual) {
+                return (
+                  <TouchableOpacity
+                    key={cIdx}
+                    style={styles.btnWrap}
+                    onPress={btn.action}
+                    activeOpacity={0.8}
+                  >
+                    <LinearGradient
+                      colors={Colors.gradientColors}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.equalGradient}
+                    >
+                      <Text style={styles.equalBtnText}>{btn.label}</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                );
+              }
 
               return (
                 <TouchableOpacity
-                  key={colIndex}
+                  key={cIdx}
                   style={[
                     styles.btn,
                     isOperator && styles.operatorBtn,
-                    isEqual && styles.equalBtn,
                     isSpecial && styles.specialBtn,
                   ]}
                   onPress={btn.action}
@@ -181,7 +193,6 @@ export default function StandardCalculator() {
                     style={[
                       styles.btnText,
                       isOperator && styles.operatorBtnText,
-                      isEqual && styles.equalBtnText,
                       isSpecial && styles.specialBtnText,
                     ]}
                   >
@@ -201,12 +212,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: Colors.bg,
+    paddingBottom: 80,
+    backgroundColor: Colors.bgDark,
     justifyContent: 'space-between',
   },
   displayCard: {
     backgroundColor: Colors.cardBg,
-    borderRadius: 20,
+    borderRadius: 22,
     padding: 20,
     borderWidth: 1,
     borderColor: Colors.cardBorder,
@@ -216,7 +228,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   historyBox: {
-    maxHeight: 60,
+    maxHeight: 50,
     width: '100%',
     marginBottom: 6,
   },
@@ -228,28 +240,31 @@ const styles = StyleSheet.create({
   expressionText: {
     color: Colors.textMuted,
     fontSize: 18,
-    fontWeight: '500',
+    fontWeight: '600',
     marginBottom: 6,
   },
   displayText: {
     color: Colors.text,
-    fontSize: 44,
-    fontWeight: '700',
+    fontSize: 48,
+    fontWeight: '800',
   },
   keypad: {
-    gap: 10,
-    marginBottom: 10,
+    gap: 12,
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 10,
+    gap: 12,
+  },
+  btnWrap: {
+    flex: 1,
+    aspectRatio: 1.25,
   },
   btn: {
     flex: 1,
     aspectRatio: 1.25,
     backgroundColor: Colors.cardBg,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: Colors.cardBorder,
     alignItems: 'center',
@@ -258,31 +273,33 @@ const styles = StyleSheet.create({
   btnText: {
     color: Colors.text,
     fontSize: 24,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   operatorBtn: {
     backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    borderColor: Colors.accent,
+    borderColor: 'rgba(245, 158, 11, 0.4)',
   },
   operatorBtnText: {
-    color: Colors.accent,
+    color: Colors.amber,
     fontSize: 26,
-    fontWeight: '700',
-  },
-  equalBtn: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primaryDark,
-  },
-  equalBtnText: {
-    color: '#0F172A',
-    fontSize: 28,
     fontWeight: '800',
   },
   specialBtn: {
-    backgroundColor: Colors.cardHighlight,
+    backgroundColor: 'rgba(51, 65, 85, 0.4)',
   },
   specialBtnText: {
-    color: Colors.secondary,
+    color: Colors.textMuted,
     fontWeight: '700',
+  },
+  equalGradient: {
+    flex: 1,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  equalBtnText: {
+    color: '#030712',
+    fontSize: 28,
+    fontWeight: '900',
   },
 });

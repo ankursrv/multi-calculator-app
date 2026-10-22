@@ -7,12 +7,13 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 
 const CONVERSIONS = {
   weight: {
-    title: 'Wazan (Weight)',
+    title: 'वजन (Weight)',
     icon: 'scale',
     base: 'g',
     units: [
@@ -20,12 +21,11 @@ const CONVERSIONS = {
       { id: 'g', name: 'Gram (g)', toBase: 1 },
       { id: 'mg', name: 'Milligram (mg)', toBase: 0.001 },
       { id: 'lb', name: 'Pound (lb)', toBase: 453.592 },
-      { id: 'oz', name: 'Ounce (oz)', toBase: 28.3495 },
       { id: 'quintal', name: 'Quintal (100 kg)', toBase: 100000 },
     ],
   },
   length: {
-    title: 'Lambai (Length)',
+    title: 'लंबाई (Length)',
     icon: 'resize',
     base: 'm',
     units: [
@@ -35,11 +35,10 @@ const CONVERSIONS = {
       { id: 'mm', name: 'Millimeter (mm)', toBase: 0.001 },
       { id: 'ft', name: 'Foot (ft)', toBase: 0.3048 },
       { id: 'in', name: 'Inch (in)', toBase: 0.0254 },
-      { id: 'yd', name: 'Yard (Gaj)', toBase: 0.9144 },
     ],
   },
   volume: {
-    title: 'Volume (Taral / Litre)',
+    title: 'मात्रा (Volume)',
     icon: 'water',
     base: 'ml',
     units: [
@@ -88,7 +87,12 @@ export default function UnitConverter() {
   const converted = calculateConversion();
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Unit Converter</Text>
+        <Text style={styles.subTitle}>इकाइयों का सटीक रूपांतरण</Text>
+      </View>
+
       {/* Category Pills */}
       <View style={styles.catRow}>
         {Object.keys(CONVERSIONS).map((catKey) => {
@@ -103,7 +107,7 @@ export default function UnitConverter() {
               <Ionicons
                 name={item.icon}
                 size={16}
-                color={active ? Colors.primary : Colors.textMuted}
+                color={active ? Colors.amber : Colors.textMuted}
               />
               <Text style={[styles.catBtnText, active && styles.catBtnTextActive]}>
                 {item.title}
@@ -113,19 +117,24 @@ export default function UnitConverter() {
         })}
       </View>
 
-      {/* Result Card */}
-      <View style={styles.heroCard}>
+      {/* Hero Result Card */}
+      <LinearGradient
+        colors={Colors.gradientCardColors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.heroCard}
+      >
         <Text style={styles.heroSubText}>
           {val} {converted.fromName} =
         </Text>
         <Text style={styles.heroVal}>{converted.result}</Text>
         <Text style={styles.heroUnit}>{converted.toName}</Text>
-      </View>
+      </LinearGradient>
 
       {/* Inputs Card */}
       <View style={styles.card}>
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Kitna convert karna hai (Value):</Text>
+          <Text style={styles.label}>इकाई मान (Value to convert):</Text>
           <TextInput
             style={styles.input}
             value={val}
@@ -136,9 +145,9 @@ export default function UnitConverter() {
           />
         </View>
 
-        {/* From Unit Selector */}
+        {/* From Unit */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>From (Kisse):</Text>
+          <Text style={styles.label}>From (किससे):</Text>
           <View style={styles.unitList}>
             {currentCat.units.map((u) => (
               <TouchableOpacity
@@ -156,13 +165,13 @@ export default function UnitConverter() {
 
         {/* Swap Button */}
         <TouchableOpacity style={styles.swapBtn} onPress={handleSwap}>
-          <Ionicons name="swap-vertical" size={20} color={Colors.primary} />
-          <Text style={styles.swapText}>Ulat-Pulat Karein (Swap Units)</Text>
+          <Ionicons name="swap-vertical" size={18} color={Colors.amber} />
+          <Text style={styles.swapText}>उलट-पुलट करें (Swap Units)</Text>
         </TouchableOpacity>
 
-        {/* To Unit Selector */}
+        {/* To Unit */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>To (Kisme badalna hai):</Text>
+          <Text style={styles.label}>To (किसमें बदलना है):</Text>
           <View style={styles.unitList}>
             {currentCat.units.map((u) => (
               <TouchableOpacity
@@ -173,7 +182,7 @@ export default function UnitConverter() {
                 <Text
                   style={[
                     styles.unitChipText,
-                    toUnit === u.id && { color: Colors.secondary, fontWeight: '700' },
+                    toUnit === u.id && { color: Colors.amber, fontWeight: '800' },
                   ]}
                 >
                   {u.name}
@@ -190,8 +199,25 @@ export default function UnitConverter() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: Colors.bgDark,
+  },
+  content: {
     padding: 16,
-    backgroundColor: Colors.bg,
+    paddingBottom: 80,
+  },
+  header: {
+    marginBottom: 16,
+    marginTop: 4,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: Colors.text,
+  },
+  subTitle: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginTop: 2,
   },
   catRow: {
     flexDirection: 'row',
@@ -211,8 +237,8 @@ const styles = StyleSheet.create({
     borderColor: Colors.cardBorder,
   },
   catBtnActive: {
-    backgroundColor: Colors.primaryBg,
-    borderColor: Colors.primary,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderColor: Colors.amber,
   },
   catBtnText: {
     fontSize: 12,
@@ -220,38 +246,35 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   catBtnTextActive: {
-    color: Colors.primary,
+    color: Colors.amber,
     fontWeight: '700',
   },
   heroCard: {
-    backgroundColor: '#162235',
     borderRadius: 20,
     padding: 22,
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: Colors.secondary,
     marginBottom: 16,
   },
   heroSubText: {
-    fontSize: 14,
-    color: Colors.textMuted,
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.9)',
     fontWeight: '600',
   },
   heroVal: {
     fontSize: 40,
-    fontWeight: '800',
-    color: Colors.secondary,
+    fontWeight: '900',
+    color: '#FFFFFF',
     marginVertical: 4,
   },
   heroUnit: {
-    fontSize: 15,
-    color: Colors.text,
-    fontWeight: '600',
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   card: {
     backgroundColor: Colors.cardBg,
     borderRadius: 18,
-    padding: 18,
+    padding: 16,
     borderWidth: 1,
     borderColor: Colors.cardBorder,
   },
@@ -259,18 +282,18 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   label: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
-    color: Colors.text,
-    marginBottom: 8,
+    color: Colors.textMuted,
+    marginBottom: 6,
   },
   input: {
-    backgroundColor: Colors.bg,
+    backgroundColor: 'rgba(11, 15, 25, 0.7)',
     borderWidth: 1,
     borderColor: Colors.cardBorder,
     borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     color: Colors.text,
     fontSize: 18,
     fontWeight: '700',
@@ -281,7 +304,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   unitChip: {
-    backgroundColor: Colors.cardHighlight,
+    backgroundColor: 'rgba(11, 15, 25, 0.8)',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
@@ -289,12 +312,12 @@ const styles = StyleSheet.create({
     borderColor: Colors.cardBorder,
   },
   unitChipActive: {
-    backgroundColor: Colors.primaryBg,
-    borderColor: Colors.primary,
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    borderColor: Colors.amber,
   },
   unitChipActiveTo: {
-    backgroundColor: Colors.secondaryBg,
-    borderColor: Colors.secondary,
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    borderColor: Colors.amber,
   },
   unitChipText: {
     color: Colors.textMuted,
@@ -302,7 +325,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   unitChipTextActive: {
-    color: Colors.primary,
+    color: Colors.amber,
     fontWeight: '700',
   },
   swapBtn: {
@@ -311,12 +334,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 10,
-    backgroundColor: Colors.primaryBg,
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
     borderRadius: 10,
     marginBottom: 16,
   },
   swapText: {
-    color: Colors.primary,
+    color: Colors.amber,
     fontSize: 13,
     fontWeight: '700',
   },

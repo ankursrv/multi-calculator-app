@@ -1,157 +1,235 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   StyleSheet,
   Text,
   View,
   TouchableOpacity,
-  ScrollView,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons, Ionicons, FontAwesome5 } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from './src/theme/colors';
 
+// Screens
+import HomeScreen from './src/screens/HomeScreen';
 import KiranaCalculator from './src/screens/KiranaCalculator';
 import StandardCalculator from './src/screens/StandardCalculator';
+import SmartKhataScreen from './src/screens/SmartKhataScreen';
 import DiscountCalculator from './src/screens/DiscountCalculator';
 import UnitConverter from './src/screens/UnitConverter';
 import EmiCalculator from './src/screens/EmiCalculator';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('kirana');
+  const [currentScreen, setCurrentScreen] = useState('home');
+  const [activeBottomTab, setActiveBottomTab] = useState('home');
+  
+  // Shared Smart Bill / Khata State
+  const [billList, setBillList] = useState([
+    {
+      id: '1',
+      name: 'चीनी (Sugar)',
+      details: '₹60/kg • ₹10 me (166.67g)',
+      result: '₹10.00',
+      cost: 10,
+    },
+    {
+      id: '2',
+      name: 'सरसों तेल (Mustard Oil)',
+      details: '₹140/L • 500ml',
+      result: '₹70.00',
+      cost: 70,
+    },
+  ]);
 
-  const tabs = [
+  // Smooth Screen Transition Animation
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
+
+  const navigateTo = (screenId) => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 120,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 10,
+        duration: 120,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setCurrentScreen(screenId);
+      if (['home', 'kirana', 'standard', 'bill'].includes(screenId)) {
+        setActiveBottomTab(screenId);
+      }
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    });
+  };
+
+  const handleBottomTabPress = (tabId) => {
+    navigateTo(tabId);
+  };
+
+  const handleAddItemToBill = (newItem) => {
+    setBillList((prev) => [newItem, ...prev]);
+  };
+
+  const handleRemoveBillItem = (index) => {
+    setBillList((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleClearBill = () => {
+    setBillList([]);
+  };
+
+  const bottomNavItems = [
+    {
+      id: 'home',
+      label: 'Home',
+      icon: 'home-outline',
+      iconActive: 'home',
+      type: 'ion',
+    },
     {
       id: 'kirana',
-      label: 'Kirana / Bhav',
-      sub: '₹ ↔ Gram',
+      label: 'Kirana Bhav',
       icon: 'scale-bathroom',
-      iconFamily: 'MaterialCommunityIcons',
-      color: Colors.primary,
+      iconActive: 'scale-bathroom',
+      type: 'mci',
     },
     {
       id: 'standard',
-      label: 'Standard',
-      sub: 'Normal Calc',
-      icon: 'calculator',
-      iconFamily: 'Ionicons',
-      color: Colors.accent,
+      label: 'Calculator',
+      icon: 'calculator-outline',
+      iconActive: 'calculator',
+      type: 'ion',
     },
     {
-      id: 'discount',
-      label: 'Discount & GST',
-      sub: '% Bachat',
-      icon: 'pricetag',
-      iconFamily: 'Ionicons',
-      color: Colors.secondary,
-    },
-    {
-      id: 'unit',
-      label: 'Unit Convert',
-      sub: 'Kg, L, Meter',
-      icon: 'swap-horizontal',
-      iconFamily: 'Ionicons',
-      color: Colors.primaryLight,
-    },
-    {
-      id: 'emi',
-      label: 'Loan & EMI',
-      sub: 'Byaj Hisaab',
-      icon: 'cash',
-      iconFamily: 'Ionicons',
-      color: Colors.purple,
+      id: 'bill',
+      label: 'Smart Khata',
+      icon: 'receipt-outline',
+      iconActive: 'receipt',
+      type: 'ion',
+      badgeCount: billList.length,
     },
   ];
 
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.safeArea}>
-        <StatusBar style="light" backgroundColor={Colors.bg} />
+        <StatusBar style="light" backgroundColor={Colors.bgDark} />
 
-        {/* Top Header */}
-        <View style={styles.header}>
-          <View style={styles.headerTitleWrap}>
-            <View style={styles.logoBadge}>
-              <MaterialCommunityIcons name="calculator-variant" size={22} color={Colors.primary} />
-            </View>
-            <View>
-              <Text style={styles.headerTitle}>Multi Calculator</Text>
-              <Text style={styles.headerSubtitle}>Kirana • Bhav • Standard • GST • EMI</Text>
-            </View>
-          </View>
+        {/* Screen Content with Smooth Animation */}
+        <Animated.View
+          style={[
+            styles.contentContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }],
+            },
+          ]}
+        >
+          {currentScreen === 'home' && (
+            <HomeScreen onSelectScreen={(screenId) => navigateTo(screenId)} />
+          )}
 
-          <View style={styles.versionBadge}>
-            <Text style={styles.versionText}>Android App</Text>
-          </View>
-        </View>
+          {currentScreen === 'kirana' && (
+            <KiranaCalculator
+              onBack={() => navigateTo('home')}
+              onSaveToBill={(item) => {
+                handleAddItemToBill(item);
+                navigateTo('bill');
+              }}
+            />
+          )}
 
-        {/* Horizontal Navigation Tabs */}
-        <View style={styles.tabBarContainer}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.tabBar}
-          >
-            {tabs.map((tab) => {
-              const isActive = activeTab === tab.id;
+          {currentScreen === 'standard' && <StandardCalculator />}
+
+          {currentScreen === 'bill' && (
+            <SmartKhataScreen
+              billList={billList}
+              onAddItem={handleAddItemToBill}
+              onRemoveItem={handleRemoveBillItem}
+              onClearBill={handleClearBill}
+            />
+          )}
+
+          {currentScreen === 'discount' && <DiscountCalculator />}
+          {currentScreen === 'unit' && <UnitConverter />}
+          {currentScreen === 'emi' && <EmiCalculator />}
+        </Animated.View>
+
+        {/* Bottom Navigation Bar */}
+        <View style={styles.bottomNavContainer}>
+          <View style={styles.bottomNav}>
+            {bottomNavItems.map((tab) => {
+              const isActive = activeBottomTab === tab.id;
               return (
                 <TouchableOpacity
                   key={tab.id}
-                  style={[
-                    styles.tabItem,
-                    isActive && {
-                      backgroundColor: Colors.cardHighlight,
-                      borderColor: tab.color,
-                      borderWidth: 1.5,
-                    },
-                  ]}
-                  onPress={() => setActiveTab(tab.id)}
+                  style={styles.navTab}
+                  onPress={() => handleBottomTabPress(tab.id)}
                   activeOpacity={0.7}
                 >
-                  {tab.iconFamily === 'Ionicons' ? (
-                    <Ionicons
-                      name={tab.icon}
-                      size={18}
-                      color={isActive ? tab.color : Colors.textMuted}
-                    />
-                  ) : (
-                    <MaterialCommunityIcons
-                      name={tab.icon}
-                      size={18}
-                      color={isActive ? tab.color : Colors.textMuted}
+                  <View style={styles.tabIconWrap}>
+                    {tab.type === 'ion' ? (
+                      <Ionicons
+                        name={isActive ? tab.iconActive : tab.icon}
+                        size={22}
+                        color={isActive ? Colors.amber : Colors.textDim}
+                      />
+                    ) : (
+                      <MaterialCommunityIcons
+                        name={tab.icon}
+                        size={22}
+                        color={isActive ? Colors.amber : Colors.textDim}
+                      />
+                    )}
+
+                    {/* Notification Badge if any */}
+                    {tab.badgeCount > 0 && (
+                      <View style={styles.badgeDot}>
+                        <Text style={styles.badgeDotText}>{tab.badgeCount}</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <Text
+                    style={[
+                      styles.navTabLabel,
+                      isActive && styles.navTabLabelActive,
+                    ]}
+                  >
+                    {tab.label}
+                  </Text>
+
+                  {/* Active Indicator Underline */}
+                  {isActive && (
+                    <LinearGradient
+                      colors={Colors.gradientColors}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.activeIndicator}
                     />
                   )}
-                  <View>
-                    <Text
-                      style={[
-                        styles.tabLabel,
-                        isActive && { color: Colors.text, fontWeight: '700' },
-                      ]}
-                    >
-                      {tab.label}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.tabSub,
-                        isActive && { color: tab.color },
-                      ]}
-                    >
-                      {tab.sub}
-                    </Text>
-                  </View>
                 </TouchableOpacity>
               );
             })}
-          </ScrollView>
-        </View>
-
-        {/* Active Screen Content */}
-        <View style={styles.content}>
-          {activeTab === 'kirana' && <KiranaCalculator />}
-          {activeTab === 'standard' && <StandardCalculator />}
-          {activeTab === 'discount' && <DiscountCalculator />}
-          {activeTab === 'unit' && <UnitConverter />}
-          {activeTab === 'emi' && <EmiCalculator />}
+          </View>
         </View>
       </SafeAreaView>
     </SafeAreaProvider>
@@ -161,87 +239,69 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.bg,
+    backgroundColor: Colors.bgDark,
   },
-  header: {
+  contentContainer: {
+    flex: 1,
+  },
+  bottomNavContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(3, 7, 18, 0.95)',
+    borderTopWidth: 1,
+    borderTopColor: Colors.cardBorder,
+    paddingBottom: 4,
+  },
+  bottomNav: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.cardBorder,
+    height: 60,
   },
-  headerTitleWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  logoBadge: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: Colors.primaryBg,
+  navTab: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
+    height: '100%',
+    position: 'relative',
   },
-  headerTitle: {
-    fontSize: 18,
+  tabIconWrap: {
+    position: 'relative',
+  },
+  badgeDot: {
+    position: 'absolute',
+    top: -4,
+    right: -8,
+    backgroundColor: Colors.orange,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  badgeDotText: {
+    fontSize: 9,
     fontWeight: '800',
-    color: Colors.text,
+    color: '#FFFFFF',
   },
-  headerSubtitle: {
+  navTabLabel: {
     fontSize: 11,
-    color: Colors.textMuted,
-    marginTop: 1,
+    fontWeight: '600',
+    color: Colors.textDim,
+    marginTop: 3,
   },
-  versionBadge: {
-    backgroundColor: Colors.cardBg,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
-  },
-  versionText: {
-    fontSize: 11,
-    color: Colors.primary,
+  navTabLabelActive: {
+    color: Colors.amber,
     fontWeight: '700',
   },
-  tabBarContainer: {
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.cardBorder,
-    backgroundColor: Colors.bg,
-  },
-  tabBar: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 8,
-  },
-  tabItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 14,
-    backgroundColor: Colors.cardBg,
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
-  },
-  tabLabel: {
-    fontSize: 13,
-    color: Colors.textMuted,
-    fontWeight: '600',
-  },
-  tabSub: {
-    fontSize: 10,
-    color: Colors.textDim,
-    fontWeight: '500',
-  },
-  content: {
-    flex: 1,
+  activeIndicator: {
+    position: 'absolute',
+    bottom: 2,
+    width: 24,
+    height: 3,
+    borderRadius: 2,
   },
 });

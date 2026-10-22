@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../theme/colors';
 
 export default function EmiCalculator() {
@@ -18,7 +19,6 @@ export default function EmiCalculator() {
   const rAnnual = parseFloat(interestRate) || 0;
   const tYears = parseFloat(tenureYears) || 0;
 
-  // Monthly interest rate
   const r = rAnnual / 12 / 100;
   const n = tYears * 12;
 
@@ -40,33 +40,43 @@ export default function EmiCalculator() {
   ];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-      {/* EMI Result Hero */}
-      <View style={styles.heroCard}>
-        <Text style={styles.heroSubText}>Har Mahine Ki EMI (Monthly EMI):</Text>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Loan & EMI</Text>
+        <Text style={styles.subTitle}>मासिक किस्त एवं ब्याज हिसाब</Text>
+      </View>
+
+      {/* Hero Card */}
+      <LinearGradient
+        colors={Colors.gradientCardColors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.heroCard}
+      >
+        <Text style={styles.heroSubText}>हर महीने की EMI (Monthly EMI):</Text>
         <Text style={styles.heroEmi}>₹{Math.round(emi).toLocaleString('en-IN')}</Text>
 
         <View style={styles.heroStatsRow}>
           <View style={styles.heroStat}>
-            <Text style={styles.statLabel}>Kul Byaj (Total Interest):</Text>
-            <Text style={[styles.statVal, { color: Colors.accent }]}>
+            <Text style={styles.statLabel}>कुल ब्याज (Total Interest):</Text>
+            <Text style={styles.statVal}>
               ₹{Math.round(totalInterest).toLocaleString('en-IN')}
             </Text>
           </View>
           <View style={styles.heroStat}>
-            <Text style={styles.statLabel}>Kul Rashi (Total Amount):</Text>
-            <Text style={[styles.statVal, { color: Colors.primary }]}>
+            <Text style={styles.statLabel}>कुल राशि (Total Amount):</Text>
+            <Text style={styles.statVal}>
               ₹{Math.round(totalPayment).toLocaleString('en-IN')}
             </Text>
           </View>
         </View>
-      </View>
+      </LinearGradient>
 
       {/* Input Card */}
       <View style={styles.card}>
         {/* Loan Amount */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Loan Amount (Mool Rashi):</Text>
+          <Text style={styles.label}>लोन राशि (Principal Amount):</Text>
           <View style={styles.inputPrefixWrap}>
             <Text style={styles.prefix}>₹</Text>
             <TextInput
@@ -96,11 +106,11 @@ export default function EmiCalculator() {
 
         {/* Interest Rate */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Byaj Dar (Annual Interest Rate %):</Text>
+          <Text style={styles.label}>ब्याज दर (Annual Interest Rate %):</Text>
           <View style={styles.inputPrefixWrap}>
             <Text style={styles.prefix}>%</Text>
             <TextInput
-              style={[styles.input, { color: Colors.accent }]}
+              style={[styles.input, { color: Colors.amber }]}
               value={interestRate}
               onChangeText={setInterestRate}
               keyboardType="numeric"
@@ -112,7 +122,7 @@ export default function EmiCalculator() {
 
         {/* Tenure */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Samay / Avadhi (Tenure in Years):</Text>
+          <Text style={styles.label}>अवधि (Tenure in Years):</Text>
           <View style={styles.inputPrefixWrap}>
             <Text style={styles.prefix}>📅</Text>
             <TextInput
@@ -128,7 +138,7 @@ export default function EmiCalculator() {
 
         {/* Breakdown bar */}
         <View style={styles.breakdownBox}>
-          <Text style={styles.breakdownTitle}>Loan vs Byaj Anupaat (Ratio):</Text>
+          <Text style={styles.breakdownTitle}>मूलधन vs ब्याज अनुपात:</Text>
           <View style={styles.bar}>
             <View
               style={[
@@ -145,15 +155,15 @@ export default function EmiCalculator() {
           </View>
           <View style={styles.legendRow}>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: Colors.primary }]} />
+              <View style={[styles.legendDot, { backgroundColor: Colors.amber }]} />
               <Text style={styles.legendText}>
-                Mool Dhan ({totalPayment > 0 ? ((p / totalPayment) * 100).toFixed(0) : 0}%)
+                मूलधन ({totalPayment > 0 ? ((p / totalPayment) * 100).toFixed(0) : 0}%)
               </Text>
             </View>
             <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: Colors.accent }]} />
+              <View style={[styles.legendDot, { backgroundColor: Colors.orange }]} />
               <Text style={styles.legendText}>
-                Byaj ({totalPayment > 0 ? ((totalInterest / totalPayment) * 100).toFixed(0) : 0}%)
+                ब्याज ({totalPayment > 0 ? ((totalInterest / totalPayment) * 100).toFixed(0) : 0}%)
               </Text>
             </View>
           </View>
@@ -166,36 +176,50 @@ export default function EmiCalculator() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: Colors.bgDark,
+  },
+  content: {
     padding: 16,
-    backgroundColor: Colors.bg,
+    paddingBottom: 80,
+  },
+  header: {
+    marginBottom: 16,
+    marginTop: 4,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: Colors.text,
+  },
+  subTitle: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    marginTop: 2,
   },
   heroCard: {
-    backgroundColor: '#1E253B',
     borderRadius: 20,
     padding: 22,
-    borderWidth: 1.5,
-    borderColor: Colors.purple,
     alignItems: 'center',
     marginBottom: 16,
   },
   heroSubText: {
-    fontSize: 14,
-    color: Colors.textMuted,
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.9)',
     fontWeight: '600',
   },
   heroEmi: {
     fontSize: 42,
-    fontWeight: '800',
-    color: Colors.text,
-    marginVertical: 6,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    marginVertical: 4,
   },
   heroStatsRow: {
     flexDirection: 'row',
     width: '100%',
-    paddingTop: 14,
+    paddingTop: 12,
     marginTop: 6,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.08)',
+    borderTopColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'space-around',
   },
   heroStat: {
@@ -203,17 +227,18 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 11,
-    color: Colors.textMuted,
+    color: 'rgba(255, 255, 255, 0.8)',
     marginBottom: 2,
   },
   statVal: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   card: {
     backgroundColor: Colors.cardBg,
     borderRadius: 18,
-    padding: 18,
+    padding: 16,
     borderWidth: 1,
     borderColor: Colors.cardBorder,
   },
@@ -221,9 +246,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   label: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
-    color: Colors.text,
+    color: Colors.textMuted,
     marginBottom: 6,
   },
   inputPrefixWrap: {
@@ -233,23 +258,23 @@ const styles = StyleSheet.create({
   },
   prefix: {
     position: 'absolute',
-    left: 14,
+    left: 12,
     zIndex: 1,
     fontSize: 16,
     fontWeight: '700',
-    color: Colors.textMuted,
+    color: Colors.amber,
   },
   input: {
     flex: 1,
-    backgroundColor: Colors.bg,
+    backgroundColor: 'rgba(11, 15, 25, 0.7)',
     borderWidth: 1,
     borderColor: Colors.cardBorder,
     borderRadius: 12,
-    paddingLeft: 36,
-    paddingRight: 14,
-    paddingVertical: 12,
+    paddingLeft: 32,
+    paddingRight: 12,
+    paddingVertical: 10,
     color: Colors.text,
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
   },
   chipRow: {
@@ -259,7 +284,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   chip: {
-    backgroundColor: Colors.cardHighlight,
+    backgroundColor: 'rgba(11, 15, 25, 0.8)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 10,
@@ -267,8 +292,8 @@ const styles = StyleSheet.create({
     borderColor: Colors.cardBorder,
   },
   chipActive: {
-    backgroundColor: Colors.purpleBg,
-    borderColor: Colors.purple,
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    borderColor: Colors.amber,
   },
   chipText: {
     color: Colors.textMuted,
@@ -276,11 +301,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   chipTextActive: {
-    color: Colors.purple,
-    fontWeight: '700',
+    color: Colors.amber,
+    fontWeight: '800',
   },
   breakdownBox: {
-    backgroundColor: Colors.bg,
+    backgroundColor: 'rgba(11, 15, 25, 0.7)',
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
@@ -295,15 +320,15 @@ const styles = StyleSheet.create({
   },
   bar: {
     flexDirection: 'row',
-    height: 12,
-    borderRadius: 6,
+    height: 10,
+    borderRadius: 5,
     overflow: 'hidden',
   },
   barPrincipal: {
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.amber,
   },
   barInterest: {
-    backgroundColor: Colors.accent,
+    backgroundColor: Colors.orange,
   },
   legendRow: {
     flexDirection: 'row',
@@ -321,7 +346,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   legendText: {
-    fontSize: 12,
+    fontSize: 11,
     color: Colors.textMuted,
     fontWeight: '600',
   },
