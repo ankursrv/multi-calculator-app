@@ -12,6 +12,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import GradientText from '../components/GradientText';
 import SamaaBhavCardGlow from '../components/SamaaBhavCardGlow';
+import KharchaCardGlow from '../components/KharchaCardGlow';
 
 export default function HomeScreen({ onSelectScreen }) {
   return (
@@ -105,6 +106,49 @@ export default function HomeScreen({ onSelectScreen }) {
                 name="chevron-forward"
                 size={26}
                 color="#F59E0B"
+                style={{ marginLeft: 8 }}
+              />
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* Kharcha Tracker — Variant B (cool slate + emerald ledger glow) */}
+          <TouchableOpacity
+            style={styles.trackerCardWrapper}
+            onPress={() => onSelectScreen('kharcha')}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={['#0B1220', '#12252C', '#0E3A2C']}
+              locations={[0, 0.55, 1]}
+              start={{ x: 0, y: 0.1 }}
+              end={{ x: 0.85, y: 1 }}
+              style={styles.trackerCardGradient}
+            >
+              <KharchaCardGlow />
+
+              <LinearGradient
+                colors={['#34D399', '#059669']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0.2, y: 1 }}
+                style={styles.trackerIconBox}
+              >
+                <MaterialCommunityIcons name="notebook-outline" size={30} color="#FFFFFF" />
+              </LinearGradient>
+
+              <View style={styles.trackerCardBody}>
+                <Text style={styles.trackerCardTitle}>Kharcha Tracker</Text>
+                <Text style={styles.trackerCardDescHindi}>
+                  महीने-दर-महीने खर्चा का हिसाब - हर सामान, हर कीमत
+                </Text>
+                <Text style={styles.trackerCardDescEng} numberOfLines={1}>
+                  Monthly & yearly expense register · 100% Offline
+                </Text>
+              </View>
+
+              <Ionicons
+                name="chevron-forward"
+                size={26}
+                color="#34D399"
                 style={{ marginLeft: 8 }}
               />
             </LinearGradient>
@@ -266,6 +310,61 @@ const styles = StyleSheet.create({
   popularCardDescEng: {
     fontSize: 11,
     color: '#FB923C',
+    fontWeight: '600',
+    marginTop: 3,
+  },
+  trackerCardWrapper: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 0,
+    elevation: 0,
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+  },
+  trackerCardGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    position: 'relative',
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' && {
+      backgroundImage:
+        'radial-gradient(ellipse at 100% 100%, rgba(52, 211, 153, 0.35) 0%, rgba(16, 185, 129, 0) 55%), linear-gradient(115deg, #0B1220 0%, #12252C 55%, #0E3A2C 100%)',
+    }),
+  },
+  trackerIconBox: {
+    width: 58,
+    height: 58,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  trackerCardBody: {
+    flex: 1,
+  },
+  trackerCardTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+    marginBottom: 6,
+  },
+  trackerCardDescHindi: {
+    fontSize: 12.5,
+    color: '#F8FAFC',
+    fontWeight: '600',
+    lineHeight: 17,
+  },
+  trackerCardDescEng: {
+    fontSize: 11,
+    color: '#6EE7B7',
     fontWeight: '600',
     marginTop: 3,
   },

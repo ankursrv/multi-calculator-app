@@ -22,6 +22,7 @@ import SmartKhataScreen from './src/screens/SmartKhataScreen';
 import DiscountCalculator from './src/screens/DiscountCalculator';
 import UnitConverter from './src/screens/UnitConverter';
 import EmiCalculator from './src/screens/EmiCalculator';
+import KharchaTrackerScreen from './src/screens/KharchaTrackerScreen';
 
 // Global Web Style to remove focus-visible outlines from all input boxes
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -197,6 +198,9 @@ export default function App() {
           {currentScreen === 'discount' && <DiscountCalculator />}
           {currentScreen === 'unit' && <UnitConverter />}
           {currentScreen === 'emi' && <EmiCalculator />}
+          {currentScreen === 'kharcha' && (
+            <KharchaTrackerScreen onBack={() => navigateTo('home')} />
+          )}
         </Animated.View>
 
         {/* Bottom Navigation Bar */}

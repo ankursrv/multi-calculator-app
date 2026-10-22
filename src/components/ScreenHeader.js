@@ -8,18 +8,40 @@ import GradientText from './GradientText';
 /**
  * Fixed sub-screen header (same style as Home header but with a constant
  * height across all screens). Optional back / reset icon buttons.
+ * Pass theme="emerald" for green-accented screens (default: amber).
  */
+const THEMES = {
+  amber: {
+    barGradient: ['#0B1220', '#151016', '#241307'],
+    logoGradient: Colors.gradientColors,
+    titleGradient: ['#FBBF24', '#F97316', '#EA580C'],
+    subtitleColor: '#FB923C',
+    sparkleColor: '#FB923C',
+    sideIconColor: Colors.amber,
+  },
+  emerald: {
+    barGradient: ['#0B1220', '#0B1F1A', '#05261B'],
+    logoGradient: ['#34D399', '#059669'],
+    titleGradient: ['#6EE7B7', '#34D399', '#10B981'],
+    subtitleColor: '#6EE7B7',
+    sparkleColor: '#34D399',
+    sideIconColor: '#34D399',
+  },
+};
+
 export default function ScreenHeader({
   title,
   subtitle,
   icon = 'calculator-variant',
   onBack,
   onReset,
+  theme = 'amber',
 }) {
+  const t = THEMES[theme] || THEMES.amber;
   return (
     <View style={styles.wrapper}>
       <LinearGradient
-        colors={['#0B1220', '#151016', '#241307']}
+        colors={t.barGradient}
         locations={[0, 0.55, 1]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0.9 }}
@@ -27,12 +49,12 @@ export default function ScreenHeader({
       >
         {onBack && (
           <TouchableOpacity onPress={onBack} style={styles.sideBtn} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={20} color={Colors.amber} />
+            <Ionicons name="arrow-back" size={20} color={t.sideIconColor} />
           </TouchableOpacity>
         )}
 
         <LinearGradient
-          colors={Colors.gradientColors}
+          colors={t.logoGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.logoGradient}
@@ -44,12 +66,12 @@ export default function ScreenHeader({
           <GradientText
             text={title}
             style={styles.title}
-            colors={['#FBBF24', '#F97316', '#EA580C']}
+            colors={t.titleGradient}
             numberOfLines={1}
           />
           <View style={styles.subtitleRow}>
-            <Ionicons name="sparkles" size={11} color="#FB923C" style={{ marginRight: 5 }} />
-            <Text style={styles.subtitle} numberOfLines={1}>
+            <Ionicons name="sparkles" size={11} color={t.sparkleColor} style={{ marginRight: 5 }} />
+            <Text style={[styles.subtitle, { color: t.subtitleColor }]} numberOfLines={1}>
               {subtitle}
             </Text>
           </View>
@@ -57,7 +79,7 @@ export default function ScreenHeader({
 
         {onReset && (
           <TouchableOpacity onPress={onReset} style={styles.sideBtn} activeOpacity={0.7}>
-            <Ionicons name="refresh" size={20} color={Colors.amber} />
+            <Ionicons name="refresh" size={20} color={t.sideIconColor} />
           </TouchableOpacity>
         )}
       </LinearGradient>
@@ -117,7 +139,6 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 12,
-    color: '#FB923C',
     fontWeight: '600',
     letterSpacing: 0.2,
   },
