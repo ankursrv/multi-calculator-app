@@ -63,122 +63,122 @@ export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveI
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
 
-      {/* Bill Hero Card */}
-      <LinearGradient
-        colors={Colors.gradientCardColors}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.heroCard}
-      >
-        <Text style={styles.heroLabel}>कुल पर्चा राशि (Total Bill Amount):</Text>
-        <Text style={styles.heroTotal}>₹{totalBill.toFixed(2)}</Text>
-        <View style={styles.heroFooter}>
-          <Text style={styles.heroItemCount}>{billList.length} Items Listed</Text>
-          {people > 1 && (
-            <Text style={styles.heroSplit}>₹{perPerson.toFixed(2)} / person ({people})</Text>
-          )}
-        </View>
-      </LinearGradient>
+        {/* Bill Hero Card */}
+        <LinearGradient
+          colors={Colors.gradientCardColors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.heroCard}
+        >
+          <Text style={styles.heroLabel}>कुल पर्चा राशि (Total Bill Amount):</Text>
+          <Text style={styles.heroTotal}>₹{totalBill.toFixed(2)}</Text>
+          <View style={styles.heroFooter}>
+            <Text style={styles.heroItemCount}>{billList.length} Items Listed</Text>
+            {people > 1 && (
+              <Text style={styles.heroSplit}>₹{perPerson.toFixed(2)} / person ({people})</Text>
+            )}
+          </View>
+        </LinearGradient>
 
-      {/* Quick Add Form */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>सामान जोड़ें (Quick Add Item):</Text>
-        <View style={styles.formRow}>
-          <TextInput
-            style={[styles.input, { flex: 1.5 }]}
-            value={itemName}
-            onChangeText={setItemName}
-            placeholder="Item (e.g. Aata, Tel, Sabzi)"
-            placeholderTextColor={Colors.textDim}
-          />
-          <View style={[styles.inputPrefixWrap, { flex: 1 }]}>
-            <Text style={styles.prefix}>₹</Text>
+        {/* Quick Add Form */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>सामान जोड़ें (Quick Add Item):</Text>
+          <View style={styles.formRow}>
             <TextInput
-              style={[styles.input, { paddingLeft: 26 }]}
-              value={itemCost}
-              onChangeText={setItemCost}
-              keyboardType="numeric"
-              placeholder="Cost"
-              placeholderTextColor={Colors.textDim}
+              style={[styles.input, styles.itemInput]}
+              value={itemName}
+              onChangeText={setItemName}
+              placeholder="Add Items..."
+              placeholderTextColor="rgb(100, 116, 139)"
             />
-          </View>
-          <TouchableOpacity style={styles.addBtn} onPress={handleAdd}>
-            <Ionicons name="add" size={24} color="#030712" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Split Calculator */}
-        <View style={styles.splitRow}>
-          <Text style={styles.splitLabel}>बिल बांटें (Split among people):</Text>
-          <View style={styles.splitControls}>
-            {['1', '2', '3', '4', '5'].map((num) => (
-              <TouchableOpacity
-                key={num}
-                style={[styles.splitChip, splitCount === num && styles.splitChipActive]}
-                onPress={() => setSplitCount(num)}
-              >
-                <Text
-                  style={[
-                    styles.splitChipText,
-                    splitCount === num && styles.splitChipTextActive,
-                  ]}
-                >
-                  {num}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      </View>
-
-      {/* Items List */}
-      <View style={styles.card}>
-        <View style={styles.listHeader}>
-          <Text style={styles.cardTitle}>Bill Items ({billList.length})</Text>
-          {billList.length > 0 && (
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <TouchableOpacity style={styles.actionPill} onPress={handleShare}>
-                <Ionicons name="share-social-outline" size={14} color={Colors.amber} />
-                <Text style={styles.actionPillText}>Share</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.clearPill} onPress={onClearBill}>
-                <Ionicons name="trash-outline" size={14} color={Colors.danger} />
-                <Text style={styles.clearPillText}>Clear</Text>
-              </TouchableOpacity>
+            <View style={styles.inputPrefixWrap}>
+              <Text style={styles.prefix}>₹</Text>
+              <TextInput
+                style={[styles.input, styles.costInput]}
+                value={itemCost}
+                onChangeText={setItemCost}
+                keyboardType="numeric"
+                placeholder="रुपये"
+                placeholderTextColor="rgb(100, 116, 139)"
+              />
             </View>
+            <TouchableOpacity style={styles.addBtn} onPress={handleAdd} activeOpacity={0.8}>
+              <Ionicons name="add" size={24} color="#030712" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Split Calculator */}
+          <View style={styles.splitRow}>
+            <Text style={styles.splitLabel}>बिल बांटें (Split among people):</Text>
+            <View style={styles.splitControls}>
+              {['1', '2', '3', '4', '5'].map((num) => (
+                <TouchableOpacity
+                  key={num}
+                  style={[styles.splitChip, splitCount === num && styles.splitChipActive]}
+                  onPress={() => setSplitCount(num)}
+                >
+                  <Text
+                    style={[
+                      styles.splitChipText,
+                      splitCount === num && styles.splitChipTextActive,
+                    ]}
+                  >
+                    {num}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+
+        {/* Items List */}
+        <View style={styles.card}>
+          <View style={styles.listHeader}>
+            <Text style={styles.cardTitle}>Bill Items ({billList.length})</Text>
+            {billList.length > 0 && (
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TouchableOpacity style={styles.actionPill} onPress={handleShare}>
+                  <Ionicons name="share-social-outline" size={14} color={Colors.amber} />
+                  <Text style={styles.actionPillText}>Share</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.clearPill} onPress={onClearBill}>
+                  <Ionicons name="trash-outline" size={14} color={Colors.danger} />
+                  <Text style={styles.clearPillText}>Clear</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+
+          {billList.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <Ionicons name="receipt-outline" size={40} color={Colors.textDim} />
+              <Text style={styles.emptyText}>अभी कोई सामान नहीं जोड़ा गया है।</Text>
+              <Text style={styles.emptySub}>
+                "Samaan-Bhav & Kirana" कैलकुलेटर से सीधे हिसाब यहाँ सेव कर सकते हैं।
+              </Text>
+            </View>
+          ) : (
+            billList.map((item, index) => (
+              <View key={item.id || index} style={styles.billItem}>
+                <View style={styles.itemIndex}>
+                  <Text style={styles.indexNum}>{index + 1}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.billItemName}>{item.name}</Text>
+                  <Text style={styles.billItemDetails}>{item.details}</Text>
+                </View>
+                <Text style={styles.billItemCost}>₹{item.cost?.toFixed(2)}</Text>
+                <TouchableOpacity
+                  onPress={() => onRemoveItem(index)}
+                  style={styles.deleteBtn}
+                >
+                  <Ionicons name="close-circle-outline" size={20} color={Colors.textDim} />
+                </TouchableOpacity>
+              </View>
+            ))
           )}
         </View>
-
-        {billList.length === 0 ? (
-          <View style={styles.emptyBox}>
-            <Ionicons name="receipt-outline" size={40} color={Colors.textDim} />
-            <Text style={styles.emptyText}>अभी कोई सामान नहीं जोड़ा गया है।</Text>
-            <Text style={styles.emptySub}>
-              "Samaan-Bhav & Kirana" कैलकुलेटर से सीधे हिसाब यहाँ सेव कर सकते हैं।
-            </Text>
-          </View>
-        ) : (
-          billList.map((item, index) => (
-            <View key={item.id || index} style={styles.billItem}>
-              <View style={styles.itemIndex}>
-                <Text style={styles.indexNum}>{index + 1}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.billItemName}>{item.name}</Text>
-                <Text style={styles.billItemDetails}>{item.details}</Text>
-              </View>
-              <Text style={styles.billItemCost}>₹{item.cost?.toFixed(2)}</Text>
-              <TouchableOpacity
-                onPress={() => onRemoveItem(index)}
-                style={styles.deleteBtn}
-              >
-                <Ionicons name="close-circle-outline" size={20} color={Colors.textDim} />
-              </TouchableOpacity>
-            </View>
-          ))
-        )}
-      </View>
-    </ScrollView>
+      </ScrollView>
     </View>
   );
 }
@@ -250,33 +250,43 @@ const styles = StyleSheet.create({
     gap: 8,
     alignItems: 'center',
   },
+  itemInput: {
+    flex: 1,
+  },
   input: {
     backgroundColor: 'rgba(11, 15, 25, 0.7)',
     borderWidth: 1,
     borderColor: Colors.cardBorder,
     borderRadius: 12,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 10,
     color: Colors.text,
     fontSize: 14,
     fontWeight: '600',
+    outlineStyle: 'none',
   },
   inputPrefixWrap: {
+    width: 72,
     position: 'relative',
     justifyContent: 'center',
   },
+  costInput: {
+    paddingLeft: 18,
+    paddingRight: 4,
+    fontSize: 13.5,
+  },
   prefix: {
     position: 'absolute',
-    left: 10,
+    left: 6,
     zIndex: 1,
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '700',
     color: Colors.amber,
   },
   addBtn: {
     backgroundColor: Colors.amber,
-    width: 44,
-    height: 44,
+    width: 42,
+    height: 42,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
