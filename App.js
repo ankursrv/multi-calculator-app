@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Animated,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -21,6 +22,31 @@ import SmartKhataScreen from './src/screens/SmartKhataScreen';
 import DiscountCalculator from './src/screens/DiscountCalculator';
 import UnitConverter from './src/screens/UnitConverter';
 import EmiCalculator from './src/screens/EmiCalculator';
+
+// Global Web Style to remove focus-visible outlines from all input boxes
+if (Platform.OS === 'web' && typeof document !== 'undefined') {
+  const styleId = 'rn-no-focus-outline';
+  if (!document.getElementById(styleId)) {
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+      input, textarea, select, [contenteditable="true"] {
+        outline: none !important;
+        outline-style: none !important;
+        box-shadow: none !important;
+        -webkit-tap-highlight-color: transparent !important;
+      }
+      input:focus, textarea:focus, select:focus,
+      input:focus-visible, textarea:focus-visible, select:focus-visible,
+      *:focus-visible {
+        outline: none !important;
+        outline-style: none !important;
+        box-shadow: none !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+}
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('home');

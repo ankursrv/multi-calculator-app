@@ -96,14 +96,6 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
   const qtyResult = calculateQuantity();
   const priceResult = calculatePrice();
 
-  const quickWeights = [
-    { label: '50g', val: '50', unit: 'Gram' },
-    { label: '100g', val: '100', unit: 'Gram' },
-    { label: '250g', val: '250', unit: 'Gram' },
-    { label: '500g', val: '500', unit: 'Gram' },
-    { label: '1 Kg', val: '1', unit: 'Kilogram' },
-  ];
-
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -282,32 +274,6 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
                   </TouchableOpacity>
                 </View>
               </View>
-
-              {/* Quick Weight Chips */}
-              <View style={styles.chipRow}>
-                {quickWeights.map((item) => (
-                  <TouchableOpacity
-                    key={item.label}
-                    style={[
-                      styles.chip,
-                      weight === item.val && weightUnit === item.unit && styles.chipActive,
-                    ]}
-                    onPress={() => {
-                      setWeight(item.val);
-                      setWeightUnit(item.unit);
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.chipText,
-                        weight === item.val && weightUnit === item.unit && styles.chipTextActive,
-                      ]}
-                    >
-                      {item.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
             </View>
           )}
         </View>
@@ -336,7 +302,9 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
                 {priceResult.valid ? `₹ ${priceResult.cost}` : '₹ 0.00'}
               </Text>
               <Text style={styles.heroSubValue}>
-                ({weight} {weightUnit} का कुल हिसाब)
+                {priceResult.valid
+                  ? `(${weight} ${weightUnit} का कुल हिसाब)`
+                  : `(0 ${weightUnit} का कुल हिसाब)`}
               </Text>
             </>
           )}
@@ -483,6 +451,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     color: Colors.text,
+    outlineStyle: 'none',
   },
   dropdownBox: {
     flexDirection: 'row',
