@@ -8,7 +8,6 @@ import {
   ScrollView,
   Modal,
   TouchableWithoutFeedback,
-  Alert,
   Share,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -53,6 +52,8 @@ export default function KharchaTrackerScreen({ onBack }) {
   const [openDropdown, setOpenDropdown] = useState(null); // 'year' | 'month'
   const [dayPickerOpen, setDayPickerOpen] = useState(false);
   const [yearSummaryOpen, setYearSummaryOpen] = useState(false);
+  // Delete/Clear confirmation popup — { type: 'entry'|'month', id?, name? }
+  const [confirm, setConfirm] = useState(null);
 
   // ── Persistence ──────────────────────────────────────────────
   useEffect(() => {
@@ -135,30 +136,29 @@ export default function KharchaTrackerScreen({ onBack }) {
   };
 
   const handleDelete = (id) => {
-    setData((prev) => ({
-      ...prev,
-      [monthKey]: (prev[monthKey] || []).filter((e) => e.id !== id),
-    }));
+    const entry = entries.find((e) => e.id === id);
+    setConfirm({ type: 'entry', id, name: entry ? entry.name : '' });
   };
 
   const handleClearMonth = () => {
-    Alert.alert(
-      'पूरे महीने का रिकॉर्ड मिटाएं?',
-      `${MONTHS_HI[selMonth - 1]} ${selYear} की सारी entries delete हो जाएँगी। यह वापस नहीं मिलेगी।`,
-      [
-        { text: 'रुको', style: 'cancel' },
-        {
-          text: 'हाँ, मिटाएं',
-          style: 'destructive',
-          onPress: () =>
-            setData((prev) => {
-              const next = { ...prev };
-              delete next[monthKey];
-              return next;
-            }),
-        },
-      ],
-    );
+    setConfirm({ type: 'month' });
+  };
+
+  const doConfirm = () => {
+    if (!confirm) return;
+    if (confirm.type === 'entry') {
+      setData((prev) => ({
+        ...prev,
+        [monthKey]: (prev[monthKey] || []).filter((e) => e.id !== confirm.id),
+      }));
+    } else {
+      setData((prev) => {
+        const next = { ...prev };
+        delete next[monthKey];
+        return next;
+      });
+    }
+    setConfirm(null);
   };
 
   const handleShare = async () => {
@@ -554,6 +554,52 @@ export default function KharchaTrackerScreen({ onBack }) {
                       </TouchableOpacity>
                     );
                   })}
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Delete / Clear confirmation popup */}
+      <Modal
+        visible={confirm !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setConfirm(null)}
+      >
+        <TouchableWithoutFeedback onPress={() => setConfirm(null)}>
+          <View style={styles.modalBackdrop}>
+            <TouchableWithoutFeedback>
+              <View style={styles.confirmPanel}>
+                <View style={styles.confirmIconWrap}>
+                  <Ionicons name="trash-outline" size={26} color="#F87171" />
+                </View>
+                <Text style={styles.confirmTitle}>
+                  {confirm?.type === 'entry' ? 'Entry डिलीट करें?' : 'पूरे महीने का रिकॉर्ड मिटाएं?'}
+                </Text>
+                <Text style={styles.confirmMsg}>
+                  {confirm?.type === 'entry'
+                    ? `"${confirm.name}" वाली यह entry delete हो जाएगी। यह वापस नहीं आएगी।`
+                    : `${MONTHS_HI[selMonth - 1]} ${selYear} की सारी entries delete हो जाएँगी। यह वापस नहीं मिलेगी।`}
+                </Text>
+                <View style={styles.confirmBtnRow}>
+                  <TouchableOpacity
+                    style={styles.confirmCancelBtn}
+                    onPress={() => setConfirm(null)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.confirmCancelText}>रुको ✋</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.confirmDangerBtn}
+                    onPress={doConfirm}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.confirmDangerText}>
+                      {confirm?.type === 'entry' ? 'हाँ, डिलीट करें' : 'हाँ, मिटाएं'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             </TouchableWithoutFeedback>
@@ -1042,6 +1088,72 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
+  },
+  // Delete / Clear confirmation popup
+  confirmPanel: {
+    width: 300,
+    backgroundColor: Colors.bgSecondary,
+    borderWidth: 1,
+    borderColor: 'rgba(248, 113, 113, 0.25)',
+    borderRadius: 20,
+    padding: 22,
+    alignItems: 'center',
+  },
+  confirmIconWrap: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: 'rgba(248, 113, 113, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(248, 113, 113, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  confirmTitle: {
+    fontSize: 16.5,
+    fontWeight: '800',
+    color: Colors.text,
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  confirmMsg: {
+    fontSize: 12.5,
+    color: Colors.textDim,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 18,
+  },
+  confirmBtnRow: {
+    flexDirection: 'row',
+    gap: 10,
+    alignSelf: 'stretch',
+  },
+  confirmCancelBtn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 11,
+    borderRadius: 12,
+    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
+  },
+  confirmCancelText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  confirmDangerBtn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 11,
+    borderRadius: 12,
+    backgroundColor: Colors.danger,
+  },
+  confirmDangerText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   dropPanel: {
     width: 240,
