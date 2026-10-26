@@ -9,7 +9,7 @@ import {
   Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from './src/theme/colors';
@@ -49,7 +49,8 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
   }
 }
 
-export default function App() {
+function MainApp() {
+  const insets = useSafeAreaInsets();
   const [currentScreen, setCurrentScreen] = useState('home');
   const [activeBottomTab, setActiveBottomTab] = useState('home');
   
@@ -156,112 +157,123 @@ export default function App() {
   ];
 
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar style="light" backgroundColor={Colors.bgDark} />
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <StatusBar style="light" backgroundColor={Colors.bgDark} />
 
-        {/* Screen Content with Smooth Animation */}
-        <Animated.View
-          style={[
-            styles.contentContainer,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }],
-            },
-          ]}
-        >
-          {currentScreen === 'home' && (
-            <HomeScreen onSelectScreen={(screenId) => navigateTo(screenId)} />
-          )}
+      {/* Screen Content with Smooth Animation */}
+      <Animated.View
+        style={[
+          styles.contentContainer,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }],
+          },
+        ]}
+      >
+        {currentScreen === 'home' && (
+          <HomeScreen onSelectScreen={(screenId) => navigateTo(screenId)} />
+        )}
 
-          {currentScreen === 'kirana' && (
-            <KiranaCalculator
-              onBack={() => navigateTo('home')}
-              onSaveToBill={(item) => {
-                handleAddItemToBill(item);
-                navigateTo('bill');
-              }}
-            />
-          )}
+        {currentScreen === 'kirana' && (
+          <KiranaCalculator
+            onBack={() => navigateTo('home')}
+            onSaveToBill={(item) => {
+              handleAddItemToBill(item);
+              navigateTo('bill');
+            }}
+          />
+        )}
 
-          {currentScreen === 'standard' && <StandardCalculator />}
+        {currentScreen === 'standard' && <StandardCalculator />}
 
-          {currentScreen === 'bill' && (
-            <SmartKhataScreen
-              billList={billList}
-              onAddItem={handleAddItemToBill}
-              onRemoveItem={handleRemoveBillItem}
-              onClearBill={handleClearBill}
-            />
-          )}
+        {currentScreen === 'bill' && (
+          <SmartKhataScreen
+            billList={billList}
+            onAddItem={handleAddItemToBill}
+            onRemoveItem={handleRemoveBillItem}
+            onClearBill={handleClearBill}
+          />
+        )}
 
-          {currentScreen === 'discount' && <DiscountCalculator />}
-          {currentScreen === 'unit' && <UnitConverter />}
-          {currentScreen === 'emi' && <EmiCalculator />}
-          {currentScreen === 'kharcha' && (
-            <KharchaTrackerScreen onBack={() => navigateTo('home')} />
-          )}
-        </Animated.View>
+        {currentScreen === 'discount' && <DiscountCalculator />}
+        {currentScreen === 'unit' && <UnitConverter />}
+        {currentScreen === 'emi' && <EmiCalculator />}
+        {currentScreen === 'kharcha' && (
+          <KharchaTrackerScreen onBack={() => navigateTo('home')} />
+        )}
+      </Animated.View>
 
-        {/* Bottom Navigation Bar */}
-        <View style={styles.bottomNavContainer}>
-          <View style={styles.bottomNav}>
-            {bottomNavItems.map((tab) => {
-              const isActive = activeBottomTab === tab.id;
-              return (
-                <TouchableOpacity
-                  key={tab.id}
-                  style={styles.navTab}
-                  onPress={() => handleBottomTabPress(tab.id)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.tabIconWrap}>
-                    {tab.type === 'ion' ? (
-                      <Ionicons
-                        name={isActive ? tab.iconActive : tab.icon}
-                        size={22}
-                        color={isActive ? Colors.amber : Colors.textDim}
-                      />
-                    ) : (
-                      <MaterialCommunityIcons
-                        name={tab.icon}
-                        size={22}
-                        color={isActive ? Colors.amber : Colors.textDim}
-                      />
-                    )}
-
-                    {/* Notification Badge if any */}
-                    {tab.badgeCount > 0 && (
-                      <View style={styles.badgeDot}>
-                        <Text style={styles.badgeDotText}>{tab.badgeCount}</Text>
-                      </View>
-                    )}
-                  </View>
-
-                  <Text
-                    style={[
-                      styles.navTabLabel,
-                      isActive && styles.navTabLabelActive,
-                    ]}
-                  >
-                    {tab.label}
-                  </Text>
-
-                  {/* Active Indicator Underline */}
-                  {isActive && (
-                    <LinearGradient
-                      colors={Colors.gradientColors}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.activeIndicator}
+      {/* Bottom Navigation Bar */}
+      <View
+        style={[
+          styles.bottomNavContainer,
+          { paddingBottom: Math.max(insets.bottom, Platform.OS === 'android' ? 10 : 4) },
+        ]}
+      >
+        <View style={styles.bottomNav}>
+          {bottomNavItems.map((tab) => {
+            const isActive = activeBottomTab === tab.id;
+            return (
+              <TouchableOpacity
+                key={tab.id}
+                style={styles.navTab}
+                onPress={() => handleBottomTabPress(tab.id)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.tabIconWrap}>
+                  {tab.type === 'ion' ? (
+                    <Ionicons
+                      name={isActive ? tab.iconActive : tab.icon}
+                      size={22}
+                      color={isActive ? Colors.amber : Colors.textDim}
+                    />
+                  ) : (
+                    <MaterialCommunityIcons
+                      name={tab.icon}
+                      size={22}
+                      color={isActive ? Colors.amber : Colors.textDim}
                     />
                   )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+
+                  {/* Notification Badge if any */}
+                  {tab.badgeCount > 0 && (
+                    <View style={styles.badgeDot}>
+                      <Text style={styles.badgeDotText}>{tab.badgeCount}</Text>
+                    </View>
+                  )}
+                </View>
+
+                <Text
+                  style={[
+                    styles.navTabLabel,
+                    isActive && styles.navTabLabelActive,
+                  ]}
+                >
+                  {tab.label}
+                </Text>
+
+                {/* Active Indicator Underline */}
+                {isActive && (
+                  <LinearGradient
+                    colors={Colors.gradientColors}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.activeIndicator}
+                  />
+                )}
+              </TouchableOpacity>
+            );
+          })}
         </View>
-      </SafeAreaView>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <MainApp />
     </SafeAreaProvider>
   );
 }
@@ -275,20 +287,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bottomNavContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(3, 7, 18, 0.95)',
+    backgroundColor: 'rgba(3, 7, 18, 0.98)',
     borderTopWidth: 1,
     borderTopColor: Colors.cardBorder,
-    paddingBottom: 4,
   },
   bottomNav: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    height: 60,
+    height: 56,
   },
   navTab: {
     flex: 1,

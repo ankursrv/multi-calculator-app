@@ -6,8 +6,6 @@ import Svg, {
   Stop,
   Ellipse,
   Path,
-  Filter,
-  FeGaussianBlur,
 } from 'react-native-svg';
 
 export default function SamaaBhavCardGlow() {
@@ -16,9 +14,9 @@ export default function SamaaBhavCardGlow() {
       <Svg
         width="100%"
         height="100%"
-        viewBox="0 0 600 220"
+        viewBox="330 140 270 80"
         fill="none"
-        preserveAspectRatio="none"
+        preserveAspectRatio="xMaxYMax meet"
       >
         <Defs>
           <SvgLinearGradient
@@ -29,8 +27,8 @@ export default function SamaaBhavCardGlow() {
             y2="230"
             gradientUnits="userSpaceOnUse"
           >
-            <Stop offset="0%" stopColor="#FF8A00" stopOpacity="0.38" />
-            <Stop offset="55%" stopColor="#FF6B00" stopOpacity="0.16" />
+            <Stop offset="0%" stopColor="#FF8A00" stopOpacity="0.45" />
+            <Stop offset="55%" stopColor="#FF6B00" stopOpacity="0.2" />
             <Stop offset="100%" stopColor="#FF6B00" stopOpacity="0" />
           </SvgLinearGradient>
 
@@ -42,8 +40,8 @@ export default function SamaaBhavCardGlow() {
             y2="250"
             gradientUnits="userSpaceOnUse"
           >
-            <Stop offset="0%" stopColor="#FF9A00" stopOpacity="0.55" />
-            <Stop offset="58%" stopColor="#FF7900" stopOpacity="0.24" />
+            <Stop offset="0%" stopColor="#FF9A00" stopOpacity="0.6" />
+            <Stop offset="58%" stopColor="#FF7900" stopOpacity="0.28" />
             <Stop offset="100%" stopColor="#FF7900" stopOpacity="0" />
           </SvgLinearGradient>
 
@@ -55,23 +53,12 @@ export default function SamaaBhavCardGlow() {
             y2="240"
             gradientUnits="userSpaceOnUse"
           >
-            <Stop offset="0%" stopColor="#FFB11B" stopOpacity="0.44" />
+            <Stop offset="0%" stopColor="#FFB11B" stopOpacity="0.5" />
             <Stop offset="100%" stopColor="#FF7000" stopOpacity="0" />
           </SvgLinearGradient>
         </Defs>
 
-        <Filter
-          id="softGlow"
-          x="180"
-          y="-30"
-          width="470"
-          height="330"
-          filterUnits="userSpaceOnUse"
-        >
-          <FeGaussianBlur stdDeviation="22" />
-        </Filter>
-
-        <Ellipse cx="490" cy="177" rx="165" ry="93" fill="url(#glow)" filter="url(#softGlow)" />
+        <Ellipse cx="490" cy="177" rx="165" ry="93" fill="url(#glow)" />
         <Path
           d="M600 102C534 128 503 152 453 175C413 193 378 206 331 220H600V102Z"
           fill="url(#ribbon)"
@@ -83,7 +70,7 @@ export default function SamaaBhavCardGlow() {
         <Path
           d="M600 128C551 149 523 164 489 181C456 198 425 211 400 220"
           stroke="#FF8A00"
-          strokeOpacity="0.16"
+          strokeOpacity="0.25"
           strokeWidth="1.5"
         />
       </Svg>
@@ -93,8 +80,12 @@ export default function SamaaBhavCardGlow() {
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    width: 175,
+    height: 65,
     overflow: 'hidden',
-    borderRadius: 24,
+    borderBottomRightRadius: 24,
   },
 });
