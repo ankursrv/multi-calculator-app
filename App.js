@@ -207,7 +207,7 @@ function MainApp() {
       <View
         style={[
           styles.bottomNavContainer,
-          { paddingBottom: Math.max(insets.bottom, Platform.OS === 'android' ? 10 : 4) },
+          { paddingBottom: Math.max(insets.bottom, Platform.OS === 'android' ? 24 : 6) },
         ]}
       >
         <View style={styles.bottomNav}>

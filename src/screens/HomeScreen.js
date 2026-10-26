@@ -265,7 +265,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 18,
-    paddingVertical: 18,
+    paddingVertical: 16,
+    minHeight: 88,
+    maxHeight: 104,
     position: 'relative',
     overflow: 'hidden',
     ...(Platform.OS === 'web' && {
@@ -325,7 +327,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 18,
-    paddingVertical: 18,
+    paddingVertical: 16,
+    minHeight: 88,
+    maxHeight: 104,
     position: 'relative',
     overflow: 'hidden',
     ...(Platform.OS === 'web' && {

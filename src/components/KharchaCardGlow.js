@@ -6,8 +6,6 @@ import Svg, {
   Stop,
   Ellipse,
   Path,
-  Filter,
-  FeGaussianBlur,
 } from 'react-native-svg';
 
 /**
@@ -33,8 +31,8 @@ export default function KharchaCardGlow() {
             y2="230"
             gradientUnits="userSpaceOnUse"
           >
-            <Stop offset="0%" stopColor="#34D399" stopOpacity="0.38" />
-            <Stop offset="55%" stopColor="#10B981" stopOpacity="0.16" />
+            <Stop offset="0%" stopColor="#34D399" stopOpacity="0.45" />
+            <Stop offset="55%" stopColor="#10B981" stopOpacity="0.2" />
             <Stop offset="100%" stopColor="#10B981" stopOpacity="0" />
           </SvgLinearGradient>
 
@@ -64,18 +62,7 @@ export default function KharchaCardGlow() {
           </SvgLinearGradient>
         </Defs>
 
-        <Filter
-          id="softGlowG"
-          x="180"
-          y="-30"
-          width="470"
-          height="330"
-          filterUnits="userSpaceOnUse"
-        >
-          <FeGaussianBlur stdDeviation="22" />
-        </Filter>
-
-        <Ellipse cx="490" cy="177" rx="165" ry="93" fill="url(#glowG)" filter="url(#softGlowG)" />
+        <Ellipse cx="490" cy="177" rx="165" ry="93" fill="url(#glowG)" />
         <Path
           d="M600 102C534 128 503 152 453 175C413 193 378 206 331 220H600V102Z"
           fill="url(#ribbonG)"
@@ -87,7 +74,7 @@ export default function KharchaCardGlow() {
         <Path
           d="M600 128C551 149 523 164 489 181C456 198 425 211 400 220"
           stroke="#34D399"
-          strokeOpacity="0.16"
+          strokeOpacity="0.2"
           strokeWidth="1.5"
         />
       </Svg>
