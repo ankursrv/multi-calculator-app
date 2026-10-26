@@ -6,6 +6,8 @@ import Svg, {
   Stop,
   Ellipse,
   Path,
+  Filter,
+  FeGaussianBlur,
 } from 'react-native-svg';
 
 /**
@@ -18,9 +20,9 @@ export default function KharchaCardGlow() {
       <Svg
         width="100%"
         height="100%"
-        viewBox="330 140 270 80"
+        viewBox="0 0 600 220"
         fill="none"
-        preserveAspectRatio="xMaxYMax meet"
+        preserveAspectRatio="none"
       >
         <Defs>
           <SvgLinearGradient
@@ -31,8 +33,8 @@ export default function KharchaCardGlow() {
             y2="230"
             gradientUnits="userSpaceOnUse"
           >
-            <Stop offset="0%" stopColor="#34D399" stopOpacity="0.45" />
-            <Stop offset="55%" stopColor="#10B981" stopOpacity="0.2" />
+            <Stop offset="0%" stopColor="#34D399" stopOpacity="0.38" />
+            <Stop offset="55%" stopColor="#10B981" stopOpacity="0.16" />
             <Stop offset="100%" stopColor="#10B981" stopOpacity="0" />
           </SvgLinearGradient>
 
@@ -44,8 +46,8 @@ export default function KharchaCardGlow() {
             y2="250"
             gradientUnits="userSpaceOnUse"
           >
-            <Stop offset="0%" stopColor="#34D399" stopOpacity="0.6" />
-            <Stop offset="58%" stopColor="#10B981" stopOpacity="0.28" />
+            <Stop offset="0%" stopColor="#34D399" stopOpacity="0.55" />
+            <Stop offset="58%" stopColor="#10B981" stopOpacity="0.24" />
             <Stop offset="100%" stopColor="#10B981" stopOpacity="0" />
           </SvgLinearGradient>
 
@@ -57,12 +59,23 @@ export default function KharchaCardGlow() {
             y2="240"
             gradientUnits="userSpaceOnUse"
           >
-            <Stop offset="0%" stopColor="#6EE7B7" stopOpacity="0.5" />
+            <Stop offset="0%" stopColor="#6EE7B7" stopOpacity="0.44" />
             <Stop offset="100%" stopColor="#10B981" stopOpacity="0" />
           </SvgLinearGradient>
         </Defs>
 
-        <Ellipse cx="490" cy="177" rx="165" ry="93" fill="url(#glowG)" />
+        <Filter
+          id="softGlowG"
+          x="180"
+          y="-30"
+          width="470"
+          height="330"
+          filterUnits="userSpaceOnUse"
+        >
+          <FeGaussianBlur stdDeviation="22" />
+        </Filter>
+
+        <Ellipse cx="490" cy="177" rx="165" ry="93" fill="url(#glowG)" filter="url(#softGlowG)" />
         <Path
           d="M600 102C534 128 503 152 453 175C413 193 378 206 331 220H600V102Z"
           fill="url(#ribbonG)"
@@ -74,7 +87,7 @@ export default function KharchaCardGlow() {
         <Path
           d="M600 128C551 149 523 164 489 181C456 198 425 211 400 220"
           stroke="#34D399"
-          strokeOpacity="0.25"
+          strokeOpacity="0.16"
           strokeWidth="1.5"
         />
       </Svg>
@@ -84,12 +97,8 @@ export default function KharchaCardGlow() {
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    right: 0,
-    bottom: 0,
-    width: 175,
-    height: 65,
+    ...StyleSheet.absoluteFillObject,
     overflow: 'hidden',
-    borderBottomRightRadius: 24,
+    borderRadius: 24,
   },
 });

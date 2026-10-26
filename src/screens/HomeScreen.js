@@ -104,9 +104,9 @@ export default function HomeScreen({ onSelectScreen }) {
               {/* Right Arrow Chevron */}
               <Ionicons
                 name="chevron-forward"
-                size={22}
+                size={26}
                 color="#F59E0B"
-                style={{ marginLeft: 6 }}
+                style={{ marginLeft: 8 }}
               />
             </LinearGradient>
           </TouchableOpacity>
@@ -147,9 +147,9 @@ export default function HomeScreen({ onSelectScreen }) {
 
               <Ionicons
                 name="chevron-forward"
-                size={22}
+                size={26}
                 color="#34D399"
-                style={{ marginLeft: 6 }}
+                style={{ marginLeft: 8 }}
               />
             </LinearGradient>
           </TouchableOpacity>
@@ -264,10 +264,8 @@ const styles = StyleSheet.create({
   popularCardGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 15,
-    borderRadius: 24,
-    minHeight: 86,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
     position: 'relative',
     overflow: 'hidden',
     ...(Platform.OS === 'web' && {
@@ -281,39 +279,39 @@ const styles = StyleSheet.create({
     right: 0,
   },
   popularIconBox: {
-    width: 50,
-    height: 50,
-    borderRadius: 16,
+    width: 58,
+    height: 58,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    marginRight: 16,
     shadowColor: '#F97316',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 6,
   },
   popularCardBody: {
     flex: 1,
   },
   popularCardTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: 0.2,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   popularCardDescHindi: {
-    fontSize: 12,
+    fontSize: 12.5,
     color: '#F8FAFC',
     fontWeight: '600',
-    lineHeight: 16,
+    lineHeight: 17,
   },
   popularCardDescEng: {
-    fontSize: 10.5,
+    fontSize: 11,
     color: '#FB923C',
     fontWeight: '600',
-    marginTop: 2,
+    marginTop: 3,
   },
   trackerCardWrapper: {
     borderRadius: 24,
@@ -326,10 +324,8 @@ const styles = StyleSheet.create({
   trackerCardGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 15,
-    borderRadius: 24,
-    minHeight: 86,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
     position: 'relative',
     overflow: 'hidden',
     ...(Platform.OS === 'web' && {
@@ -338,39 +334,39 @@ const styles = StyleSheet.create({
     }),
   },
   trackerIconBox: {
-    width: 50,
-    height: 50,
-    borderRadius: 16,
+    width: 58,
+    height: 58,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    marginRight: 16,
     shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 6,
   },
   trackerCardBody: {
     flex: 1,
   },
   trackerCardTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: 0.2,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   trackerCardDescHindi: {
-    fontSize: 12,
+    fontSize: 12.5,
     color: '#F8FAFC',
     fontWeight: '600',
-    lineHeight: 16,
+    lineHeight: 17,
   },
   trackerCardDescEng: {
-    fontSize: 10.5,
+    fontSize: 11,
     color: '#6EE7B7',
     fontWeight: '600',
-    marginTop: 2,
+    marginTop: 3,
   },
   card: {
     flexDirection: 'row',
