@@ -86,3 +86,10 @@ npx eas-cli build -p android --profile preview
 
 ## 📄 License
 MIT License
+
+
+ ## 📄 Direct installable Android APK build trigger karna.
+ 🚀 npx eas-cli build -p android --profile preview --no-wait
+
+ # Note: Agar aapko terminal me hi wait karna hai jab tak build complete na ho:
+npx eas-cli build -p android --profile preview
