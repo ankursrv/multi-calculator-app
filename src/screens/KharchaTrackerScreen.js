@@ -10,14 +10,50 @@ import {
   TouchableWithoutFeedback,
   Share,
   Platform,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { File as FsFile, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { Colors } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
 
 const STORAGE_KEY = 'kharchaTrackerData';
+
+// Build a dated backup filename like kharcha-backup-2026-10-27-1430.json
+function backupFilename() {
+  const d = new Date();
+  const pad = (x) => String(x).padStart(2, '0');
+  return `kharcha-backup-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
+    d.getDate(),
+  )}-${pad(d.getHours())}${pad(d.getMinutes())}.json`;
+}
+
+// A valid backup is a plain object whose values are arrays of entries
+function isValidBackup(o) {
+  if (!o || typeof o !== 'object' || Array.isArray(o)) return false;
+  return Object.keys(o).every(
+    (k) => /^\d{4}-(1[0-2]|0?[1-9])$/.test(k) && Array.isArray(o[k]),
+  );
+}
+
+// Summary counts for the restore confirmation
+function backupStats(o) {
+  let months = 0;
+  let entries = 0;
+  let total = 0;
+  Object.keys(o).forEach((k) => {
+    const list = o[k] || [];
+    if (list.length > 0) months += 1;
+    entries += list.length;
+    list.forEach((e) => {
+      total += Number(e.cost) || 0;
+    });
+  });
+  return { months, entries, total };
+}
 
 const MONTHS_HI = [
   'जनवरी', 'फरवरी', 'मार्च', 'अप्रैल', 'मई', 'जून',
@@ -70,6 +106,8 @@ export default function KharchaTrackerScreen({ onBack }) {
   const [yearSummaryOpen, setYearSummaryOpen] = useState(false);
   // Delete/Clear confirmation popup — { type: 'entry'|'month', id?, name? }
   const [confirm, setConfirm] = useState(null);
+  // Backup restore confirmation — holds the parsed backup object until confirmed
+  const [restoreData, setRestoreData] = useState(null);
 
   // ── Persistence ──────────────────────────────────────────────
   useEffect(() => {
@@ -225,6 +263,104 @@ export default function KharchaTrackerScreen({ onBack }) {
     isCurrentMonth && selDay === NOW.getDate()
       ? 'Today'
       : `${selDay} ${MONTHS_EN[selMonth - 1]}`;
+
+  // ── Backup & Restore ─────────────────────────────────────────
+  const totalEntryCount = useMemo(
+    () => Object.values(data).reduce((a, list) => a + (list ? list.length : 0), 0),
+    [data],
+  );
+
+  const handleBackup = async () => {
+    if (totalEntryCount === 0) {
+      Alert.alert('कुछ बैकअप नहीं', 'पहले कोई खर्चा जोड़ें, फिर बैकअप फाइल बनेगी।');
+      return;
+    }
+    const json = JSON.stringify(data, null, 2);
+    try {
+      if (Platform.OS === 'web') {
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = window.document.createElement('a');
+        a.href = url;
+        a.download = backupFilename();
+        window.document.body.appendChild(a);
+        a.click();
+        window.document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return;
+      }
+      const file = new FsFile(Paths.cache, backupFilename());
+      file.create({ overwrite: true, intermediates: true });
+      await file.write(json);
+      const canShare = await Sharing.isAvailableAsync();
+      if (!canShare) {
+        Alert.alert('बैकअप सेव नहीं हुआ', 'इस फोन में फाइल शेयर करना उपलब्ध नहीं है।');
+        return;
+      }
+      await Sharing.shareAsync(file.uri, {
+        mimeType: 'application/json',
+        dialogTitle: 'Kharcha बैकअप सेव करें',
+        UTI: 'public.json',
+      });
+    } catch (e) {
+      Alert.alert('बैकअप नहीं बना', e && e.message ? String(e.message) : 'कोई दिक्कत आ गई, दोबारा कोशिश करें।');
+    }
+  };
+
+  const readBackupText = async () => {
+    if (Platform.OS === 'web') {
+      return new Promise((resolve) => {
+        const input = window.document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json,application/json,text/plain';
+        input.onchange = (ev) => {
+          const f = ev.target.files && ev.target.files[0];
+          if (!f) {
+            resolve(null);
+            return;
+          }
+          const reader = new window.FileReader();
+          reader.onload = () => resolve(String(reader.result));
+          reader.onerror = () => resolve(null);
+          reader.readAsText(f);
+        };
+        input.click();
+      });
+    }
+    const pick = await FsFile.pickFileAsync({
+      mimeTypes: ['application/json', 'text/json', 'text/plain', 'application/octet-stream'],
+    });
+    if (pick.canceled || !pick.result) return null;
+    return pick.result.text();
+  };
+
+  const handleRestore = async () => {
+    try {
+      const text = await readBackupText();
+      if (!text) return;
+      const parsed = JSON.parse(text);
+      if (!isValidBackup(parsed)) {
+        Alert.alert('गलत फाइल', 'यह फाइल Kharcha Tracker का सही बैकअप नहीं लग रही।');
+        return;
+      }
+      setRestoreData(parsed);
+    } catch (_e) {
+      Alert.alert(
+        'Restore नहीं हुआ',
+        'फाइल पढ़ी नहीं जा सकी। सुनिश्चित करें कि चुनी गई फाइल .json बैकअप है।',
+      );
+    }
+  };
+
+  const doRestore = () => {
+    if (!restoreData) return;
+    setData(restoreData);
+    setRestoreData(null);
+    setYearSummaryOpen(false);
+    Alert.alert('डेटा वापस आ गया ✅', 'बैकअप से सारा खर्चा फोन में लाद दिया गया है।');
+  };
+
+  const restoreStats = restoreData ? backupStats(restoreData) : null;
 
   // ── Render ───────────────────────────────────────────────────
   return (
@@ -495,6 +631,32 @@ export default function KharchaTrackerScreen({ onBack }) {
             </View>
           </View>
         )}
+
+        {/* Data Backup & Restore */}
+        <View style={styles.card}>
+          <View style={styles.backupHead}>
+            <Ionicons name="shield-checkmark-outline" size={18} color="#34D399" />
+            <Text style={styles.cardTitle}>डेटा बैकअप और रिस्टोर</Text>
+          </View>
+          <Text style={styles.backupHint}>
+            बैकअप फाइल में आपका सारा खर्चा सेव हो जाता है। यह फाइल WhatsApp या Google
+            Drive में भेजकर रख लें — नया फोन लेने पर या ऐप डिलीट होने पर इसी फाइल से सारा
+            डेटा वापस आ जाएगा।
+          </Text>
+          <View style={styles.backupBtnRow}>
+            <TouchableOpacity style={styles.backupBtn} onPress={handleBackup} activeOpacity={0.85}>
+              <Ionicons name="download-outline" size={18} color="#34D399" />
+              <Text style={styles.backupBtnText}>बैकअप फाइल बनाएं</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.restoreBtn} onPress={handleRestore} activeOpacity={0.85}>
+              <Ionicons name="upload-outline" size={18} color="#FBBF24" />
+              <Text style={styles.restoreBtnText}>बैकअप से Restore</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.backupCount}>
+            अभी कुल {totalEntryCount} {totalEntryCount === 1 ? 'Entry' : 'Entries'} सेव हैं।
+          </Text>
+        </View>
       </ScrollView>
 
       {/* Year / Month dropdown modal */}
@@ -764,6 +926,50 @@ export default function KharchaTrackerScreen({ onBack }) {
                     <Text style={styles.confirmDangerText}>
                       {confirm?.type === 'entry' ? 'हाँ, डिलीट करें' : 'हाँ, मिटाएं'}
                     </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Backup restore confirmation popup */}
+      <Modal
+        visible={restoreData !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setRestoreData(null)}
+      >
+        <TouchableWithoutFeedback onPress={() => setRestoreData(null)}>
+          <View style={styles.modalBackdrop}>
+            <TouchableWithoutFeedback>
+              <View style={styles.confirmPanel}>
+                <View style={styles.restoreIconWrap}>
+                  <Ionicons name="refresh-outline" size={26} color="#34D399" />
+                </View>
+                <Text style={styles.confirmTitle}>बैकअप से डेटा लाएं?</Text>
+                <Text style={styles.confirmMsg}>
+                  इस बैकअप में {restoreStats ? restoreStats.months : 0} महीने,{' '}
+                  {restoreStats ? restoreStats.entries : 0} entries और कुल{' '}
+                  {restoreStats ? fmt(restoreStats.total) : '₹0'} है।{'\n'}
+                  Restore करने पर फोन का मौजूदा सारा खर्चा मिट जाएगा और सिर्फ यही बैकअप
+                  लोड होगा।
+                </Text>
+                <View style={styles.confirmBtnRow}>
+                  <TouchableOpacity
+                    style={styles.confirmCancelBtn}
+                    onPress={() => setRestoreData(null)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.confirmCancelText}>रुको ✋</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.confirmRestoreBtn}
+                    onPress={doRestore}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.confirmRestoreText}>हाँ, Restore करें</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -1537,5 +1743,90 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#34D399',
+  },
+
+  // Backup & Restore card
+  backupHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  backupHint: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: Colors.textDim,
+    fontWeight: '600',
+    marginBottom: 14,
+  },
+  backupBtnRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  backupBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(52, 211, 153, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(52, 211, 153, 0.4)',
+  },
+  backupBtnText: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: '#34D399',
+  },
+  restoreBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(251, 191, 36, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.4)',
+  },
+  restoreBtnText: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: '#FBBF24',
+  },
+  backupCount: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.textDim,
+    marginTop: 12,
+    textAlign: 'center',
+  },
+
+  // Restore confirmation
+  restoreIconWrap: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: 'rgba(52, 211, 153, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(52, 211, 153, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  confirmRestoreBtn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 11,
+    borderRadius: 12,
+    backgroundColor: '#059669',
+  },
+  confirmRestoreText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 });
