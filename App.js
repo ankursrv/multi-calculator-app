@@ -7,6 +7,7 @@ import {
   Animated,
   Dimensions,
   Platform,
+  Easing,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -74,44 +75,45 @@ function MainApp() {
   // Shared Smart Bill / Khata State — khaali shuru, entries user khud add karega
   const [billList, setBillList] = useState([]);
 
-  // Smooth Screen Transition Animation
+  // Smooth Screen Transition Animation (entrance-only fade + slide)
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
+  const transitionRef = useRef(null);
+  const currentScreenRef = useRef('home');
 
   const navigateTo = (screenId) => {
-    Animated.parallel([
+    // Already on this screen - do nothing (prevents jank on re-tapping active tab)
+    if (currentScreenRef.current === screenId) return;
+    currentScreenRef.current = screenId;
+
+    // Instantly update active tab highlight so the tap feels responsive
+    if (['home', 'kirana', 'standard', 'bill'].includes(screenId)) {
+      setActiveBottomTab(screenId);
+    }
+
+    // Switch content immediately, then animate ONLY the new screen in.
+    // No fade-out phase = zero blank/hidden delay and no double-latency feel.
+    setCurrentScreen(screenId);
+
+    // Stop any in-flight animation so rapid taps never stack/glitch transitions
+    if (transitionRef.current) transitionRef.current.stop();
+    fadeAnim.setValue(0);
+    slideAnim.setValue(14);
+
+    transitionRef.current = Animated.parallel([
       Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 120,
+        toValue: 1,
+        duration: 220,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
-        toValue: 10,
-        duration: 120,
+        toValue: 0,
+        duration: 220,
+        easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       }),
-    ]).start(() => {
-      setCurrentScreen(screenId);
-      if (['home', 'kirana', 'standard', 'bill'].includes(screenId)) {
-        setActiveBottomTab(screenId);
-      }
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 180,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 180,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    });
-  };
-
-  const handleBottomTabPress = (tabId) => {
-    navigateTo(tabId);
+    ]);
+    transitionRef.current.start();
   };
 
   const handleAddItemToBill = (newItem) => {
@@ -223,7 +225,7 @@ function MainApp() {
               <TouchableOpacity
                 key={tab.id}
                 style={styles.navTab}
-                onPress={() => handleBottomTabPress(tab.id)}
+                onPress={() => navigateTo(tab.id)}
                 activeOpacity={0.7}
               >
                 <View style={styles.tabIconWrap}>
