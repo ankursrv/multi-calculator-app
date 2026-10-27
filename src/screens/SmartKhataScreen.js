@@ -7,16 +7,44 @@ import {
   TouchableOpacity,
   ScrollView,
   Share,
+  Modal,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
 
+// Empty state me dikhane wala "ise use kaise kare" hint
+const HOW_TO_SUMMARY =
+  'दोस्तों के साथ खाना खाया, बिल आया ₹900 — यहाँ सामान की entries जोड़ें, कुल बिल अपने-आप जुड़ जाएगा। अब स्प्लिट में 3 चुनें तो हर किसी का हिस्सा ₹300 दिखेगा, और Share से पूरा हिसाब WhatsApp पर भेज दें।';
+
 export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveItem, onAddItem }) {
   const [itemName, setItemName] = useState('');
   const [itemCost, setItemCost] = useState('');
   const [splitCount, setSplitCount] = useState('2');
+
+  // Delete/Clear confirmation popup — { type: 'item'|'all', index?, name? }
+  const [confirm, setConfirm] = useState(null);
+
+  const handleClearAll = () => {
+    setConfirm({ type: 'all' });
+  };
+
+  const handleRemoveItem = (index) => {
+    const item = billList[index];
+    setConfirm({ type: 'item', index, name: item ? item.name : '' });
+  };
+
+  const doConfirm = () => {
+    if (!confirm) return;
+    if (confirm.type === 'item') {
+      onRemoveItem(confirm.index);
+    } else {
+      onClearBill();
+    }
+    setConfirm(null);
+  };
 
   const handleAdd = () => {
     if (!itemCost || parseFloat(itemCost) <= 0) return;
@@ -34,6 +62,7 @@ export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveI
   const totalBill = billList.reduce((acc, curr) => acc + (curr.cost || 0), 0);
   const people = parseInt(splitCount) || 1;
   const perPerson = totalBill / people;
+  const hasItems = billList.length > 0;
 
   const handleShare = async () => {
     if (billList.length === 0) return;
@@ -70,14 +99,16 @@ export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveI
           end={{ x: 1, y: 1 }}
           style={styles.heroCard}
         >
-          <Text style={styles.heroLabel}>कुल पर्चा राशि (Total Bill Amount):</Text>
+          <Text style={styles.heroLabel}>कुल बिल रकम (Total Bill Amount):</Text>
           <Text style={styles.heroTotal}>₹{totalBill.toFixed(2)}</Text>
-          <View style={styles.heroFooter}>
-            <Text style={styles.heroItemCount}>{billList.length} Items Listed</Text>
-            {people > 1 && (
-              <Text style={styles.heroSplit}>₹{perPerson.toFixed(2)} / person ({people})</Text>
-            )}
-          </View>
+          {hasItems && (
+            <View style={styles.heroFooter}>
+              <Text style={styles.heroItemCount}>{billList.length} Items Listed</Text>
+              {people > 1 && (
+                <Text style={styles.heroSplit}>₹{perPerson.toFixed(2)} / person ({people})</Text>
+              )}
+            </View>
+          )}
         </LinearGradient>
 
         {/* Quick Add Form */}
@@ -134,14 +165,21 @@ export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveI
         {/* Items List */}
         <View style={styles.card}>
           <View style={styles.listHeader}>
-            <Text style={styles.cardTitle}>Bill Items ({billList.length})</Text>
-            {billList.length > 0 && (
+            <View style={styles.cardTitleRow}>
+              <Text style={styles.cardTitleInline}>Bill Items</Text>
+              {hasItems && (
+                <View style={styles.countBadge}>
+                  <Text style={styles.countBadgeText}>{billList.length}</Text>
+                </View>
+              )}
+            </View>
+            {hasItems && (
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <TouchableOpacity style={styles.actionPill} onPress={handleShare}>
                   <Ionicons name="share-social-outline" size={14} color={Colors.amber} />
                   <Text style={styles.actionPillText}>Share</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.clearPill} onPress={onClearBill}>
+                <TouchableOpacity style={styles.clearPill} onPress={handleClearAll}>
                   <Ionicons name="trash-outline" size={14} color={Colors.danger} />
                   <Text style={styles.clearPillText}>Clear</Text>
                 </TouchableOpacity>
@@ -149,13 +187,14 @@ export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveI
             )}
           </View>
 
-          {billList.length === 0 ? (
-            <View style={styles.emptyBox}>
-              <Ionicons name="receipt-outline" size={40} color={Colors.textDim} />
-              <Text style={styles.emptyText}>अभी कोई सामान नहीं जोड़ा गया है।</Text>
-              <Text style={styles.emptySub}>
-                "Samaan-Bhav & Kirana" कैलकुलेटर से सीधे हिसाब यहाँ सेव कर सकते हैं।
-              </Text>
+          {!hasItems ? (
+            /* Abhi koi entry nahi — sirf use karne ka tarika hint ki tarah dikhta hai */
+            <View style={styles.howToBox}>
+              <View style={styles.howToHead}>
+                <Ionicons name="help-circle-outline" size={15} color={Colors.textDim} />
+                <Text style={styles.howToHeadText}>Ise use kaise karein?</Text>
+              </View>
+              <Text style={styles.howToText}>{HOW_TO_SUMMARY}</Text>
             </View>
           ) : (
             billList.map((item, index) => (
@@ -169,16 +208,62 @@ export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveI
                 </View>
                 <Text style={styles.billItemCost}>₹{item.cost?.toFixed(2)}</Text>
                 <TouchableOpacity
-                  onPress={() => onRemoveItem(index)}
+                  onPress={() => handleRemoveItem(index)}
                   style={styles.deleteBtn}
                 >
-                  <Ionicons name="close-circle-outline" size={20} color={Colors.textDim} />
+                  <Ionicons name="trash-outline" size={19} color={Colors.danger} />
                 </TouchableOpacity>
               </View>
             ))
           )}
         </View>
       </ScrollView>
+
+      {/* Delete / Clear confirmation popup */}
+      <Modal
+        visible={confirm !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setConfirm(null)}
+      >
+        <TouchableWithoutFeedback onPress={() => setConfirm(null)}>
+          <View style={styles.modalBackdrop}>
+            <TouchableWithoutFeedback>
+              <View style={styles.confirmPanel}>
+                <View style={styles.confirmIconWrap}>
+                  <Ionicons name="trash-outline" size={26} color="#F87171" />
+                </View>
+                <Text style={styles.confirmTitle}>
+                  {confirm?.type === 'item' ? 'Item डिलीट करें?' : 'पूरा बिल मिटाएं?'}
+                </Text>
+                <Text style={styles.confirmMsg}>
+                  {confirm?.type === 'item'
+                    ? `"${confirm.name}" वाली यह item list से delete हो जाएगी। यह वापस नहीं आएगी।`
+                    : 'सारी Bill Items delete हो जाएँगी। यह वापस नहीं मिलेगी।'}
+                </Text>
+                <View style={styles.confirmBtnRow}>
+                  <TouchableOpacity
+                    style={styles.confirmCancelBtn}
+                    onPress={() => setConfirm(null)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.confirmCancelText}>रुको ✋</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.confirmDangerBtn}
+                    onPress={doConfirm}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.confirmDangerText}>
+                      {confirm?.type === 'item' ? 'हाँ, डिलीट करें' : 'हाँ, मिटाएं'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 }
@@ -244,6 +329,33 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.text,
     marginBottom: 12,
+  },
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  cardTitleInline: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  // Entry count — sirf tabhi dikhta hai jab koi entry ho
+  countBadge: {
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    backgroundColor: 'rgba(245, 158, 11, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: Colors.amber,
   },
   formRow: {
     flexDirection: 'row',
@@ -365,22 +477,33 @@ const styles = StyleSheet.create({
     color: Colors.danger,
     fontWeight: '700',
   },
-  emptyBox: {
+  // Empty state — dashed "placeholder" zone with usage steps
+  howToBox: {
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(100, 116, 139, 0.4)',
+    borderRadius: 14,
+    backgroundColor: 'rgba(11, 15, 25, 0.35)',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+  },
+  howToHead: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 30,
+    gap: 6,
+    marginBottom: 8,
   },
-  emptyText: {
+  howToHeadText: {
+    fontSize: 12.5,
+    fontWeight: '800',
     color: Colors.textMuted,
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 10,
+    letterSpacing: 0.2,
   },
-  emptySub: {
+  howToText: {
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '500',
     color: Colors.textDim,
-    fontSize: 11,
-    textAlign: 'center',
-    marginTop: 4,
-    paddingHorizontal: 20,
   },
   billItem: {
     flexDirection: 'row',
@@ -420,5 +543,78 @@ const styles = StyleSheet.create({
   },
   deleteBtn: {
     padding: 4,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(3, 7, 18, 0.75)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  // Delete / Clear confirmation popup
+  confirmPanel: {
+    width: 300,
+    backgroundColor: Colors.bgSecondary,
+    borderWidth: 1,
+    borderColor: 'rgba(248, 113, 113, 0.25)',
+    borderRadius: 20,
+    padding: 22,
+    alignItems: 'center',
+  },
+  confirmIconWrap: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: 'rgba(248, 113, 113, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(248, 113, 113, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  confirmTitle: {
+    fontSize: 16.5,
+    fontWeight: '800',
+    color: Colors.text,
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  confirmMsg: {
+    fontSize: 12.5,
+    color: Colors.textDim,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 18,
+  },
+  confirmBtnRow: {
+    flexDirection: 'row',
+    gap: 10,
+    alignSelf: 'stretch',
+  },
+  confirmCancelBtn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 11,
+    borderRadius: 12,
+    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
+  },
+  confirmCancelText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  confirmDangerBtn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 11,
+    borderRadius: 12,
+    backgroundColor: Colors.danger,
+  },
+  confirmDangerText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
 });

@@ -23,6 +23,7 @@ import DiscountCalculator from './src/screens/DiscountCalculator';
 import UnitConverter from './src/screens/UnitConverter';
 import EmiCalculator from './src/screens/EmiCalculator';
 import KharchaTrackerScreen from './src/screens/KharchaTrackerScreen';
+import FdCalculator from './src/screens/FdCalculator';
 
 // Global Web Style to remove focus-visible outlines from all input boxes
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -44,6 +45,22 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
         outline-style: none !important;
         box-shadow: none !important;
       }
+      /* Custom sleek scrollbar for web & mobile browsers */
+      ::-webkit-scrollbar {
+        width: 5px;
+        height: 5px;
+      }
+      ::-webkit-scrollbar-track {
+        background: rgba(15, 23, 42, 0.4);
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(52, 211, 153, 0.45);
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(52, 211, 153, 0.8);
+      }
     `;
     document.head.appendChild(style);
   }
@@ -54,23 +71,8 @@ function MainApp() {
   const [currentScreen, setCurrentScreen] = useState('home');
   const [activeBottomTab, setActiveBottomTab] = useState('home');
   
-  // Shared Smart Bill / Khata State
-  const [billList, setBillList] = useState([
-    {
-      id: '1',
-      name: 'चीनी (Sugar)',
-      details: '₹60/kg • ₹10 me (166.67g)',
-      result: '₹10.00',
-      cost: 10,
-    },
-    {
-      id: '2',
-      name: 'सरसों तेल (Mustard Oil)',
-      details: '₹140/L • 500ml',
-      result: '₹70.00',
-      cost: 70,
-    },
-  ]);
+  // Shared Smart Bill / Khata State — khaali shuru, entries user khud add karega
+  const [billList, setBillList] = useState([]);
 
   // Smooth Screen Transition Animation
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -134,7 +136,7 @@ function MainApp() {
     },
     {
       id: 'kirana',
-      label: 'Kirana Bhav',
+      label: 'Kirana Calc',
       icon: 'scale-bathroom',
       iconActive: 'scale-bathroom',
       type: 'mci',
@@ -201,6 +203,10 @@ function MainApp() {
         {currentScreen === 'kharcha' && (
           <KharchaTrackerScreen onBack={() => navigateTo('home')} />
         )}
+
+        {currentScreen === 'fd' && (
+          <FdCalculator onBack={() => navigateTo('home')} />
+        )}
       </Animated.View>
 
       {/* Bottom Navigation Bar */}
@@ -244,6 +250,7 @@ function MainApp() {
                 </View>
 
                 <Text
+                  numberOfLines={1}
                   style={[
                     styles.navTabLabel,
                     isActive && styles.navTabLabelActive,
@@ -329,6 +336,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.textDim,
     marginTop: 3,
+    maxWidth: '92%',
+    textAlign: 'center',
   },
   navTabLabelActive: {
     color: Colors.amber,

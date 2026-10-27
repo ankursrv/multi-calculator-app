@@ -27,6 +27,14 @@ const THEMES = {
     sparkleColor: '#34D399',
     sideIconColor: '#34D399',
   },
+  blue: {
+    barGradient: ['#0B1220', '#0A1830', '#0A1F44'],
+    logoGradient: ['#38BDF8', '#2563EB'],
+    titleGradient: ['#7DD3FC', '#38BDF8', '#2563EB'],
+    subtitleColor: '#7DD3FC',
+    sparkleColor: '#38BDF8',
+    sideIconColor: '#38BDF8',
+  },
 };
 
 export default function ScreenHeader({

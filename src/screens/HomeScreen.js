@@ -13,6 +13,7 @@ import { Colors } from '../theme/colors';
 import GradientText from '../components/GradientText';
 import SamaaBhavCardGlow from '../components/SamaaBhavCardGlow';
 import KharchaCardGlow from '../components/KharchaCardGlow';
+import FdCardGlow from '../components/FdCardGlow';
 
 export default function HomeScreen({ onSelectScreen }) {
   return (
@@ -149,6 +150,49 @@ export default function HomeScreen({ onSelectScreen }) {
                 name="chevron-forward"
                 size={26}
                 color="#34D399"
+                style={{ marginLeft: 8 }}
+              />
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* FD Calculator — banking deep-blue theme (same layout as other cards) */}
+          <TouchableOpacity
+            style={styles.fdCardWrapper}
+            onPress={() => onSelectScreen('fd')}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={['#0B1220', '#12213F', '#0E2E63']}
+              locations={[0, 0.55, 1]}
+              start={{ x: 0, y: 0.1 }}
+              end={{ x: 0.85, y: 1 }}
+              style={styles.fdCardGradient}
+            >
+              <FdCardGlow />
+
+              <LinearGradient
+                colors={['#38BDF8', '#2563EB']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0.2, y: 1 }}
+                style={styles.fdIconBox}
+              >
+                <MaterialCommunityIcons name="bank" size={30} color="#FFFFFF" />
+              </LinearGradient>
+
+              <View style={styles.fdCardBody}>
+                <Text style={styles.fdCardTitle}>FD Calculator</Text>
+                <Text style={styles.fdCardDescHindi}>
+                  fixed deposit पर ब्याज और मैच्योरिटी राशि का हिसाब
+                </Text>
+                <Text style={styles.fdCardDescEng} numberOfLines={1}>
+                  Fixed Deposit maturity &amp; interest planner · Banking
+                </Text>
+              </View>
+
+              <Ionicons
+                name="chevron-forward"
+                size={26}
+                color="#38BDF8"
                 style={{ marginLeft: 8 }}
               />
             </LinearGradient>
@@ -369,6 +413,63 @@ const styles = StyleSheet.create({
   trackerCardDescEng: {
     fontSize: 11,
     color: '#6EE7B7',
+    fontWeight: '600',
+    marginTop: 3,
+  },
+  fdCardWrapper: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 0,
+    elevation: 0,
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+  },
+  fdCardGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    minHeight: 88,
+    maxHeight: 104,
+    position: 'relative',
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' && {
+      backgroundImage:
+        'radial-gradient(ellipse at 100% 100%, rgba(56, 189, 248, 0.35) 0%, rgba(37, 99, 235, 0) 55%), linear-gradient(115deg, #0B1220 0%, #12213F 55%, #0E2E63 100%)',
+    }),
+  },
+  fdIconBox: {
+    width: 58,
+    height: 58,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  fdCardBody: {
+    flex: 1,
+  },
+  fdCardTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+    marginBottom: 6,
+  },
+  fdCardDescHindi: {
+    fontSize: 12.5,
+    color: '#F8FAFC',
+    fontWeight: '600',
+    lineHeight: 17,
+  },
+  fdCardDescEng: {
+    fontSize: 11,
+    color: '#7DD3FC',
     fontWeight: '600',
     marginTop: 3,
   },

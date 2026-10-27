@@ -32,6 +32,7 @@ export const Colors = {
   textSecondary: '#E2E8F0', // Slate-200
   textMuted: '#94A3B8',   // Slate-400
   textDim: '#64748B',     // Slate-500
+  placeholderHint: 'rgba(100, 116, 139, 0.65)', // Input hint (empty state) — halka
   
   // UI Actions
   danger: '#EF4444',

@@ -19,11 +19,11 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
   // Mode: 'priceToWeight' (रुपये से वजन) or 'weightToPrice' (वजन से रुपये)
   const [mode, setMode] = useState('priceToWeight');
 
-  // Input states
-  const [rate, setRate] = useState(''); // Empty so placeholder shows
+  // Input states — sab khaali, taaki hint (placeholder) dikhe
+  const [rate, setRate] = useState('');
   const [rateUnit, setRateUnit] = useState('Kilogram'); // Kilogram, 100 Gram, Litre
-  const [budget, setBudget] = useState(''); // Empty so placeholder shows
-  const [weight, setWeight] = useState(''); // Empty so placeholder shows
+  const [budget, setBudget] = useState('');
+  const [weight, setWeight] = useState('');
   const [weightUnit, setWeightUnit] = useState('Gram'); // Gram, Kilogram, Litre, Millilitre
   const [itemName, setItemName] = useState('चीनी (Sugar)');
 
@@ -174,12 +174,12 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
               <View style={styles.fieldBox}>
                 <Text style={styles.rupeeSymbol}>₹</Text>
                 <TextInput
-                  style={styles.fieldInput}
+                  style={[styles.fieldInput, !rate && styles.fieldHint]}
                   value={rate}
                   onChangeText={setRate}
                   keyboardType="numeric"
-                  placeholder="60"
-                  placeholderTextColor="rgb(100, 116, 139)"
+                  placeholder="Enter rate"
+                  placeholderTextColor={Colors.placeholderHint}
                 />
               </View>
             </View>
@@ -212,12 +212,16 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
               <View style={styles.fieldBox}>
                 <Text style={styles.rupeeSymbol}>₹</Text>
                 <TextInput
-                  style={[styles.fieldInput, { color: '#FFFFFF', fontSize: 20 }]}
+                  style={[
+                    styles.fieldInput,
+                    { color: '#FFFFFF', fontSize: 20 },
+                    !budget && styles.fieldHint,
+                  ]}
                   value={budget}
                   onChangeText={setBudget}
                   keyboardType="numeric"
-                  placeholder="10"
-                  placeholderTextColor="rgb(100, 116, 139)"
+                  placeholder="Enter amount"
+                  placeholderTextColor={Colors.placeholderHint}
                 />
               </View>
             </View>
@@ -229,12 +233,16 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <View style={[styles.fieldBox, { flex: 1.2 }]}>
                   <TextInput
-                    style={[styles.fieldInput, { color: '#FFFFFF', fontSize: 20 }]}
+                    style={[
+                      styles.fieldInput,
+                      { color: '#FFFFFF', fontSize: 20 },
+                      !weight && styles.fieldHint,
+                    ]}
                     value={weight}
                     onChangeText={setWeight}
                     keyboardType="numeric"
-                    placeholder="250"
-                    placeholderTextColor="rgb(100, 116, 139)"
+                    placeholder="Enter weight"
+                    placeholderTextColor={Colors.placeholderHint}
                   />
                 </View>
 
@@ -452,6 +460,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.text,
     outlineStyle: 'none',
+  },
+  // Khaali field ka hint: chhota + normal weight (placeholder isi ko inherit karta hai)
+  fieldHint: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   dropdownBox: {
     flexDirection: 'row',

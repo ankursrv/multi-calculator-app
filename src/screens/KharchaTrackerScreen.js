@@ -9,6 +9,7 @@ import {
   Modal,
   TouchableWithoutFeedback,
   Share,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,10 +28,25 @@ const MONTHS_EN = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
 
+const WEEKDAYS = [
+  { hi: 'रवि', en: 'Sun' },
+  { hi: 'सोम', en: 'Mon' },
+  { hi: 'मंगल', en: 'Tue' },
+  { hi: 'बुध', en: 'Wed' },
+  { hi: 'गुरु', en: 'Thu' },
+  { hi: 'शुक्र', en: 'Fri' },
+  { hi: 'शनि', en: 'Sat' },
+];
+
 const NOW = new Date();
 const THIS_YEAR = NOW.getFullYear();
 const YEARS = [];
 for (let y = THIS_YEAR - 8; y <= THIS_YEAR + 1; y++) YEARS.push(y);
+
+// Month navigation limits (same range as the year dropdown)
+const monthIndex = (y, m) => y * 12 + (m - 1);
+const IDX_MIN = monthIndex(YEARS[0], 1);
+const IDX_MAX = monthIndex(YEARS[YEARS.length - 1], 12);
 
 function fmt(n) {
   return '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
@@ -78,7 +94,13 @@ export default function KharchaTrackerScreen({ onBack }) {
   const entries = data[monthKey] || [];
   const monthTotal = entries.reduce((a, e) => a + e.cost, 0);
   const daysInMonth = new Date(selYear, selMonth, 0).getDate();
+  const firstDayOfWeek = new Date(selYear, selMonth - 1, 1).getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
   const isCurrentMonth = selYear === THIS_YEAR && selMonth === NOW.getMonth() + 1;
+  const daysWithEntries = useMemo(() => {
+    const s = new Set();
+    entries.forEach((e) => s.add(e.day));
+    return s;
+  }, [entries]);
 
   // Days sorted newest-first; 1 item = flat row, 2+ = grouped card
   const dayGroups = useMemo(() => {
@@ -123,6 +145,24 @@ export default function KharchaTrackerScreen({ onBack }) {
   const pickDay = (d) => {
     setSelDay(d);
     setDayPickerOpen(false);
+  };
+
+  // Prev / next month inside the calendar (keeps the picker open)
+  const currentIdx = monthIndex(selYear, selMonth);
+  const canGoPrev = currentIdx > IDX_MIN;
+  const canGoNext = currentIdx < IDX_MAX;
+
+  const goMonth = (delta) => {
+    const nextIdx = currentIdx + delta;
+    if (nextIdx < IDX_MIN || nextIdx > IDX_MAX) return;
+    const y = Math.floor(nextIdx / 12);
+    const m = (nextIdx % 12) + 1;
+    const maxDay = new Date(y, m, 0).getDate();
+    const isNowMonth = y === THIS_YEAR && m === NOW.getMonth() + 1;
+    setSelYear(y);
+    setSelMonth(m);
+    // keep the chosen day when it exists, otherwise fall back to a valid one
+    setSelDay((d) => (d > maxDay ? (isNowMonth ? NOW.getDate() : maxDay) : d));
   };
 
   const handleAdd = () => {
@@ -197,7 +237,13 @@ export default function KharchaTrackerScreen({ onBack }) {
         onBack={onBack}
       />
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled={true}
+      >
         {/* Year / Month segmented selector (pehle saal, fir mahina) */}
         <View style={styles.monthBar}>
           <View style={styles.segmentWrap}>
@@ -320,7 +366,21 @@ export default function KharchaTrackerScreen({ onBack }) {
               </Text>
             </View>
           ) : (
-            <ScrollView style={styles.entriesScroll} showsVerticalScrollIndicator={false}>
+            <ScrollView
+              style={styles.entriesScroll}
+              contentContainerStyle={styles.entriesScrollContent}
+              nestedScrollEnabled={true}
+              showsVerticalScrollIndicator={true}
+              persistentScrollbar={true}
+              keyboardShouldPersistTaps="handled"
+              bounces={false}
+              {...(Platform.OS === 'web'
+                ? {
+                    onTouchStart: (e) => e.stopPropagation(),
+                    onTouchMove: (e) => e.stopPropagation(),
+                  }
+                : {})}
+            >
               {dayGroups.map((g) =>
                 g.items.length === 1 ? (
                   // Single item on this day → flat row
@@ -526,34 +586,139 @@ export default function KharchaTrackerScreen({ onBack }) {
           <View style={styles.modalBackdrop}>
             <TouchableWithoutFeedback>
               <View style={styles.dayPanel}>
-                <Text style={styles.dropTitle}>
-                  Entry की तारीख चुनें — {MONTHS_HI[selMonth - 1]} {selYear}
-                </Text>
+                <View style={styles.dayHeaderRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.dropTitle}>Entry की तारीख चुनें</Text>
+                    {/* Month + year with prev / next navigation */}
+                    <View style={styles.monthNavRow}>
+                      <TouchableOpacity
+                        style={[styles.monthNavBtn, !canGoPrev && styles.monthNavBtnOff]}
+                        onPress={() => goMonth(-1)}
+                        disabled={!canGoPrev}
+                        activeOpacity={0.7}
+                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                      >
+                        <Ionicons
+                          name="chevron-back"
+                          size={17}
+                          color={canGoPrev ? '#34D399' : Colors.textDim}
+                        />
+                      </TouchableOpacity>
+
+                      <Text style={styles.dropSubTitle}>
+                        {MONTHS_HI[selMonth - 1]} {selYear}
+                      </Text>
+
+                      <TouchableOpacity
+                        style={[styles.monthNavBtn, !canGoNext && styles.monthNavBtnOff]}
+                        onPress={() => goMonth(1)}
+                        disabled={!canGoNext}
+                        activeOpacity={0.7}
+                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                      >
+                        <Ionicons
+                          name="chevron-forward"
+                          size={17}
+                          color={canGoNext ? '#34D399' : Colors.textDim}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.dayCloseBtn}
+                    onPress={() => setDayPickerOpen(false)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Ionicons name="close" size={18} color={Colors.textMuted} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Weekdays Header (Sun to Sat) */}
+                <View style={styles.weekdayRow}>
+                  {WEEKDAYS.map((w, idx) => (
+                    <View key={w.en} style={styles.weekdayCell}>
+                      <Text style={[styles.weekdayText, idx === 0 && styles.weekdaySunday]}>
+                        {w.hi}
+                      </Text>
+                      <Text style={[styles.weekdaySub, idx === 0 && styles.weekdaySundaySub]}>
+                        {w.en}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+
+                {/* 7-Column Days Grid */}
                 <View style={styles.dayGrid}>
+                  {/* Empty slots before first day */}
+                  {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+                    <View key={`empty-start-${i}`} style={styles.dayCellWrap} />
+                  ))}
+
+                  {/* Days of month */}
                   {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => {
                     const isToday = isCurrentMonth && d === NOW.getDate();
                     const isActive = d === selDay;
+                    const isSunday = (firstDayOfWeek + d - 1) % 7 === 0;
+                    const hasData = daysWithEntries.has(d);
                     return (
-                      <TouchableOpacity
-                        key={d}
-                        style={[
-                          styles.dayCell,
-                          isActive && styles.dayCellActive,
-                          isToday && !isActive && styles.dayCellToday,
-                        ]}
-                        onPress={() => pickDay(d)}
-                      >
-                        <Text
+                      <View key={d} style={styles.dayCellWrap}>
+                        <TouchableOpacity
                           style={[
-                            styles.dayCellText,
-                            isActive && styles.dayCellTextActive,
+                            styles.dayCell,
+                            isActive && styles.dayCellActive,
+                            isToday && !isActive && styles.dayCellToday,
                           ]}
+                          onPress={() => pickDay(d)}
+                          activeOpacity={0.7}
                         >
-                          {d}
-                        </Text>
-                      </TouchableOpacity>
+                          <Text
+                            style={[
+                              styles.dayCellText,
+                              isSunday && !isActive && styles.dayCellTextSunday,
+                              isActive && styles.dayCellTextActive,
+                            ]}
+                          >
+                            {d}
+                          </Text>
+                          {hasData && (
+                            <View
+                              style={[
+                                styles.dayDot,
+                                isActive && styles.dayDotActive,
+                              ]}
+                            />
+                          )}
+                        </TouchableOpacity>
+                      </View>
                     );
                   })}
+
+                  {/* Trailing empty slots to complete the final row */}
+                  {Array.from({
+                    length: (7 - ((firstDayOfWeek + daysInMonth) % 7)) % 7,
+                  }).map((_, i) => (
+                    <View key={`empty-end-${i}`} style={styles.dayCellWrap} />
+                  ))}
+                </View>
+
+                {/* Footer with Today shortcut */}
+                <View style={styles.dayFooterRow}>
+                  <TouchableOpacity
+                    style={styles.dayTodayBtn}
+                    onPress={() => {
+                      if (!isCurrentMonth) {
+                        setSelYear(THIS_YEAR);
+                        setSelMonth(NOW.getMonth() + 1);
+                      }
+                      pickDay(NOW.getDate());
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="today-outline" size={14} color="#34D399" />
+                    <Text style={styles.dayTodayBtnText}>
+                      आज ({NOW.getDate()} {MONTHS_EN[NOW.getMonth()]})
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             </TouchableWithoutFeedback>
@@ -844,7 +1009,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   entriesScroll: {
-    maxHeight: 260,
+    maxHeight: 280,
+    ...(Platform.OS === 'web'
+      ? {
+          overflowY: 'auto',
+          overscrollBehavior: 'contain',
+          WebkitOverflowScrolling: 'touch',
+          touchAction: 'pan-y',
+        }
+      : {}),
+  },
+  entriesScrollContent: {
+    paddingBottom: 4,
   },
 
   // Date badge (shared)
@@ -1204,27 +1380,108 @@ const styles = StyleSheet.create({
 
   // Day grid
   dayPanel: {
-    width: 280,
+    width: '92%',
+    maxWidth: 340,
     backgroundColor: Colors.bgSecondary,
     borderWidth: 1,
     borderColor: Colors.cardBorder,
-    borderRadius: 16,
-    padding: 12,
+    borderRadius: 18,
+    padding: 14,
+  },
+  dayHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 10,
+    marginBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(52, 211, 153, 0.12)',
+  },
+  dropSubTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    minWidth: 96,
+  },
+  monthNavRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: -2,
+    paddingLeft: 8,
+  },
+  monthNavBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(52, 211, 153, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(52, 211, 153, 0.28)',
+  },
+  monthNavBtnOff: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderColor: Colors.inputBorder,
+    opacity: 0.45,
+  },
+  dayCloseBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  weekdayRow: {
+    flexDirection: 'row',
+    paddingBottom: 6,
+    marginBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(52, 211, 153, 0.1)',
+  },
+  weekdayCell: {
+    width: '14.28%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  weekdayText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+  },
+  weekdaySunday: {
+    color: '#F87171',
+  },
+  weekdaySub: {
+    fontSize: 8,
+    fontWeight: '600',
+    color: '#64748B',
+    marginTop: 1,
+    textTransform: 'uppercase',
+  },
+  weekdaySundaySub: {
+    color: 'rgba(248, 113, 113, 0.7)',
   },
   dayGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
-  dayCell: {
-    width: '12.5%',
+  dayCellWrap: {
+    width: '14.28%',
     aspectRatio: 1,
-    margin: '1.07%',
-    borderRadius: 9,
+    padding: 2.5,
+  },
+  dayCell: {
+    flex: 1,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(11, 15, 25, 0.7)',
     borderWidth: 1,
     borderColor: Colors.inputBorder,
+    position: 'relative',
   },
   dayCellActive: {
     backgroundColor: '#34D399',
@@ -1235,12 +1492,50 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   dayCellText: {
-    fontSize: 12.5,
+    fontSize: 13,
     fontWeight: '700',
     color: Colors.textSecondary,
+  },
+  dayCellTextSunday: {
+    color: '#FCA5A5',
   },
   dayCellTextActive: {
     color: '#022C22',
     fontWeight: '900',
+  },
+  dayDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#34D399',
+    position: 'absolute',
+    bottom: 2.5,
+  },
+  dayDotActive: {
+    backgroundColor: '#022C22',
+  },
+  dayFooterRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(52, 211, 153, 0.12)',
+  },
+  dayTodayBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: 'rgba(52, 211, 153, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(52, 211, 153, 0.25)',
+  },
+  dayTodayBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#34D399',
   },
 });
