@@ -4,7 +4,7 @@ import Svg, {
   Defs,
   LinearGradient as SvgLinearGradient,
   Stop,
-  Ellipse,
+  Rect,
   Path,
 } from 'react-native-svg';
 
@@ -23,58 +23,51 @@ export default function KharchaCardGlow() {
         preserveAspectRatio="none"
       >
         <Defs>
+          {/* 1. Seamless background corner glow emanating from bottom-right */}
           <SvgLinearGradient
-            id="glowG"
-            x1="510"
-            y1="70"
-            x2="330"
-            y2="230"
-            gradientUnits="userSpaceOnUse"
+            id="ambientGlowG"
+            x1="100%"
+            y1="100%"
+            x2="35%"
+            y2="15%"
           >
             <Stop offset="0%" stopColor="#34D399" stopOpacity="0.45" />
-            <Stop offset="55%" stopColor="#10B981" stopOpacity="0.2" />
-            <Stop offset="100%" stopColor="#10B981" stopOpacity="0" />
+            <Stop offset="30%" stopColor="#10B981" stopOpacity="0.22" />
+            <Stop offset="65%" stopColor="#059669" stopOpacity="0.06" />
+            <Stop offset="100%" stopColor="#059669" stopOpacity="0" />
           </SvgLinearGradient>
 
+          {/* 2. Soft ribbon gradient that dissolves to transparent at the curve edges */}
           <SvgLinearGradient
-            id="ribbonG"
-            x1="590"
-            y1="130"
-            x2="330"
-            y2="250"
-            gradientUnits="userSpaceOnUse"
+            id="ribbonWaveG"
+            x1="100%"
+            y1="100%"
+            x2="55%"
+            y2="35%"
           >
-            <Stop offset="0%" stopColor="#34D399" stopOpacity="0.55" />
-            <Stop offset="58%" stopColor="#10B981" stopOpacity="0.24" />
-            <Stop offset="100%" stopColor="#10B981" stopOpacity="0" />
-          </SvgLinearGradient>
-
-          <SvgLinearGradient
-            id="ribbon2G"
-            x1="600"
-            y1="178"
-            x2="390"
-            y2="240"
-            gradientUnits="userSpaceOnUse"
-          >
-            <Stop offset="0%" stopColor="#6EE7B7" stopOpacity="0.44" />
+            <Stop offset="0%" stopColor="#6EE7B7" stopOpacity="0.25" />
+            <Stop offset="45%" stopColor="#34D399" stopOpacity="0.10" />
+            <Stop offset="80%" stopColor="#10B981" stopOpacity="0.02" />
             <Stop offset="100%" stopColor="#10B981" stopOpacity="0" />
           </SvgLinearGradient>
         </Defs>
 
-        <Ellipse cx="490" cy="177" rx="165" ry="93" fill="url(#glowG)" />
+        {/* Ambient atmospheric glow seamlessly blended into card background */}
+        <Rect x="0" y="0" width="600" height="220" fill="url(#ambientGlowG)" />
+
+        {/* Delicate ribbon waves that melt into the ambient glow without hard edges */}
         <Path
           d="M600 102C534 128 503 152 453 175C413 193 378 206 331 220H600V102Z"
-          fill="url(#ribbonG)"
+          fill="url(#ribbonWaveG)"
         />
         <Path
           d="M600 145C541 161 501 183 469 201C444 215 420 220 392 220H600V145Z"
-          fill="url(#ribbon2G)"
+          fill="url(#ribbonWaveG)"
         />
         <Path
           d="M600 128C551 149 523 164 489 181C456 198 425 211 400 220"
           stroke="#34D399"
-          strokeOpacity="0.2"
+          strokeOpacity="0.18"
           strokeWidth="1.5"
         />
       </Svg>
