@@ -14,6 +14,7 @@ import GradientText from '../components/GradientText';
 import SamaaBhavCardGlow from '../components/SamaaBhavCardGlow';
 import KharchaCardGlow from '../components/KharchaCardGlow';
 import FdCardGlow from '../components/FdCardGlow';
+import KhataCardGlow from '../components/KhataCardGlow';
 
 export default function HomeScreen({ onSelectScreen }) {
   return (
@@ -193,6 +194,49 @@ export default function HomeScreen({ onSelectScreen }) {
                 name="chevron-forward"
                 size={26}
                 color="#38BDF8"
+                style={{ marginLeft: 8 }}
+              />
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* Smart Khata — violet ledger theme (same layout as other cards) */}
+          <TouchableOpacity
+            style={styles.khataCardWrapper}
+            onPress={() => onSelectScreen('bill')}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={['#0B1220', '#1B1634', '#3A1E70']}
+              locations={[0, 0.55, 1]}
+              start={{ x: 0, y: 0.1 }}
+              end={{ x: 0.85, y: 1 }}
+              style={styles.khataCardGradient}
+            >
+              <KhataCardGlow />
+
+              <LinearGradient
+                colors={['#A78BFA', '#7C3AED']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0.2, y: 1 }}
+                style={styles.khataIconBox}
+              >
+                <MaterialCommunityIcons name="book-open-variant" size={30} color="#FFFFFF" />
+              </LinearGradient>
+
+              <View style={styles.khataCardBody}>
+                <Text style={styles.khataCardTitle}>Smart Khata</Text>
+                <Text style={styles.khataCardDescHindi}>
+                  बिल का हिसाब और दोस्तों में बराबर बाँटें
+                </Text>
+                <Text style={styles.khataCardDescEng} numberOfLines={1}>
+                  Bill split &amp; share summary · WhatsApp ready
+                </Text>
+              </View>
+
+              <Ionicons
+                name="chevron-forward"
+                size={26}
+                color="#A78BFA"
                 style={{ marginLeft: 8 }}
               />
             </LinearGradient>
@@ -470,6 +514,63 @@ const styles = StyleSheet.create({
   fdCardDescEng: {
     fontSize: 11,
     color: '#7DD3FC',
+    fontWeight: '600',
+    marginTop: 3,
+  },
+  khataCardWrapper: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 0,
+    elevation: 0,
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+  },
+  khataCardGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    minHeight: 88,
+    maxHeight: 104,
+    position: 'relative',
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' && {
+      backgroundImage:
+        'radial-gradient(ellipse at 100% 100%, rgba(167, 139, 250, 0.35) 0%, rgba(124, 58, 237, 0) 55%), linear-gradient(115deg, #0B1220 0%, #1B1634 55%, #3A1E70 100%)',
+    }),
+  },
+  khataIconBox: {
+    width: 58,
+    height: 58,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  khataCardBody: {
+    flex: 1,
+  },
+  khataCardTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+    marginBottom: 6,
+  },
+  khataCardDescHindi: {
+    fontSize: 12.5,
+    color: '#F8FAFC',
+    fontWeight: '600',
+    lineHeight: 17,
+  },
+  khataCardDescEng: {
+    fontSize: 11,
+    color: '#C4B5FD',
     fontWeight: '600',
     marginTop: 3,
   },

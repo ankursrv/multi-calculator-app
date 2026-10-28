@@ -87,7 +87,7 @@ function MainApp() {
     currentScreenRef.current = screenId;
 
     // Instantly update active tab highlight so the tap feels responsive
-    if (['home', 'kirana', 'standard', 'bill'].includes(screenId)) {
+    if (['home', 'kharcha', 'standard', 'fd'].includes(screenId)) {
       setActiveBottomTab(screenId);
     }
 
@@ -137,10 +137,10 @@ function MainApp() {
       type: 'ion',
     },
     {
-      id: 'kirana',
-      label: 'Kirana Calc',
-      icon: 'scale-bathroom',
-      iconActive: 'scale-bathroom',
+      id: 'kharcha',
+      label: 'Kharcha Tracker',
+      icon: 'notebook-outline',
+      iconActive: 'notebook',
       type: 'mci',
     },
     {
@@ -151,12 +151,11 @@ function MainApp() {
       type: 'ion',
     },
     {
-      id: 'bill',
-      label: 'Smart Khata',
-      icon: 'receipt-outline',
-      iconActive: 'receipt',
-      type: 'ion',
-      badgeCount: billList.length,
+      id: 'fd',
+      label: 'FD Calculator',
+      icon: 'bank',
+      iconActive: 'bank',
+      type: 'mci',
     },
   ];
 
@@ -237,7 +236,7 @@ function MainApp() {
                     />
                   ) : (
                     <MaterialCommunityIcons
-                      name={tab.icon}
+                      name={isActive ? tab.iconActive : tab.icon}
                       size={22}
                       color={isActive ? Colors.amber : Colors.textDim}
                     />
