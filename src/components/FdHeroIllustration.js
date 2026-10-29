@@ -16,11 +16,22 @@ import Svg, {
  * A classic bank/institution building (pediment + columns) with a ₹ emblem
  * and a rising growth arc, drawn in translucent white so it reads as a
  * premium watermark behind the maturity figures.
+ *
+ * NOTE: the Svg must use percentage dimensions + viewBox (like the card glow
+ * components). A fixed pixel width/height makes react-native-svg report an
+ * intrinsic size on Android, which inflates the absolutely-positioned wrapper
+ * and adds phantom height to the hero card.
  */
 export default function FdHeroIllustration() {
   return (
     <View style={styles.container} pointerEvents="none">
-      <Svg width="270" height="270" viewBox="0 0 160 160" fill="none">
+      <Svg
+        width="100%"
+        height="100%"
+        viewBox="0 0 160 160"
+        fill="none"
+        preserveAspectRatio="xMidYMid meet"
+      >
         <Defs>
           <SvgLinearGradient id="bankFade" x1="0" y1="0" x2="0" y2="1">
             <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.12" />
@@ -79,7 +90,11 @@ export default function FdHeroIllustration() {
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',

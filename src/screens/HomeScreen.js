@@ -15,6 +15,7 @@ import SamaaBhavCardGlow from '../components/SamaaBhavCardGlow';
 import KharchaCardGlow from '../components/KharchaCardGlow';
 import FdCardGlow from '../components/FdCardGlow';
 import KhataCardGlow from '../components/KhataCardGlow';
+import GoldRateCardGlow from '../components/GoldRateCardGlow';
 
 export default function HomeScreen({ onSelectScreen }) {
   return (
@@ -237,6 +238,49 @@ export default function HomeScreen({ onSelectScreen }) {
                 name="chevron-forward"
                 size={26}
                 color="#A78BFA"
+                style={{ marginLeft: 8 }}
+              />
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* Live Gold-Silver Rates — radiant gold theme (same layout as other cards) */}
+          <TouchableOpacity
+            style={styles.goldCardWrapper}
+            onPress={() => onSelectScreen('gold')}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={['#0B1220', '#2A1A08', '#4A2D06']}
+              locations={[0, 0.55, 1]}
+              start={{ x: 0, y: 0.1 }}
+              end={{ x: 0.85, y: 1 }}
+              style={styles.goldCardGradient}
+            >
+              <GoldRateCardGlow />
+
+              <LinearGradient
+                colors={['#FDE68A', '#F59E0B']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0.2, y: 1 }}
+                style={styles.goldIconBox}
+              >
+                <MaterialCommunityIcons name="cash" size={30} color="#FFFFFF" />
+              </LinearGradient>
+
+              <View style={styles.goldCardBody}>
+                <Text style={styles.goldCardTitle}>Live Gold-Silver Rates</Text>
+                <Text style={styles.goldCardDescHindi}>
+                  सोना-चांदी का लाइव भाव — हर शहर का दाम प्रति ग्राम
+                </Text>
+                <Text style={styles.goldCardDescEng} numberOfLines={1}>
+                  Live gold &amp; silver rates · Kanpur, Delhi, Mumbai
+                </Text>
+              </View>
+
+              <Ionicons
+                name="chevron-forward"
+                size={26}
+                color="#FCD34D"
                 style={{ marginLeft: 8 }}
               />
             </LinearGradient>
@@ -571,6 +615,63 @@ const styles = StyleSheet.create({
   khataCardDescEng: {
     fontSize: 11,
     color: '#C4B5FD',
+    fontWeight: '600',
+    marginTop: 3,
+  },
+  goldCardWrapper: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 0,
+    elevation: 0,
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+  },
+  goldCardGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    minHeight: 88,
+    maxHeight: 104,
+    position: 'relative',
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' && {
+      backgroundImage:
+        'radial-gradient(ellipse at 100% 100%, rgba(252, 211, 77, 0.35) 0%, rgba(245, 158, 11, 0) 55%), linear-gradient(115deg, #0B1220 0%, #2A1A08 55%, #4A2D06 100%)',
+    }),
+  },
+  goldIconBox: {
+    width: 58,
+    height: 58,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  goldCardBody: {
+    flex: 1,
+  },
+  goldCardTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+    marginBottom: 6,
+  },
+  goldCardDescHindi: {
+    fontSize: 12.5,
+    color: '#F8FAFC',
+    fontWeight: '600',
+    lineHeight: 17,
+  },
+  goldCardDescEng: {
+    fontSize: 11,
+    color: '#FCD34D',
     fontWeight: '600',
     marginTop: 3,
   },

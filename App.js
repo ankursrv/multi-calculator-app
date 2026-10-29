@@ -25,6 +25,7 @@ import UnitConverter from './src/screens/UnitConverter';
 import EmiCalculator from './src/screens/EmiCalculator';
 import KharchaTrackerScreen from './src/screens/KharchaTrackerScreen';
 import FdCalculator from './src/screens/FdCalculator';
+import GoldRateScreen from './src/screens/GoldRateScreen';
 
 // Global Web Style to remove focus-visible outlines from all input boxes
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -207,6 +208,10 @@ function MainApp() {
 
         {currentScreen === 'fd' && (
           <FdCalculator onBack={() => navigateTo('home')} />
+        )}
+
+        {currentScreen === 'gold' && (
+          <GoldRateScreen onBack={() => navigateTo('home')} />
         )}
       </Animated.View>
 

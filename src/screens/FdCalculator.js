@@ -97,22 +97,22 @@ export default function FdCalculator({ onBack }) {
             style={StyleSheet.absoluteFill}
           />
           <FdHeroIllustration />
-          <Text style={styles.heroSubText}>मैच्योरिटी पर मिलेगी (Maturity Amount):</Text>
-          <Text style={styles.heroMain}>₹{Math.round(maturityAmount).toLocaleString('en-IN')}</Text>
+          <Text style={styles.heroSubText} allowFontScaling={false}>मैच्योरिटी पर मिलेगी (Maturity Amount):</Text>
+          <Text style={styles.heroMain} allowFontScaling={false}>₹{Math.round(maturityAmount).toLocaleString('en-IN')}</Text>
 
           <View style={styles.heroStatsRow}>
             <View style={styles.heroStat}>
-              <Text style={styles.statLabel}>कुल ब्याज (Interest):</Text>
-              <Text style={styles.statVal}>₹{Math.round(interestEarned).toLocaleString('en-IN')}</Text>
+              <Text style={styles.statLabel} allowFontScaling={false}>कुल ब्याज (Interest):</Text>
+              <Text style={styles.statVal} allowFontScaling={false}>₹{Math.round(interestEarned).toLocaleString('en-IN')}</Text>
             </View>
             <View style={styles.heroStat}>
-              <Text style={styles.statLabel}>आपकी निवेश राशि:</Text>
-              <Text style={styles.statVal}>₹{(Math.round(P) || 0).toLocaleString('en-IN')}</Text>
+              <Text style={styles.statLabel} allowFontScaling={false}>आपकी निवेश राशि:</Text>
+              <Text style={styles.statVal} allowFontScaling={false}>₹{(Math.round(P) || 0).toLocaleString('en-IN')}</Text>
             </View>
           </View>
 
           <View style={styles.heroDivider} />
-          <Text style={styles.heroTenorText}>
+          <Text style={styles.heroTenorText} allowFontScaling={false}>
             {days > 0
               ? `⏳ अवधि: ${formatTenureDays(days)} · ${maturityDateText(days)} को मैच्योर`
               : '⏳ नीचे अवधि डालें (जैसे 1 साल, 6 महीने, 30 दिन)'}
@@ -256,11 +256,15 @@ const styles = StyleSheet.create({
   },
   heroSubText: {
     fontSize: 13,
+    lineHeight: 19,
+    includeFontPadding: false,
     color: 'rgba(255, 255, 255, 0.9)',
     fontWeight: '600',
   },
   heroMain: {
     fontSize: 40,
+    lineHeight: 50,
+    includeFontPadding: false,
     fontWeight: '900',
     color: '#FFFFFF',
     marginVertical: 4,
@@ -277,11 +281,15 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 11,
+    lineHeight: 16,
+    includeFontPadding: false,
     color: 'rgba(255, 255, 255, 0.8)',
     marginBottom: 2,
   },
   statVal: {
     fontSize: 15,
+    lineHeight: 21,
+    includeFontPadding: false,
     fontWeight: '800',
     color: '#FFFFFF',
   },
@@ -293,6 +301,8 @@ const styles = StyleSheet.create({
   },
   heroTenorText: {
     fontSize: 12,
+    lineHeight: 18,
+    includeFontPadding: false,
     fontWeight: '600',
     color: '#BAE6FD',
     marginTop: 10,
