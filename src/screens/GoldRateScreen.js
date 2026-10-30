@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -16,24 +17,37 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
 
-// ---- Live prices from free gold-api.com (no key, updates every 30s) ----
-// gold-api gives the INTERNATIONAL spot price (USD->INR). That is NOT what an
-// Indian shop charges, because India adds import/customs duty + 3% GST + the
-// domestic (MCX) premium + jeweller margin, which is ~15-16% above global spot.
-// So we lift the live spot to Indian retail with a per-metal premium
-// (INDIA_GOLD_PREMIUM_PCT / INDIA_SILVER_PREMIUM_PCT), then add each city's
-// small local difference (haldi) on top.
-const API_BASE = 'https://api.gold-api.com/price';
+// ---- Live prices: IBJA on native, gold-api.com on web ----
+// IBJA (India Bullion & Jewellers Association) publishes India's official daily
+// benchmark gold/silver rates — the benchmark bullion dealers (like the
+// Brijwasi-style Kanpur shops) price off. We read it via the free, open-source
+// IBJA-API mirror on Vercel (no key). IBJA is ALREADY an INR Indian benchmark,
+// so we only add each city's small local difference (haldi) on top.
+//   gold  → GET /latest        : per 10 grams (lblGold999_AM / lblGold999_PM)
+//   silver→ GET /silver/latest  : per 1 kg (lblSilver999_AM / lblSilver999_PM)
+// The IBJA mirror sends no CORS headers, so a desktop browser (Expo web preview)
+// cannot fetch it directly. Native (Android/iOS) has no CORS, so it uses IBJA.
+// On web we fall back to gold-api.com (international spot, CORS-enabled) lifted
+// to Indian retail with the base premium, so the preview still shows a live rate.
+const IBJA_BASE = 'https://ibja-api.vercel.app';
+const GOLD_API_BASE = 'https://api.gold-api.com/price';
 const TROY_OZ_GRAMS = 31.1035;
 const CACHE_KEY = '@gold_rates_cache';
-const REFRESH_INTERVAL_MS = 60000; // 1 min auto refresh
+// IBJA fixes rates only twice a day (AM/PM), so a slower auto-refresh is plenty
+// and kinder to the free mirror.
+const REFRESH_INTERVAL_MS = 5 * 60000; // 5 min auto refresh
 
-// India import duty + GST + domestic/premium over global spot, per metal.
-// Verified against MCX India benchmark on 29-Oct-2026: gold 24K ₹1,43,600/10g
-// and silver ₹1,94,450/kg — these values keep the app within ~0.1% of MCX.
-// Silver's domestic premium is higher than gold's. Tweak if govt changes duty.
+// Which source is active on this platform. Native → IBJA (real Indian benchmark);
+// web preview → gold-api.com (CORS-friendly fallback).
+const USE_IBJA = Platform.OS !== 'web';
+
+// Only applied on the gold-api.com fallback path: lifts the international spot to
+// Indian retail (import duty + taxes). IBJA is already Indian, so it uses 0.
 const INDIA_GOLD_PREMIUM_PCT = 15.6;
 const INDIA_SILVER_PREMIUM_PCT = 19.2;
+// Effective base premium for the active source (IBJA → 0, gold-api → India lift).
+const GOLD_BASE_PREMIUM_PCT = USE_IBJA ? 0 : INDIA_GOLD_PREMIUM_PCT;
+const SILVER_BASE_PREMIUM_PCT = USE_IBJA ? 0 : INDIA_SILVER_PREMIUM_PCT;
 
 // Default GST on gold jewellery (levied on gold value + making charges).
 // Shown in an editable field, so the user can override for future rate changes.
@@ -147,19 +161,50 @@ export default function GoldRateScreen({ onBack }) {
 
   const fetchRates = useCallback(async () => {
     try {
-      const [goldRes, silverRes] = await Promise.all([
-        fetch(`${API_BASE}/XAU/INR`),
-        fetch(`${API_BASE}/XAG/INR`),
-      ]);
-      if (!goldRes.ok || !silverRes.ok) throw new Error('API error');
+      let goldPerGram;
+      let silverPerGram;
 
-      const gold = await goldRes.json();
-      const silver = await silverRes.json();
+      if (USE_IBJA) {
+        // Native: real Indian benchmark from IBJA. It quotes gold per 10 g and
+        // silver per 1 kg; the app works in ₹/gram. Prefer the PM (closing)
+        // fixing, fall back to the AM (opening) one.
+        const [goldRes, silverRes] = await Promise.all([
+          fetch(`${IBJA_BASE}/latest`),
+          fetch(`${IBJA_BASE}/silver/latest`),
+        ]);
+        if (!goldRes.ok || !silverRes.ok) throw new Error('IBJA error');
+        const gold = await goldRes.json();
+        const silver = await silverRes.json();
+        const gold999Per10g = parseFloat(gold.lblGold999_PM ?? gold.lblGold999_AM);
+        const silver999PerKg = parseFloat(silver.lblSilver999_PM ?? silver.lblSilver999_AM);
+        if (!Number.isFinite(gold999Per10g) || !Number.isFinite(silver999PerKg)) {
+          throw new Error('IBJA parse error');
+        }
+        goldPerGram = gold999Per10g / 10;
+        silverPerGram = silver999PerKg / 1000;
+      } else {
+        // Web preview: gold-api.com international spot (CORS-enabled), converted
+        // USD→INR and Troy oz→gram. India base premium is applied downstream.
+        const [goldRes, silverRes, fxRes] = await Promise.all([
+          fetch(`${GOLD_API_BASE}/XAU`),
+          fetch(`${GOLD_API_BASE}/XAG`),
+          fetch('https://api.frankfurter.app/latest?from=USD&to=INR'),
+        ]);
+        if (!goldRes.ok || !silverRes.ok || !fxRes.ok) throw new Error('API error');
+        const gold = await goldRes.json();
+        const silver = await silverRes.json();
+        const fx = await fxRes.json();
+        const usdInr = fx.rates?.INR;
+        const goldUsdPerOz = gold.price;
+        const silverUsdPerOz = silver.price;
+        if (!Number.isFinite(goldUsdPerOz) || !Number.isFinite(silverUsdPerOz) || !Number.isFinite(usdInr)) {
+          throw new Error('parse error');
+        }
+        goldPerGram = (goldUsdPerOz / TROY_OZ_GRAMS) * usdInr;
+        silverPerGram = (silverUsdPerOz / TROY_OZ_GRAMS) * usdInr;
+      }
 
       if (!mountedRef.current) return;
-
-      const goldPerGram = gold.price / TROY_OZ_GRAMS;
-      const silverPerGram = silver.price / TROY_OZ_GRAMS;
 
       // Compare with previous fetch to show ▲ / ▼ tick
       if (prevGoldRef.current != null) {
@@ -172,7 +217,7 @@ export default function GoldRateScreen({ onBack }) {
       const data = {
         goldPerGram,
         silverPerGram,
-        updatedAt: gold.updatedAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
       setRates(data);
       setError(null);
@@ -227,8 +272,8 @@ export default function GoldRateScreen({ onBack }) {
   }, [fetchRates, handleRefresh]);
 
   // ---- derived city rates (global spot -> Indian retail via premium) ----
-  const goldMult = cityMultiplier(selectedCity, INDIA_GOLD_PREMIUM_PCT);
-  const silverMult = cityMultiplier(selectedCity, INDIA_SILVER_PREMIUM_PCT);
+  const goldMult = cityMultiplier(selectedCity, GOLD_BASE_PREMIUM_PCT);
+  const silverMult = cityMultiplier(selectedCity, SILVER_BASE_PREMIUM_PCT);
   const gold24 = rates ? rates.goldPerGram * goldMult : 0;
   const gold22 = gold24 * (22 / 24);
   const gold18 = gold24 * (18 / 24);
