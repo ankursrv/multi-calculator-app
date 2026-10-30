@@ -16,8 +16,13 @@ import KharchaCardGlow from '../components/KharchaCardGlow';
 import FdCardGlow from '../components/FdCardGlow';
 import KhataCardGlow from '../components/KhataCardGlow';
 import GoldRateCardGlow from '../components/GoldRateCardGlow';
+import TyohaarCardGlow from '../components/TyohaarCardGlow';
+import useTodayPanchang from '../hooks/useTodayPanchang';
 
 export default function HomeScreen({ onSelectScreen }) {
+  // Today's tithi / nakshatra / yoga / karana / rashi, shown live in the card
+  const { headLine, angaLine, subLine } = useTodayPanchang();
+
   return (
     <View style={styles.container}>
       {/* Fixed Sticky Header with Gradient, Shadow & Accent Line */}
@@ -64,6 +69,7 @@ export default function HomeScreen({ onSelectScreen }) {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        removeClippedSubviews={false}
       >
         {/* Featured Calculator Card: Samaan-Bhav & Kirana */}
         <View style={styles.cardsList}>
@@ -281,6 +287,55 @@ export default function HomeScreen({ onSelectScreen }) {
                 name="chevron-forward"
                 size={26}
                 color="#FCD34D"
+                style={{ marginLeft: 8 }}
+              />
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* Tyohaar Patra — sacred maroon + marigold panchang calendar */}
+          <TouchableOpacity
+            style={styles.calendarCardWrapper}
+            onPress={() => onSelectScreen('calendar')}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={['#0B1220', '#2B0F14', '#6B1A24']}
+              locations={[0, 0.55, 1]}
+              start={{ x: 0, y: 0.1 }}
+              end={{ x: 0.85, y: 1 }}
+              style={styles.calendarCardGradient}
+            >
+              <TyohaarCardGlow />
+
+              <LinearGradient
+                colors={['#FDBA74', '#E11D48']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0.2, y: 1 }}
+                style={styles.calendarIconBox}
+              >
+                <MaterialCommunityIcons name="calendar-month" size={30} color="#FFFFFF" />
+              </LinearGradient>
+
+              <View style={styles.calendarCardBody}>
+                <Text style={styles.calendarCardTitle}>Calendar</Text>
+                {/* Every line is numberOfLines={1} so the card height is fixed
+                    from the first paint — Android detaches a ScrollView child's
+                    views if that height changes later */}
+                <Text style={styles.calendarCardDescHindi} numberOfLines={1}>
+                  {headLine || 'शुद्ध पंचांग · तिथि व त्योहार'}
+                </Text>
+                <Text style={styles.calendarCardDescHindi} numberOfLines={1}>
+                  {angaLine || 'तिथि · नक्षत्र · योग · करण'}
+                </Text>
+                <Text style={styles.calendarCardDescEng} numberOfLines={1}>
+                  {subLine || 'आज की तारीख · त्योहार / वार'}
+                </Text>
+              </View>
+
+              <Ionicons
+                name="chevron-forward"
+                size={26}
+                color="#FDBA74"
                 style={{ marginLeft: 8 }}
               />
             </LinearGradient>
@@ -672,6 +727,66 @@ const styles = StyleSheet.create({
   goldCardDescEng: {
     fontSize: 11,
     color: '#FCD34D',
+    fontWeight: '600',
+    marginTop: 3,
+  },
+  calendarCardWrapper: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 0,
+    elevation: 0,
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+  },
+  calendarCardGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    // 12 instead of 16 so the three one-line rows still fit the bounded
+    // 88–104 box: an unbounded height (minHeight only) makes Android stop
+    // drawing this card's children. Keep min and max as a pair.
+    paddingVertical: 12,
+    minHeight: 88,
+    maxHeight: 104,
+    position: 'relative',
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' && {
+      backgroundImage:
+        'radial-gradient(ellipse at 100% 100%, rgba(251, 186, 116, 0.35) 0%, rgba(225, 29, 72, 0) 55%), linear-gradient(115deg, #0B1220 0%, #2B0F14 55%, #6B1A24 100%)',
+    }),
+  },
+  calendarIconBox: {
+    width: 58,
+    height: 58,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+    shadowColor: '#E11D48',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  calendarCardBody: {
+    flex: 1,
+  },
+  calendarCardTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+    marginBottom: 6,
+  },
+  calendarCardDescHindi: {
+    fontSize: 12.5,
+    color: '#F8FAFC',
+    fontWeight: '600',
+    lineHeight: 17,
+  },
+  calendarCardDescEng: {
+    fontSize: 11,
+    color: '#FDBA74',
     fontWeight: '600',
     marginTop: 3,
   },

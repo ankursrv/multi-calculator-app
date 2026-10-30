@@ -35,6 +35,15 @@ const THEMES = {
     sparkleColor: '#38BDF8',
     sideIconColor: '#38BDF8',
   },
+  // Sacred maroon + marigold (Tyohaar / panchang screens)
+  maroon: {
+    barGradient: ['#0B1220', '#1D0A12', '#3B0F18'],
+    logoGradient: ['#FDBA74', '#E11D48'],
+    titleGradient: ['#FDE68A', '#FB923C', '#E11D48'],
+    subtitleColor: '#FDBA74',
+    sparkleColor: '#FB923C',
+    sideIconColor: '#FDBA74',
+  },
 };
 
 export default function ScreenHeader({

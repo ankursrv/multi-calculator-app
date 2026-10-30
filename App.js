@@ -26,6 +26,7 @@ import EmiCalculator from './src/screens/EmiCalculator';
 import KharchaTrackerScreen from './src/screens/KharchaTrackerScreen';
 import FdCalculator from './src/screens/FdCalculator';
 import GoldRateScreen from './src/screens/GoldRateScreen';
+import TyohaarCalendarScreen from './src/screens/TyohaarCalendarScreen';
 
 // Global Web Style to remove focus-visible outlines from all input boxes
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -212,6 +213,10 @@ function MainApp() {
 
         {currentScreen === 'gold' && (
           <GoldRateScreen onBack={() => navigateTo('home')} />
+        )}
+
+        {currentScreen === 'calendar' && (
+          <TyohaarCalendarScreen onBack={() => navigateTo('home')} />
         )}
       </Animated.View>
 
