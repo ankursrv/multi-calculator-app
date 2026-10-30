@@ -545,21 +545,6 @@ export default function TyohaarCalendarScreen({ onBack }) {
 
         {/* ── Graha rashi chakra (today) ───────────────────── */}
         {todayInfo ? <GrahaRashiChakra day={todayInfo} city={city} /> : null}
-
-        {/* ── How the dates are decided ────────────────────── */}
-        <View style={styles.noteCard}>
-          <View style={styles.noteHead}>
-            <Ionicons name="information-circle-outline" size={16} color="#FDBA74" />
-            <Text style={styles.noteTitle}>तिथि कैसे तय होती है?</Text>
-          </View>
-          <Text style={styles.noteText}>
-            हर दिन का पंचांग चुने हुए शहर के <Text style={styles.noteBold}>सूर्योदय</Text> पर
-            पाँच अंग (तिथि, नक्षत्र, योग, करण, वार) पढ़कर बनाया जाता है — बिल्कुल छपने वाले
-            पंचांग की <Text style={styles.noteBold}>पौर्णिमान्त</Text> मान्यता की तरह। एक ही तिथि
-            दो सूर्योदय में आ जाए तो पहला दिन माना जाता है (वृद्धि)। शहर बदलने से कुछ तिथियों
-            में एक दिन का अंतर आ सकता है, इसलिए अपने शहर का नाम चुनें।
-          </Text>
-        </View>
       </ScrollView>
 
       {/* ── Month / Year / City dropdown ─────────────────────── */}
