@@ -21,6 +21,7 @@ import ScreenHeader from '../components/ScreenHeader';
 import MuhurtSearch from '../components/MuhurtSearch';
 import GrahaRashiChakra from '../components/GrahaRashiChakra';
 import FestivalIcon from '../components/FestivalIcon';
+import FestivalArt, { festivalArt } from '../components/FestivalArt';
 import webPrintHtml from '../utils/webPrintHtml';
 import {
   CITIES,
@@ -79,6 +80,7 @@ export default function TyohaarCalendarScreen({ onBack }) {
   const [cityId, setCityId] = useState(DEFAULT_CITY.id);
   const [openDropdown, setOpenDropdown] = useState(null); // 'month' | 'year' | 'city'
   const [detailDay, setDetailDay] = useState(null);
+  const [heroIdx, setHeroIdx] = useState(0); // which upcoming त्योहार the banner shows
   const [modalVisible, setModalVisible] = useState(false);
   const [sheetAnim] = useState(() => new Animated.Value(0));
   const [exporting, setExporting] = useState(false);
@@ -99,7 +101,7 @@ export default function TyohaarCalendarScreen({ onBack }) {
   const handlePickCity = (id) => {
     setCityId(id);
     setOpenDropdown(null);
-    AsyncStorage.setItem(CITY_STORAGE_KEY, id).catch(() => {});
+    AsyncStorage.setItem(CITY_STORAGE_KEY, id).catch(() => { });
   };
 
   const city = useMemo(() => findCity(cityId), [cityId]);
@@ -124,6 +126,39 @@ export default function TyohaarCalendarScreen({ onBack }) {
     () => getDayPanchang(THIS_YEAR, THIS_MONTH, THIS_DAY, city),
     [city],
   );
+
+  // Upcoming festivals for the hero card, today first. एकादशी / प्रदोष /
+  // पूर्णिमा are never more than ~16 days apart, so five of them always turn up
+  // inside 40 steps, and every step is a per-day calculation the util caches —
+  // the rest of this month is already computed by the grid.
+  const upcomingEvents = useMemo(() => {
+    const out = [];
+    for (let i = 0; i <= 40 && out.length < 5; i++) {
+      const d = new Date(THIS_YEAR, THIS_MONTH - 1, THIS_DAY + i);
+      const p = getDayPanchang(d.getFullYear(), d.getMonth() + 1, d.getDate(), city);
+      const f = p && p.festivals[0];
+      if (f) {
+        out.push({
+          festival: f,
+          day: p,
+          isToday: i === 0,
+          inDays: i,
+          dateHi: `${p.day} ${monthNameHi(p.month)} ${d.getFullYear()}`,
+        });
+      }
+    }
+    return out;
+  }, [city]);
+
+  const heroEvent = upcomingEvents[Math.min(heroIdx, upcomingEvents.length - 1)] || null;
+  // Falls back to the plain maroon palette when there is nothing to show
+  const heroPalette = festivalArt(
+    heroEvent ? heroEvent.festival.name : '',
+    heroEvent ? heroEvent.festival.type : 'minor',
+  );
+
+  const stepHero = (delta) =>
+    setHeroIdx((i) => Math.min(Math.max(i + delta, 0), Math.max(upcomingEvents.length - 1, 0)));
 
   const monthFestivals = useMemo(() => {
     const rows = [];
@@ -248,8 +283,8 @@ export default function TyohaarCalendarScreen({ onBack }) {
             <Ionicons name="chevron-back" size={19} color={canGoPrev ? '#FDBA74' : Colors.textDim} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.navChip} onPress={() => setOpenDropdown('month')} activeOpacity={0.8}>
-            <Text style={styles.navChipText}>{monthNameHi(selMonth)}</Text>
+          <TouchableOpacity style={[styles.navChip, styles.navChipMonth]} onPress={() => setOpenDropdown('month')} activeOpacity={0.8}>
+            <Text style={styles.navChipText} numberOfLines={1}>{monthNameHi(selMonth)}</Text>
             <MaterialCommunityIcons name="menu-down" size={18} color="#FDBA74" />
           </TouchableOpacity>
 
@@ -280,119 +315,150 @@ export default function TyohaarCalendarScreen({ onBack }) {
             <Text style={styles.cityEn}>· {city.en}</Text>
           </View>
           <View style={styles.cityRight}>
-            <Text style={styles.cityHint}>सूर्योदय का शहर</Text>
             <MaterialCommunityIcons name="menu-down" size={18} color="#FB923C" />
           </View>
         </TouchableOpacity>
 
-        {/* ── Samvat hero banner ───────────────────────────── */}
+        {/* ── Hero holiday card ───────────────────────────── */}
         <LinearGradient
-          colors={['#2B0F14', '#4A1220', '#6B1A24']}
+          colors={heroPalette.bg}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.heroBanner}
         >
+          {/* The festival's own scene, hanging off the right edge */}
+          {heroEvent ? (
+            <FestivalArt
+              name={heroEvent.festival.name}
+              type={heroEvent.festival.type}
+              width={104}
+              height={98}
+              style={styles.heroArt}
+            />
+          ) : null}
+
           <View style={styles.heroLeft}>
-            <Text style={styles.heroMasa} allowFontScaling={false}>
-              {todayInfo ? todayInfo.masa : ''} मास
+            <Text
+              style={[styles.heroKicker, { color: heroPalette.ink }]}
+              allowFontScaling={false}
+              numberOfLines={1}
+            >
+              {heroEvent ? (heroEvent.isToday ? 'आज का त्योहार' : 'अगला त्योहार') : 'अभी कोई त्योहार नहीं'}
             </Text>
-            <Text style={styles.heroSamvat} allowFontScaling={false}>
-              विक्रम संवत {todayInfo ? todayInfo.vikramSamvat : ''}
+            <Text
+              style={[styles.heroName, { color: heroPalette.ink }]}
+              allowFontScaling={false}
+              numberOfLines={2}
+            >
+              {heroEvent ? heroEvent.festival.name : 'पंचांग'}
             </Text>
-            <Text style={styles.heroRule} allowFontScaling={false}>
-              पौर्णिमान्त पंचांग · {monthNameEn(selMonth)} {selYear}
+            {heroEvent ? (
+              <Text
+                style={[styles.heroDate, { color: heroPalette.ink }]}
+                allowFontScaling={false}
+                numberOfLines={1}
+              >
+                {`${heroEvent.day.weekdayHi}, ${heroEvent.dateHi}`}
+                {heroEvent.isToday ? '' : ` · ${heroEvent.inDays} दिन बाद`}
+              </Text>
+            ) : null}
+            <Text style={[styles.heroFoot, { color: heroPalette.ink }]} allowFontScaling={false} numberOfLines={2}>
+              {`पौर्णिमान्त पंचांग · ${todayInfo ? todayInfo.masa : ''} मास · संवत् ${todayInfo ? todayInfo.vikramSamvat : ''} · ${monthNameEn(selMonth)} ${selYear}`}
+              {todayInfo ? ` · आज ${todayInfo.weekdayHi}, ${todayInfo.tithiName}` : ''}
             </Text>
           </View>
 
-          {todayInfo ? (
-            <View style={styles.heroTodayBox}>
-              <Text style={styles.heroTodayLabel} allowFontScaling={false}>आज</Text>
-              <Text style={styles.heroTodayVar} allowFontScaling={false}>
-                {todayInfo.weekdayHi}
-              </Text>
-              <Text style={styles.heroTodayTithi} allowFontScaling={false} numberOfLines={2}>
-                {todayInfo.tithiName}
-              </Text>
-            </View>
+          {/* ‹ › walk the list of upcoming festivals */}
+          {upcomingEvents.length > 1 && heroIdx > 0 ? (
+            <TouchableOpacity style={styles.heroNavLeft} onPress={() => stepHero(-1)} activeOpacity={0.7}>
+              <Ionicons name="chevron-back" size={21} color={heroPalette.ink} />
+            </TouchableOpacity>
+          ) : null}
+          {upcomingEvents.length > 1 && heroIdx < upcomingEvents.length - 1 ? (
+            <TouchableOpacity style={styles.heroNavRight} onPress={() => stepHero(1)} activeOpacity={0.7}>
+              <Ionicons name="chevron-forward" size={21} color={heroPalette.ink} />
+            </TouchableOpacity>
           ) : null}
         </LinearGradient>
 
         {/* ── Weekday header ───────────────────────────────── */}
-        <View style={styles.gridRow}>
-          {WEEKDAYS_HI.map((w, i) => (
-            <Text
-              key={w}
-              style={[styles.weekText, i === 0 && styles.weekTextSunday]}
-              allowFontScaling={false}
-              numberOfLines={1}
-            >
-              {w}
-            </Text>
-          ))}
-        </View>
+        <View style={styles.calendarWrap}>
+          <View style={styles.gridRow}>
+            {WEEKDAYS_HI.map((w, i) => (
+              <Text
+                key={w}
+                style={[styles.weekText, i === 0 && styles.weekTextSunday]}
+                allowFontScaling={false}
+                numberOfLines={1}
+              >
+                {w}
+              </Text>
+            ))}
+          </View>
 
-        {/* ── Month grid ───────────────────────────────────── */}
-        <View style={styles.grid}>
-          {gridRows.map((row, rowIdx) => (
-            <View key={`row-${rowIdx}`} style={styles.gridRow}>
-              {row.map((d, i) => {
-                if (!d) return <View key={`e-${i}`} style={styles.cellEmpty} />;
+          {/* ── Month grid ───────────────────────────────────── */}
+          <View style={styles.grid}>
+            {gridRows.map((row, rowIdx) => (
+              <View key={`row-${rowIdx}`} style={styles.gridRow}>
+                {row.map((d, i) => {
+                  if (!d) return <View key={`e-${i}`} style={styles.cellEmpty} />;
 
-                const top = d.festivals[0];
-                const sunday = d.weekday === 0;
-                const today = isToday(d);
-                return (
-                  <TouchableOpacity
-                    key={d.day}
-                    style={[
-                      styles.cell,
-                      sunday && styles.cellSunday,
-                      today && styles.cellToday,
-                    ]}
-                    onPress={() => openDay(d)}
-                    activeOpacity={0.75}
-                  >
-                    {/* Fixed-height row so the cell geometry never depends on
-                        whether today has a festival — a height that changes after
-                        the first paint makes Android drop this cell's children */}
-                    <View style={styles.cellTopRow}>
+                  const top = d.festivals[0];
+                  const sunday = d.weekday === 0;
+                  const today = isToday(d);
+                  return (
+                    <TouchableOpacity
+                      key={d.day}
+                      style={[
+                        styles.cell,
+                        sunday && styles.cellSunday,
+                        today && styles.cellToday,
+                      ]}
+                      onPress={() => openDay(d)}
+                      activeOpacity={0.75}
+                    >
                       {top ? (
-                        <FestivalIcon name={top.name} type={top.type} seed={d.day} />
+                        <View style={styles.cellIcon}>
+                          <FestivalIcon name={top.name} type={top.type} seed={d.day} size={20} />
+                        </View>
                       ) : null}
-                      <Text
-                        style={[
-                          styles.cellNum,
-                          sunday && styles.cellNumSunday,
-                          today && styles.cellNumToday,
-                        ]}
-                        allowFontScaling={false}
-                        numberOfLines={1}
-                      >
-                        {d.day}
+
+                      <View style={styles.cellTopRow}>
+                        <Text
+                          style={[
+                            styles.cellNum,
+                            sunday && styles.cellNumSunday,
+                            today && styles.cellNumToday,
+                          ]}
+                          allowFontScaling={false}
+                          numberOfLines={1}
+                        >
+                          {d.day}
+                        </Text>
+                      </View>
+
+                      <Text style={styles.cellTithi} allowFontScaling={false} numberOfLines={1}>
+                        {d.tithiShort.paksha ? `${d.tithiShort.paksha}० ` : ''}
+                        {d.tithiShort.rest}
                       </Text>
-                    </View>
 
-                    <Text style={styles.cellTithi} allowFontScaling={false} numberOfLines={1}>
-                      {d.tithiShort.paksha ? `${d.tithiShort.paksha}० ` : ''}
-                      {d.tithiShort.rest}
-                    </Text>
+                      {top ? (
+                        <Text
+                          style={[styles.cellFestival, { color: festivalColor(top.type) }]}
+                          allowFontScaling={false}
+                          numberOfLines={1}
+                        >
+                          {top.name}
+                        </Text>
+                      ) : null}
 
-                    {top ? (
-                      <Text
-                        style={[styles.cellFestival, { color: festivalColor(top.type) }]}
-                        allowFontScaling={false}
-                        numberOfLines={1}
-                      >
-                        {top.name}
-                      </Text>
-                    ) : null}
-
-                    {today ? <View style={styles.todayDot} /> : null}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          ))}
+                      {today ? <View style={styles.todayDot} /> : null}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ))}
+          </View>
         </View>
 
         {/* ── Legend ───────────────────────────────────────── */}
@@ -767,6 +833,11 @@ const styles = StyleSheet.create({
     color: Colors.text,
     marginRight: 2,
   },
+  // Fixed width so the chip doesn't grow/shrink as the month name changes
+  navChipMonth: {
+    width: 86,
+    justifyContent: 'center',
+  },
   todayBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -818,87 +889,95 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 2,
   },
-  cityHint: {
-    fontSize: 10.5,
-    color: Colors.textDim,
-    fontWeight: '600',
-  },
 
-  // Hero banner
+  // Hero holiday card — the whole card takes the festival's colours and the
+  // illustration hangs off the top-right, the way Keka's holidays banner does.
   heroBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 18,
     borderWidth: 1,
     borderColor: 'rgba(251, 186, 116, 0.28)',
-    paddingHorizontal: 15,
-    paddingVertical: 14,
+    paddingLeft: 30,
+    paddingRight: 30,
+    paddingVertical: 13,
     marginBottom: 14,
     overflow: 'hidden',
   },
+  heroArt: {
+    top: 2,
+    right: 4,
+  },
+  heroNavLeft: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroNavRight: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   heroLeft: {
     flex: 1,
+    // Keeps the name clear of the illustration; long names take a second line
+    // rather than ellipsising.
+    paddingRight: 76,
   },
-  heroMasa: {
-    fontSize: 19,
+  heroKicker: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    opacity: 0.72,
+  },
+  heroName: {
+    fontSize: 21,
     fontWeight: '900',
-    color: '#FDE68A',
     letterSpacing: 0.2,
+    marginTop: 2,
+    // No lineHeight: Devanagari needs the font's own (taller) line box, and a
+    // two-word name wraps to a second line here.
   },
-  heroSamvat: {
+  heroDate: {
     fontSize: 12.5,
     fontWeight: '700',
-    color: '#FDBA74',
-    marginTop: 2,
+    marginTop: 3,
+    opacity: 0.95,
   },
-  heroRule: {
-    fontSize: 11,
-    color: 'rgba(248, 250, 252, 0.65)',
+  heroFoot: {
+    fontSize: 10.5,
     fontWeight: '600',
-    marginTop: 4,
-  },
-  heroTodayBox: {
-    alignItems: 'flex-end',
-    paddingLeft: 12,
-  },
-  heroTodayLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: 'rgba(253, 224, 71, 0.75)',
-    letterSpacing: 1.2,
-  },
-  heroTodayVar: {
-    fontSize: 13,
-    fontWeight: '900',
-    color: Colors.text,
-    marginTop: 2,
-  },
-  heroTodayTithi: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#FDBA74',
-    marginTop: 2,
-    textAlign: 'right',
-    maxWidth: 120,
+    marginTop: 7,
+    opacity: 0.68,
   },
 
   // Calendar grid
+  calendarWrap: {
+    marginHorizontal: -10,
+    marginBottom: 10,
+  },
   grid: {
+    marginTop: 2,
     marginBottom: 12,
   },
   gridRow: {
     flexDirection: 'row',
-    // Not 'stretch': stretching would hand every cell the row's height and
-    // override the cell's aspectRatio, so a wide phone's cells would stop being
-    // square. Each cell keeps its own square height instead.
     alignItems: 'flex-start',
-    marginBottom: 5,
+    marginBottom: 4,
   },
   weekText: {
     flex: 1,
     marginHorizontal: 2,
     textAlign: 'center',
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: '800',
     color: Colors.textMuted,
   },
@@ -908,20 +987,16 @@ const styles = StyleSheet.create({
   cell: {
     flex: 1,
     marginHorizontal: 2,
-    // Square: aspectRatio makes the height equal the column width, so on a wide
-    // phone the cell is exactly square. minHeight is the floor for narrow
-    // phones — the three rows (icon+date, तिथि, त्योहार) measure ~50dp on web and
-    // Android's Devanagari line boxes are taller, and a cell shorter than the
-    // text clips its last line — the bug this replaces.
     aspectRatio: 1,
-    minHeight: 55,
-    borderRadius: 10,
+    minHeight: 56,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: 'rgba(51, 65, 85, 0.65)',
     backgroundColor: 'transparent',
-    paddingTop: 3,
-    paddingHorizontal: 2,
-    paddingBottom: 2,
+    overflow: 'hidden',
+    paddingTop: 2,
+    paddingHorizontal: 1.5,
+    paddingBottom: 4,
     alignItems: 'center',
     justifyContent: 'flex-start',
   },
@@ -937,10 +1012,10 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: 2,
     aspectRatio: 1,
-    minHeight: 55,
+    minHeight: 56,
   },
   cellNum: {
-    fontSize: 13.5,
+    fontSize: 18,
     fontWeight: '900',
     color: Colors.textSecondary,
   },
@@ -954,19 +1029,21 @@ const styles = StyleSheet.create({
     fontSize: 8.5,
     fontWeight: '600',
     color: Colors.textMuted,
-    // No marginTop on purpose: Android's Devanagari line box is taller than
-    // web's, and every dp of margin comes straight out of the square.
     textAlign: 'center',
   },
-  // Fixed-height row: the tyohaar glyph shares a line with the date instead of
-  // taking a row of its own, which is what buys the square. No gap — a 15px
-  // emoji (21px advance on web, 15px on Android) plus a two-digit date has to
-  // fit the cell's content box, which is only ~45dp on a 411dp-wide phone.
   cellTopRow: {
-    height: 18,
+    height: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  cellIcon: {
+    // Bottom-left corner, rendered first so the larger icon sits behind the
+    // day/tithi/name text. Kept fairly opaque so it stays clearly visible.
+    position: 'absolute',
+    bottom: 3,
+    left: 3,
+    opacity: 0.55,
   },
   cellFestival: {
     fontSize: 8,
@@ -976,7 +1053,7 @@ const styles = StyleSheet.create({
     // second line. The name is one line now, so let the font use its own
     // (taller) Devanagari metrics.
     textAlign: 'center',
-    marginTop: 1,
+    marginTop: 0.5,
   },
   todayDot: {
     position: 'absolute',

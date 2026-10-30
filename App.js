@@ -189,7 +189,9 @@ function MainApp() {
           />
         )}
 
-        {currentScreen === 'standard' && <StandardCalculator />}
+        {currentScreen === 'standard' && (
+          <StandardCalculator onBack={() => navigateTo('home')} />
+        )}
 
         {currentScreen === 'bill' && (
           <SmartKhataScreen
@@ -197,6 +199,7 @@ function MainApp() {
             onAddItem={handleAddItemToBill}
             onRemoveItem={handleRemoveBillItem}
             onClearBill={handleClearBill}
+            onBack={() => navigateTo('home')}
           />
         )}
 

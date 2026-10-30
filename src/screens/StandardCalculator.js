@@ -37,7 +37,7 @@ function dayLabel(ts) {
   return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`;
 }
 
-export default function StandardCalculator() {
+export default function StandardCalculator({ onBack }) {
   const [display, setDisplay] = useState('0');
   const [expression, setExpression] = useState('');
   const [history, setHistory] = useState([]);
@@ -220,7 +220,7 @@ export default function StandardCalculator() {
   return (
     <View style={styles.container}>
       {/* Fixed Header (same style as Home) with subtle shadow fade */}
-      <ScreenHeader title="Calculator" subtitle="Quick & Accurate Maths" />
+      <ScreenHeader title="Calculator" subtitle="Quick & Accurate Maths" onBack={onBack} />
 
       {/* Screen Body */}
       <View style={styles.body}>

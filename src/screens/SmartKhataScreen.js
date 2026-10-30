@@ -19,7 +19,7 @@ import ScreenHeader from '../components/ScreenHeader';
 const HOW_TO_SUMMARY =
   'दोस्तों के साथ खाना खाया, बिल आया ₹900 — यहाँ सामान की entries जोड़ें, कुल बिल अपने-आप जुड़ जाएगा। अब स्प्लिट में 3 चुनें तो हर किसी का हिस्सा ₹300 दिखेगा, और Share से पूरा हिसाब WhatsApp पर भेज दें।';
 
-export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveItem, onAddItem }) {
+export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveItem, onAddItem, onBack }) {
   const [itemName, setItemName] = useState('');
   const [itemCost, setItemCost] = useState('');
   const [splitCount, setSplitCount] = useState('2');
@@ -85,9 +85,10 @@ export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveI
     <View style={styles.container}>
       {/* Fixed Header with subtle shadow fade */}
       <ScreenHeader
-        title="Kirana Smart Khata"
+        title="Smart Khata"
         subtitle="सामान की लिस्ट, कुल बिल एवं स्प्लिट हिसाब"
         icon="book-account"
+        onBack={onBack}
       />
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>

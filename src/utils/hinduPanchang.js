@@ -46,6 +46,15 @@ const BASE_OPTIONS = {
   region: 'uttar-pradesh',
 };
 
+// India's gazetted national holidays, keyed month-day. Same every year, unlike
+// everything else this file computes.
+const NATIONAL_DAYS = {
+  '1-26': 'गणतंत्र दिवस',
+  '8-15': 'स्वतंत्रता दिवस',
+  '10-2': 'गांधी जयंती',
+  '4-14': 'अंबेडकर जयंती',
+};
+
 const MONTH_NAMES_EN = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
@@ -130,6 +139,7 @@ function angaRow(label, list) {
 
 // Festival priority for the tiny one-liner inside a grid cell
 const TYPE_ORDER = {
+  national: 0,
   eclipse: 0,
   major: 1,
   sankranti: 2,
@@ -141,6 +151,7 @@ const TYPE_ORDER = {
 };
 
 const COLOR_BY_TYPE = {
+  national: '#FDBA74',
   eclipse: '#D8B4FE',
   major: '#F87171',
   sankranti: '#6EE7B7',
@@ -187,7 +198,12 @@ function computeDayPanchang(year, month, day, city) {
   if (!raw) return null;
 
   const tithi = raw.angas.tithis[0];
-  const festivals = [...(raw.festivals || [])].sort(
+  // National holidays are fixed Gregorian dates, so the lunar engine never
+  // returns them — printed almanacs list both, so merge ours in here.
+  const national = NATIONAL_DAYS[`${month}-${day}`];
+  const list = [...(raw.festivals || [])];
+  if (national) list.push({ name: national, type: 'national' });
+  const festivals = list.sort(
     (a, b) => festivalRank(a) - festivalRank(b) || a.name.localeCompare(b.name),
   );
 
@@ -424,6 +440,7 @@ export function findMuhurtasInMonth(days, muhuratId) {
 /* ─ ─ ─  Month PDF / share  ─ ─ ─ */
 
 const PRINT_COLORS = {
+  national: '#C2410C',
   eclipse: '#6D28D9',
   major: '#B91C1C',
   sankranti: '#047857',
