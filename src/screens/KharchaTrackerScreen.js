@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -11,6 +11,7 @@ import {
   Share,
   Platform,
   Alert,
+  AppState,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,8 +20,17 @@ import { File as FsFile, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Colors } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
+import FamilySyncPanel from '../components/FamilySyncPanel';
+import { CLOUD_ENABLED } from '../lib/supabaseConfig';
+import { applyRows, ensureIds, mergeBackup, newEntryId, readMeta, syncOnce } from '../lib/kharchaSync';
 
 const STORAGE_KEY = 'kharchaTrackerData';
+
+// How often the screen asks the cloud for whatever changed while it was open.
+const POLL_MS = 25000;
+// Wait after the last local edit before pushing, so typing a list of kharcha
+// does not fire one request per entry.
+const PUSH_DEBOUNCE_MS = 1200;
 
 // Build a dated backup filename like kharcha-backup-2026-10-27-1430.json
 function backupFilename() {
@@ -109,6 +119,16 @@ export default function KharchaTrackerScreen({ onBack }) {
   // Backup restore confirmation — holds the parsed backup object until confirmed
   const [restoreData, setRestoreData] = useState(null);
 
+  // Family sync — stays null when no family is linked, and the whole cloud
+  // layer then stays out of the picture (pure local behaviour).
+  const [cloudMeta, setCloudMeta] = useState(null);
+  const [syncing, setSyncing] = useState(false);
+  const [statusText, setStatusText] = useState('');
+  const dataRef = useRef(data);
+  const metaRef = useRef(null);
+  const busyRef = useRef(false);
+  const pushTimerRef = useRef(null);
+
   // ── Persistence ──────────────────────────────────────────────
   useEffect(() => {
     (async () => {
@@ -126,6 +146,89 @@ export default function KharchaTrackerScreen({ onBack }) {
     if (!loaded) return;
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data)).catch(() => {});
   }, [data, loaded]);
+
+  // ── Family sync plumbing ─────────────────────────────────────────
+  // Always read the freshest data through a ref so the background sync never
+  // has to re-subscribe on every keystroke.
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
+  // Pick up the saved family (and backfill cloud fields on older entries).
+  useEffect(() => {
+    if (!CLOUD_ENABLED) return;
+    (async () => {
+      const meta = await readMeta();
+      if (!meta) return;
+      metaRef.current = meta;
+      setCloudMeta(meta);
+      setData((prev) => ensureIds(prev, meta.deviceName));
+    })();
+  }, []);
+
+  // One round trip: send whatever this device changed, then fold in whatever
+  // the family changed. Failure is silent by design — unpushed work stays
+  // pending in the snapshot diff and is retried on the next tick.
+  const runSync = useCallback(async () => {
+    const meta = metaRef.current;
+    if (!CLOUD_ENABLED || !meta || !meta.familyCode || busyRef.current) return;
+    busyRef.current = true;
+    setSyncing(true);
+    try {
+      const result = await syncOnce(dataRef.current, meta);
+      // Cursor goes in the ref only. Setting cloudMeta state here would re-run
+      // the push effect below (it depends on cloudMeta) and turn the 25s poll
+      // into a ~2s loop that also keeps re-arming itself.
+      if (result.meta) metaRef.current = result.meta;
+      if (result.changed) setData((prev) => applyRows(prev, result.applied));
+      const d = new Date();
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      setStatusText(
+        result.ok
+          ? `आख़िरी सिंक ${hh}:${mm}`
+          : 'इंटरनेट नहीं — बदलाव क़्यू में हैं',
+      );
+    } finally {
+      setSyncing(false);
+      busyRef.current = false;
+    }
+  }, []);
+
+  // Push shortly after the local data settles. Also fires once when a family
+  // link is created or removed via handleMetaChange.
+  useEffect(() => {
+    if (!CLOUD_ENABLED || !loaded || !cloudMeta) return undefined;
+    clearTimeout(pushTimerRef.current);
+    pushTimerRef.current = setTimeout(runSync, PUSH_DEBOUNCE_MS);
+    return () => clearTimeout(pushTimerRef.current);
+  }, [data, loaded, cloudMeta, runSync]);
+
+  // Pull continuously while the screen is open, and immediately when the app
+  // comes back to the foreground.
+  useEffect(() => {
+    if (!CLOUD_ENABLED || !cloudMeta) return undefined;
+    const id = setInterval(runSync, POLL_MS);
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') runSync();
+    });
+    return () => {
+      clearInterval(id);
+      sub.remove();
+    };
+  }, [cloudMeta, runSync]);
+
+  const handleMetaChange = (meta) => {
+    metaRef.current = meta;
+    setCloudMeta(meta);
+    setStatusText('');
+    // Joining/create pulls the family history; leaving stops all sync.
+    if (meta) {
+      setData((prev) => ensureIds(prev, meta.deviceName));
+      clearTimeout(pushTimerRef.current);
+      pushTimerRef.current = setTimeout(runSync, 300);
+    }
+  };
 
   // ── Derived state ────────────────────────────────────────────
   const monthKey = `${selYear}-${selMonth}`;
@@ -207,7 +310,14 @@ export default function KharchaTrackerScreen({ onBack }) {
     const cost = parseFloat(itemCost);
     const name = itemName.trim();
     if (!name || !cost || cost <= 0) return;
-    const entry = { id: Date.now().toString(), name, cost, day: selDay };
+    const entry = {
+      id: newEntryId(),
+      name,
+      cost,
+      day: selDay,
+      addedBy: cloudMeta ? cloudMeta.deviceName : '',
+      updatedAt: Date.now(),
+    };
     setData((prev) => ({ ...prev, [monthKey]: [entry, ...(prev[monthKey] || [])] }));
     setItemName('');
     setItemCost('');
@@ -258,6 +368,13 @@ export default function KharchaTrackerScreen({ onBack }) {
       // user dismissed
     }
   };
+
+  // "Kisne add kiya" — only for another family member's entry, rendered inline
+  // so the existing row layout does not shift at all.
+  const byline = (e) =>
+    cloudMeta && e.addedBy && e.addedBy !== cloudMeta.deviceName ? (
+      <Text style={styles.itemByline}> · {e.addedBy}</Text>
+    ) : null;
 
   const dayPillLabel =
     isCurrentMonth && selDay === NOW.getDate()
@@ -354,7 +471,9 @@ export default function KharchaTrackerScreen({ onBack }) {
 
   const doRestore = () => {
     if (!restoreData) return;
-    setData(restoreData);
+    // Linked to a family: merge by entry id so the restore cannot wipe what the
+    // others have added. Not linked: load the file exactly as it is.
+    setData((prev) => (cloudMeta ? mergeBackup(prev, restoreData, cloudMeta.deviceName) : restoreData));
     setRestoreData(null);
     setYearSummaryOpen(false);
     Alert.alert('डेटा वापस आ गया ✅', 'बैकअप से सारा खर्चा फोन में लाद दिया गया है।');
@@ -527,6 +646,7 @@ export default function KharchaTrackerScreen({ onBack }) {
                     </View>
                     <Text style={styles.entryName} numberOfLines={1}>
                       {g.items[0].name}
+                      {byline(g.items[0])}
                     </Text>
                     <Text style={styles.entryCost}>{fmt(g.items[0].cost)}</Text>
                     <TouchableOpacity
@@ -566,6 +686,7 @@ export default function KharchaTrackerScreen({ onBack }) {
                         <View style={styles.itemBullet} />
                         <Text style={styles.itemName} numberOfLines={1}>
                           {e.name}
+                          {byline(e)}
                         </Text>
                         <Text style={styles.itemCost}>{fmt(e.cost)}</Text>
                         <TouchableOpacity
@@ -632,6 +753,15 @@ export default function KharchaTrackerScreen({ onBack }) {
           </View>
         )}
 
+        {/* Family sync */}
+        <FamilySyncPanel
+          meta={cloudMeta}
+          statusText={statusText}
+          syncing={syncing}
+          onMetaChange={handleMetaChange}
+          onSyncNow={runSync}
+        />
+
         {/* Data Backup & Restore */}
         <View style={styles.card}>
           <View style={styles.backupHead}>
@@ -649,7 +779,7 @@ export default function KharchaTrackerScreen({ onBack }) {
               <Text style={styles.backupBtnText}>बैकअप फाइल बनाएं</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.restoreBtn} onPress={handleRestore} activeOpacity={0.85}>
-              <Ionicons name="upload-outline" size={18} color="#FBBF24" />
+              <Ionicons name="cloud-upload-outline" size={18} color="#FBBF24" />
               <Text style={styles.restoreBtnText}>बैकअप से Restore</Text>
             </TouchableOpacity>
           </View>
@@ -1352,6 +1482,11 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     fontWeight: '600',
     color: Colors.textSecondary,
+  },
+  itemByline: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#34D399',
   },
   itemCost: {
     fontSize: 13.5,
