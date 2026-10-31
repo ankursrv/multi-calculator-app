@@ -12,6 +12,8 @@ import {
   Platform,
   Alert,
   AppState,
+  LayoutAnimation,
+  UIManager,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,6 +27,11 @@ import { CLOUD_ENABLED } from '../lib/supabaseConfig';
 import { applyRows, ensureIds, mergeBackup, newEntryId, readMeta, syncOnce } from '../lib/kharchaSync';
 
 const STORAGE_KEY = 'kharchaTrackerData';
+
+// Animate the backup hint's collapse/expand on Android too (iOS is on by default).
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 // How often the screen asks the cloud for whatever changed while it was open.
 const POLL_MS = 25000;
@@ -114,6 +121,8 @@ export default function KharchaTrackerScreen({ onBack }) {
   const [openDropdown, setOpenDropdown] = useState(null); // 'year' | 'month'
   const [dayPickerOpen, setDayPickerOpen] = useState(false);
   const [yearSummaryOpen, setYearSummaryOpen] = useState(false);
+  // Backup hint: collapsed to one line with an inline Read More / Read Less
+  const [backupExpanded, setBackupExpanded] = useState(false);
   // Delete/Clear confirmation popup — { type: 'entry'|'month', id?, name? }
   const [confirm, setConfirm] = useState(null);
   // Backup restore confirmation — holds the parsed backup object until confirmed
@@ -387,6 +396,17 @@ export default function KharchaTrackerScreen({ onBack }) {
     [data],
   );
 
+  // Toggle the backup hint; LayoutAnimation smooths the height change natively.
+  const toggleBackupHint = () => {
+    LayoutAnimation.configureNext(
+      LayoutAnimation.create(240, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity),
+    );
+    setBackupExpanded((v) => !v);
+  };
+
+  const backupHintText =
+    'बैकअप फाइल में आपका सारा खर्चा सेव हो जाता है। यह फाइल WhatsApp या Google Drive में भेजकर रख लें — नया फोन लेने पर या ऐप डिलीट होने पर इसी फाइल से सारा डेटा वापस आ जाएगा।';
+
   const handleBackup = async () => {
     if (totalEntryCount === 0) {
       Alert.alert('कुछ बैकअप नहीं', 'पहले कोई खर्चा जोड़ें, फिर बैकअप फाइल बनेगी।');
@@ -594,17 +614,15 @@ export default function KharchaTrackerScreen({ onBack }) {
         <View style={styles.card}>
           <View style={styles.listHeader}>
             <Text style={styles.cardTitle}>
-              Entries ({entries.length})
+              Total Entries ({entries.length})
             </Text>
             {entries.length > 0 && (
               <View style={{ flexDirection: 'row', gap: 8 }}>
-                <TouchableOpacity style={styles.actionPill} onPress={handleShare}>
-                  <Ionicons name="share-social-outline" size={14} color="#34D399" />
-                  <Text style={styles.actionPillText}>Share</Text>
+                <TouchableOpacity style={styles.actionPill} onPress={handleShare} accessibilityLabel="Share">
+                  <Ionicons name="share-social-outline" size={20} color="#34D399" />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.clearPill} onPress={handleClearMonth}>
-                  <Ionicons name="trash-outline" size={13} color={Colors.danger} />
-                  <Text style={styles.clearPillText}>Clear</Text>
+                <TouchableOpacity style={styles.clearPill} onPress={handleClearMonth} accessibilityLabel="Clear">
+                  <Ionicons name="trash-outline" size={20} color={Colors.danger} />
                 </TouchableOpacity>
               </View>
             )}
@@ -669,7 +687,6 @@ export default function KharchaTrackerScreen({ onBack }) {
                         <Text style={styles.dayHeadCount}>
                           {g.items.length} {g.items.length === 1 ? 'Item' : 'Items'}
                         </Text>
-                        <Text style={styles.dayHeadSub}>इस दिन का कुल</Text>
                       </View>
                       <View style={styles.dayHeadTotalWrap}>
                         <Text style={styles.dayHeadTotal}>{fmt(g.sub)}</Text>
@@ -683,7 +700,6 @@ export default function KharchaTrackerScreen({ onBack }) {
                           idx === g.items.length - 1 && styles.itemRowLast,
                         ]}
                       >
-                        <View style={styles.itemBullet} />
                         <Text style={styles.itemName} numberOfLines={1}>
                           {e.name}
                           {byline(e)}
@@ -768,11 +784,26 @@ export default function KharchaTrackerScreen({ onBack }) {
             <Ionicons name="shield-checkmark-outline" size={18} color="#34D399" />
             <Text style={styles.cardTitle}>डेटा बैकअप और रिस्टोर</Text>
           </View>
-          <Text style={styles.backupHint}>
-            बैकअप फाइल में आपका सारा खर्चा सेव हो जाता है। यह फाइल WhatsApp या Google
-            Drive में भेजकर रख लें — नया फोन लेने पर या ऐप डिलीट होने पर इसी फाइल से सारा
-            डेटा वापस आ जाएगा।
-          </Text>
+          <View style={styles.backupHintWrap}>
+            {backupExpanded ? (
+              <Text style={styles.backupHint}>
+                {backupHintText}
+                {'  '}
+                <Text style={styles.readMoreText} onPress={toggleBackupHint}>
+                  Read Less
+                </Text>
+              </Text>
+            ) : (
+              <View style={styles.backupHintRow}>
+                <Text style={[styles.backupHint, styles.backupHintFlex]} numberOfLines={1}>
+                  {backupHintText}
+                </Text>
+                <Text style={styles.readMoreText} onPress={toggleBackupHint}>
+                  Read More
+                </Text>
+              </View>
+            )}
+          </View>
           <View style={styles.backupBtnRow}>
             <TouchableOpacity style={styles.backupBtn} onPress={handleBackup} activeOpacity={0.85}>
               <Ionicons name="download-outline" size={18} color="#34D399" />
@@ -783,9 +814,6 @@ export default function KharchaTrackerScreen({ onBack }) {
               <Text style={styles.restoreBtnText}>बैकअप से Restore</Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.backupCount}>
-            अभी कुल {totalEntryCount} {totalEntryCount === 1 ? 'Entry' : 'Entries'} सेव हैं।
-          </Text>
         </View>
       </ScrollView>
 
@@ -1317,32 +1345,20 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   actionPill: {
-    flexDirection: 'row',
+    width: 28,
+    height: 28,
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'center',
     backgroundColor: 'rgba(52, 211, 153, 0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  actionPillText: {
-    fontSize: 11,
-    color: '#34D399',
-    fontWeight: '700',
+    borderRadius: 100,
   },
   clearPill: {
-    flexDirection: 'row',
+    width: 28,
+    height: 28,
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'center',
     backgroundColor: Colors.dangerBg,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  clearPillText: {
-    fontSize: 11,
-    color: Colors.danger,
-    fontWeight: '700',
+    borderRadius: 100,
   },
   entriesScroll: {
     maxHeight: 280,
@@ -1361,8 +1377,8 @@ const styles = StyleSheet.create({
 
   // Date badge (shared)
   dateBadge: {
-    width: 44,
-    height: 44,
+    width: 34,
+    height: 34,
     borderRadius: 10,
     backgroundColor: 'rgba(52, 211, 153, 0.12)',
     borderWidth: 1,
@@ -1371,16 +1387,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dateBadgeDay: {
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: '800',
     color: '#34D399',
-    lineHeight: 17,
   },
   dateBadgeMon: {
     fontSize: 9,
     fontWeight: '700',
     color: Colors.textMuted,
-    marginTop: 1,
   },
 
   // Single-item flat row
@@ -1400,8 +1414,8 @@ const styles = StyleSheet.create({
   },
   entryName: {
     flex: 1,
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '400',
     color: Colors.text,
   },
   entryCost: {
@@ -1479,8 +1493,8 @@ const styles = StyleSheet.create({
   },
   itemName: {
     flex: 1,
-    fontSize: 13.5,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '400',
     color: Colors.textSecondary,
   },
   itemByline: {
@@ -1496,14 +1510,8 @@ const styles = StyleSheet.create({
 
   // Delete button (trash)
   delBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.35)',
-    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    width: 18,
+    height: 18,
   },
 
   // Empty state
@@ -1892,7 +1900,22 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: Colors.textDim,
     fontWeight: '600',
+  },
+  backupHintWrap: {
     marginBottom: 14,
+  },
+  backupHintRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+  },
+  backupHintFlex: {
+    flex: 1,
+  },
+  readMoreText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#34D399',
   },
   backupBtnRow: {
     flexDirection: 'row',
