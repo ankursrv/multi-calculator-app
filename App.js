@@ -14,6 +14,7 @@ import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from './src/theme/colors';
+import { AuthProvider } from './src/context/AuthContext';
 
 // Screens
 import HomeScreen from './src/screens/HomeScreen';
@@ -73,7 +74,7 @@ function MainApp() {
   const insets = useSafeAreaInsets();
   const [currentScreen, setCurrentScreen] = useState('home');
   const [activeBottomTab, setActiveBottomTab] = useState('home');
-  
+
   // Shared Smart Bill / Khata State — khaali shuru, entries user khud add karega
   const [billList, setBillList] = useState([]);
 
@@ -294,7 +295,9 @@ function MainApp() {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <MainApp />
+      <AuthProvider>
+        <MainApp />
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }

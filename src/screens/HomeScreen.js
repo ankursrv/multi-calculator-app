@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Platform,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -17,9 +18,18 @@ import FdCardGlow from '../components/FdCardGlow';
 import KhataCardGlow from '../components/KhataCardGlow';
 import GoldRateCardGlow from '../components/GoldRateCardGlow';
 import TyohaarCardGlow from '../components/TyohaarCardGlow';
+import ProfileMenuModal from '../components/ProfileMenuModal';
+import LoginModal from '../components/LoginModal';
+import EditProfileModal from '../components/EditProfileModal';
 import useTodayPanchang from '../hooks/useTodayPanchang';
+import { useAuth, getUserBadgeInitials } from '../context/AuthContext';
 
 export default function HomeScreen({ onSelectScreen }) {
+  const { currentUser, isLoggedIn } = useAuth();
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+
   // Today's tithi / nakshatra / yoga / karana / rashi, shown live in the card
   const { headLine, angaLine, subLine } = useTodayPanchang();
 
@@ -54,6 +64,39 @@ export default function HomeScreen({ onSelectScreen }) {
               <Text style={styles.appSubtitle}>Smart Calculators Hub</Text>
             </View>
           </View>
+
+          {/* User Profile / Login Header Button */}
+          {isLoggedIn && currentUser ? (
+            <TouchableOpacity
+              onPress={() => setShowProfileMenu(true)}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['#FBBF24', '#F97316', '#EA580C']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.avatarGradientRing}
+              >
+                <View style={styles.avatarInnerContainer}>
+                  {currentUser.avatarImage ? (
+                    <Image source={{ uri: currentUser.avatarImage }} style={styles.headerAvatarImg} />
+                  ) : (
+                    <Text style={styles.avatarInitialsText}>
+                      {getUserBadgeInitials(currentUser.name || 'User')}
+                    </Text>
+                  )}
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.loginHeaderBtn}
+              onPress={() => setShowLoginModal(true)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.loginHeaderBtnText}>Login</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </LinearGradient>
 
@@ -342,6 +385,24 @@ export default function HomeScreen({ onSelectScreen }) {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Profile & Login Modals */}
+      <ProfileMenuModal
+        visible={showProfileMenu}
+        onClose={() => setShowProfileMenu(false)}
+        onOpenLogin={() => setShowLoginModal(true)}
+        onOpenEditProfile={() => setShowEditProfileModal(true)}
+      />
+
+      <LoginModal
+        visible={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+      />
+
+      <EditProfileModal
+        visible={showEditProfileModal}
+        onClose={() => setShowEditProfileModal(false)}
+      />
     </View>
   );
 }
@@ -408,6 +469,54 @@ const styles = StyleSheet.create({
     color: '#FB923C',
     fontWeight: '600',
     letterSpacing: 0.2,
+  },
+  loginHeaderBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: 'rgba(251, 191, 36, 0.45)',
+    backgroundColor: 'rgba(251, 191, 36, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loginHeaderBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FBBF24',
+    letterSpacing: 0.5,
+  },
+  avatarGradientRing: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    padding: 2.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.45,
+    shadowRadius: 7,
+    elevation: 5,
+  },
+  avatarInnerContainer: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: '#0F172A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerAvatarImg: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarInitialsText: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#FBBF24',
+    letterSpacing: 0.5,
   },
   scrollView: {
     flex: 1,

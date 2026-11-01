@@ -26,8 +26,7 @@ import FamilySyncPanel from '../components/FamilySyncPanel';
 import GPayLogo from '../components/GPayLogo';
 import { CLOUD_ENABLED } from '../lib/supabaseConfig';
 import { applyRows, ensureIds, mergeBackup, newEntryId, readMeta, syncOnce } from '../lib/kharchaSync';
-
-const STORAGE_KEY = 'kharchaTrackerData';
+import { useAuth } from '../context/AuthContext';
 
 // Animate the backup hint's collapse/expand on Android too (iOS is on by default).
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -129,6 +128,7 @@ function renderPaymentModeIcon(mode) {
 }
 
 export default function KharchaTrackerScreen({ onBack }) {
+  const { expensesStorageKey, currentUser, isLoggedIn } = useAuth();
   // { "year-month": [{ id, name, cost, day }] }
   const [data, setData] = useState({});
   const [loaded, setLoaded] = useState(false);
@@ -173,21 +173,30 @@ export default function KharchaTrackerScreen({ onBack }) {
 
   // ── Persistence ──────────────────────────────────────────────
   useEffect(() => {
+    let isCancelled = false;
     (async () => {
       try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (raw) setData(JSON.parse(raw));
+        setLoaded(false);
+        const raw = await AsyncStorage.getItem(expensesStorageKey);
+        if (!isCancelled) {
+          if (raw) setData(JSON.parse(raw));
+          else setData({});
+        }
       } catch (_e) {
-        // first run / corrupt data — start fresh
+        if (!isCancelled) setData({});
+      } finally {
+        if (!isCancelled) setLoaded(true);
       }
-      setLoaded(true);
     })();
-  }, []);
+    return () => {
+      isCancelled = true;
+    };
+  }, [expensesStorageKey]);
 
   useEffect(() => {
     if (!loaded) return;
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data)).catch(() => { });
-  }, [data, loaded]);
+    AsyncStorage.setItem(expensesStorageKey, JSON.stringify(data)).catch(() => { });
+  }, [data, loaded, expensesStorageKey]);
 
   // ── Family sync plumbing ─────────────────────────────────────────
   // Always read the freshest data through a ref so the background sync never
@@ -760,7 +769,11 @@ export default function KharchaTrackerScreen({ onBack }) {
     <View style={styles.container}>
       <ScreenHeader
         title="Daily Expenses"
-        subtitle="महीने-दर-महीने खर्चा का हिसाब"
+        subtitle={
+          isLoggedIn && currentUser
+            ? `${currentUser.name || 'User'}'s Personal Expenses`
+            : 'Track Month-by-Month Expenses'
+        }
         icon="notebook-outline"
         theme="emerald"
         onBack={onBack}
