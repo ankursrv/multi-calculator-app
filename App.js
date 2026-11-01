@@ -8,7 +8,9 @@ import {
   Dimensions,
   Platform,
   Easing,
+  useWindowDimensions,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -90,7 +92,7 @@ function MainApp() {
     currentScreenRef.current = screenId;
 
     // Instantly update active tab highlight so the tap feels responsive
-    if (['home', 'kharcha', 'standard', 'fd'].includes(screenId)) {
+    if (['home', 'kharcha', 'standard', 'fd', 'bill'].includes(screenId)) {
       setActiveBottomTab(screenId);
     }
 
@@ -131,14 +133,9 @@ function MainApp() {
     setBillList([]);
   };
 
-  const bottomNavItems = [
-    {
-      id: 'home',
-      label: 'Home',
-      icon: 'home-outline',
-      iconActive: 'home',
-      type: 'ion',
-    },
+  const { width: screenWidth } = useWindowDimensions();
+
+  const leftNavItems = [
     {
       id: 'kharcha',
       label: 'Daily Expenses',
@@ -153,11 +150,21 @@ function MainApp() {
       iconActive: 'calculator',
       type: 'ion',
     },
+  ];
+
+  const rightNavItems = [
     {
       id: 'fd',
       label: 'FD Calculator',
       icon: 'bank',
       iconActive: 'bank',
+      type: 'mci',
+    },
+    {
+      id: 'bill',
+      label: 'Smart Khata',
+      icon: 'book-open-outline',
+      iconActive: 'book-open',
       type: 'mci',
     },
   ];
@@ -224,70 +231,130 @@ function MainApp() {
         )}
       </Animated.View>
 
-      {/* Bottom Navigation Bar */}
-      <View
-        style={[
-          styles.bottomNavContainer,
-          { paddingBottom: Math.max(insets.bottom, Platform.OS === 'android' ? 24 : 6) },
-        ]}
-      >
-        <View style={styles.bottomNav}>
-          {bottomNavItems.map((tab) => {
-            const isActive = activeBottomTab === tab.id;
-            return (
-              <TouchableOpacity
-                key={tab.id}
-                style={styles.navTab}
-                onPress={() => navigateTo(tab.id)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.tabIconWrap}>
-                  {tab.type === 'ion' ? (
-                    <Ionicons
-                      name={isActive ? tab.iconActive : tab.icon}
-                      size={22}
-                      color={isActive ? Colors.amber : Colors.textDim}
-                    />
-                  ) : (
-                    <MaterialCommunityIcons
-                      name={isActive ? tab.iconActive : tab.icon}
-                      size={22}
-                      color={isActive ? Colors.amber : Colors.textDim}
-                    />
-                  )}
+      {/* Curved Center-Notch Bottom Navigation Bar */}
+      {(() => {
+        const c = screenWidth / 2;
+        const notchWidth = 50;
+        const notchDepth = 36;
+        const notchPath = `
+          M 0 0
+          L ${c - notchWidth} 0
+          C ${c - 40} 0, ${c - 34} 13, ${c - 30} 20
+          C ${c - 26} 27, ${c - 16} ${notchDepth}, ${c} ${notchDepth}
+          C ${c + 16} ${notchDepth}, ${c + 26} 27, ${c + 30} 20
+          C ${c + 34} 13, ${c + 40} 0, ${c + notchWidth} 0
+          L ${screenWidth} 0
+          L ${screenWidth} 130
+          L 0 130
+          Z
+        `;
+        const notchStroke = `M 0 0 L ${c - notchWidth} 0 C ${c - 40} 0, ${c - 34} 13, ${c - 30} 20 C ${c - 26} 27, ${c - 16} ${notchDepth}, ${c} ${notchDepth} C ${c + 16} ${notchDepth}, ${c + 26} 27, ${c + 30} 20 C ${c + 34} 13, ${c + 40} 0, ${c + notchWidth} 0 L ${screenWidth} 0`;
 
-                  {/* Notification Badge if any */}
-                  {tab.badgeCount > 0 && (
-                    <View style={styles.badgeDot}>
-                      <Text style={styles.badgeDotText}>{tab.badgeCount}</Text>
-                    </View>
-                  )}
-                </View>
-
-                <Text
-                  numberOfLines={1}
-                  style={[
-                    styles.navTabLabel,
-                    isActive && styles.navTabLabelActive,
-                  ]}
-                >
-                  {tab.label}
-                </Text>
-
-                {/* Active Indicator Underline */}
-                {isActive && (
-                  <LinearGradient
-                    colors={Colors.gradientColors}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.activeIndicator}
+        const renderTab = (tab) => {
+          const isActive = activeBottomTab === tab.id;
+          return (
+            <TouchableOpacity
+              key={tab.id}
+              style={styles.navTab}
+              onPress={() => navigateTo(tab.id)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.tabIconWrap}>
+                {tab.type === 'ion' ? (
+                  <Ionicons
+                    name={isActive ? tab.iconActive : tab.icon}
+                    size={21}
+                    color={isActive ? Colors.amber : Colors.textDim}
+                  />
+                ) : (
+                  <MaterialCommunityIcons
+                    name={isActive ? tab.iconActive : tab.icon}
+                    size={21}
+                    color={isActive ? Colors.amber : Colors.textDim}
                   />
                 )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
+              </View>
+
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.navTabLabel,
+                  isActive && styles.navTabLabelActive,
+                ]}
+              >
+                {tab.label}
+              </Text>
+
+              {isActive && (
+                <LinearGradient
+                  colors={Colors.gradientColors}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.activeIndicator}
+                />
+              )}
+            </TouchableOpacity>
+          );
+        };
+
+        return (
+          <View
+            style={[
+              styles.bottomNavContainer,
+              { paddingBottom: Math.max(insets.bottom, Platform.OS === 'android' ? 20 : 6) },
+            ]}
+          >
+            {/* SVG Curved Notch Background */}
+            <Svg width={screenWidth} height={130} style={StyleSheet.absoluteFill}>
+              <Path d={notchPath} fill="#030712" />
+              <Path
+                d={notchStroke}
+                stroke="rgba(100, 116, 139, 0.12)"
+                strokeWidth={1}
+                fill="none"
+              />
+            </Svg>
+
+            <View style={styles.bottomNavRow}>
+              {/* Left 2 Tabs */}
+              <View style={styles.navSideGroup}>
+                {leftNavItems.map(renderTab)}
+              </View>
+
+              {/* Center Notch Spacer */}
+              <View style={styles.centerGap} />
+
+              {/* Right 2 Tabs */}
+              <View style={styles.navSideGroup}>
+                {rightNavItems.map(renderTab)}
+              </View>
+            </View>
+
+            {/* Elevated Center Floating Home Button */}
+            <TouchableOpacity
+              style={[styles.centerFabBtn, { left: c - 20 }]}
+              onPress={() => navigateTo('home')}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={activeBottomTab === 'home' ? Colors.gradientColors : ['#241A12', '#15100B']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[
+                  styles.centerFabGradient,
+                  activeBottomTab === 'home' && styles.centerFabActive,
+                ]}
+              >
+                <Ionicons
+                  name={activeBottomTab === 'home' ? 'home' : 'home-outline'}
+                  size={17}
+                  color={activeBottomTab === 'home' ? '#FFFFFF' : Colors.amber}
+                />
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        );
+      })()}
     </SafeAreaView>
   );
 }
@@ -311,15 +378,55 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bottomNavContainer: {
-    backgroundColor: 'rgba(3, 7, 18, 0.98)',
-    borderTopWidth: 1,
-    borderTopColor: Colors.cardBorder,
+    backgroundColor: '#030712',
+    position: 'relative',
   },
-  bottomNav: {
+  bottomNavRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
     alignItems: 'center',
-    height: 56,
+    height: 62,
+    paddingHorizontal: 16,
+  },
+  navSideGroup: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    height: '100%',
+  },
+  centerGap: {
+    width: 80,
+    height: '100%',
+  },
+  centerFabBtn: {
+    position: 'absolute',
+    top: -12,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 9,
+    elevation: 10,
+  },
+  centerFabGradient: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(245, 158, 11, 0.45)',
+  },
+  centerFabActive: {
+    borderColor: '#FEF08A',
+    borderWidth: 2.5,
+    shadowColor: '#F59E0B',
+    shadowOpacity: 0.8,
   },
   navTab: {
     flex: 1,
@@ -327,6 +434,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     height: '100%',
     position: 'relative',
+    paddingTop: 6,
   },
   tabIconWrap: {
     position: 'relative',
@@ -349,11 +457,11 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   navTabLabel: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '600',
     color: Colors.textDim,
     marginTop: 3,
-    maxWidth: '92%',
+    maxWidth: '96%',
     textAlign: 'center',
   },
   navTabLabelActive: {
@@ -363,7 +471,7 @@ const styles = StyleSheet.create({
   activeIndicator: {
     position: 'absolute',
     bottom: 2,
-    width: 24,
+    width: 20,
     height: 3,
     borderRadius: 2,
   },

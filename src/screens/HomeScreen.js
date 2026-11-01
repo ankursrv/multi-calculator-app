@@ -524,7 +524,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 14,
     paddingTop: 18,
-    paddingBottom: 28,
+    paddingBottom: 48,
   },
   searchContainer: {
     flexDirection: 'row',
