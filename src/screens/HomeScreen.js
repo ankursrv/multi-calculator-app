@@ -145,7 +145,7 @@ export default function HomeScreen({ onSelectScreen }) {
               </LinearGradient>
 
               <View style={styles.trackerCardBody}>
-                <Text style={styles.trackerCardTitle}>Kharcha Tracker</Text>
+                <Text style={styles.trackerCardTitle}>Daily Expenses</Text>
                 <Text style={styles.trackerCardDescHindi}>
                   महीने-दर-महीने खर्चा का हिसाब - हर सामान, हर कीमत
                 </Text>

@@ -16,13 +16,14 @@ import {
   UIManager,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { File as FsFile, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Colors } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
 import FamilySyncPanel from '../components/FamilySyncPanel';
+import GPayLogo from '../components/GPayLogo';
 import { CLOUD_ENABLED } from '../lib/supabaseConfig';
 import { applyRows, ensureIds, mergeBackup, newEntryId, readMeta, syncOnce } from '../lib/kharchaSync';
 
@@ -105,6 +106,28 @@ function fmt(n) {
   return '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
 }
 
+function renderPaymentModeIcon(mode) {
+  if (!mode) return null;
+  const m = String(mode).trim().toLowerCase();
+  if (m === 'upi' || m === 'gpay') {
+    return <GPayLogo size={13} style={styles.modeIconRaw} />;
+  }
+  if (m === 'cash') {
+    return <Text style={styles.cashEmoji}>💵</Text>;
+  }
+  if (m === 'bank') {
+    return (
+      <MaterialCommunityIcons
+        name="bank"
+        size={11.5}
+        color="#38BDF8"
+        style={styles.modeIconRaw}
+      />
+    );
+  }
+  return null;
+}
+
 export default function KharchaTrackerScreen({ onBack }) {
   // { "year-month": [{ id, name, cost, day }] }
   const [data, setData] = useState({});
@@ -123,10 +146,20 @@ export default function KharchaTrackerScreen({ onBack }) {
   const [yearSummaryOpen, setYearSummaryOpen] = useState(false);
   // Backup hint: collapsed to one line with an inline Read More / Read Less
   const [backupExpanded, setBackupExpanded] = useState(false);
-  // Delete/Clear confirmation popup — { type: 'entry'|'month', id?, name? }
+  // Delete/Clear confirmation popup — { type: 'entry'|'month'|'unmarkDay', id?, name?, day? }
   const [confirm, setConfirm] = useState(null);
   // Backup restore confirmation — holds the parsed backup object until confirmed
   const [restoreData, setRestoreData] = useState(null);
+
+  // Settlement & Payment status state
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'pending' | 'paid'
+  const [settleModalOpen, setSettleModalOpen] = useState(false);
+  const [settleTargetDay, setSettleTargetDay] = useState(null); // null = all pending in month, or day number
+  const [settleTargetEntryId, setSettleTargetEntryId] = useState(null); // specific entry ID when settling/editing single item
+  const [paymentMode, setPaymentMode] = useState('UPI'); // 'UPI' | 'Cash' | 'Bank'
+  const [paymentNote, setPaymentNote] = useState('');
+  const [activeTooltipId, setActiveTooltipId] = useState(null); // entry ID whose note tooltip is currently visible
+  const toggleTooltip = (id) => setActiveTooltipId((prev) => (prev === id ? null : id));
 
   // Family sync — stays null when no family is linked, and the whole cloud
   // layer then stays out of the picture (pure local behaviour).
@@ -144,7 +177,7 @@ export default function KharchaTrackerScreen({ onBack }) {
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (raw) setData(JSON.parse(raw));
-      } catch (e) {
+      } catch (_e) {
         // first run / corrupt data — start fresh
       }
       setLoaded(true);
@@ -153,7 +186,7 @@ export default function KharchaTrackerScreen({ onBack }) {
 
   useEffect(() => {
     if (!loaded) return;
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data)).catch(() => {});
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data)).catch(() => { });
   }, [data, loaded]);
 
   // ── Family sync plumbing ─────────────────────────────────────────
@@ -241,8 +274,16 @@ export default function KharchaTrackerScreen({ onBack }) {
 
   // ── Derived state ────────────────────────────────────────────
   const monthKey = `${selYear}-${selMonth}`;
-  const entries = data[monthKey] || [];
-  const monthTotal = entries.reduce((a, e) => a + e.cost, 0);
+  const entries = useMemo(() => data[monthKey] || [], [data, monthKey]);
+  const monthTotal = useMemo(() => entries.reduce((a, e) => a + (Number(e.cost) || 0), 0), [entries]);
+  const paidTotal = useMemo(
+    () => entries.filter((e) => e.paid).reduce((a, e) => a + (Number(e.cost) || 0), 0),
+    [entries],
+  );
+  const pendingTotal = useMemo(() => monthTotal - paidTotal, [monthTotal, paidTotal]);
+  const paidCount = useMemo(() => entries.filter((e) => e.paid).length, [entries]);
+  const pendingCount = useMemo(() => entries.length - paidCount, [entries, paidCount]);
+
   const daysInMonth = new Date(selYear, selMonth, 0).getDate();
   const firstDayOfWeek = new Date(selYear, selMonth - 1, 1).getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
   const isCurrentMonth = selYear === THIS_YEAR && selMonth === NOW.getMonth() + 1;
@@ -252,21 +293,77 @@ export default function KharchaTrackerScreen({ onBack }) {
     return s;
   }, [entries]);
 
-  // Days sorted newest-first; 1 item = flat row, 2+ = grouped card
-  const dayGroups = useMemo(() => {
+  // Calendar day status: tracks which days have pending vs fully paid entries
+  const dayStatusMap = useMemo(() => {
     const map = {};
     entries.forEach((e) => {
+      if (!map[e.day]) map[e.day] = { hasPending: false, hasPaid: false };
+      if (e.paid) map[e.day].hasPaid = true;
+      else map[e.day].hasPending = true;
+    });
+    return map;
+  }, [entries]);
+
+  // Filtered by status (all / pending / paid)
+  const filteredEntries = useMemo(() => {
+    if (statusFilter === 'pending') return entries.filter((e) => !e.paid);
+    if (statusFilter === 'paid') return entries.filter((e) => e.paid);
+    return entries;
+  }, [entries, statusFilter]);
+
+  // Days sorted newest-first; includes paid/pending metrics per day
+  const dayGroups = useMemo(() => {
+    const map = {};
+    filteredEntries.forEach((e) => {
       (map[e.day] = map[e.day] || []).push(e);
     });
     return Object.keys(map)
       .map(Number)
       .sort((a, b) => b - a)
-      .map((d) => ({
-        day: d,
-        items: map[d],
-        sub: map[d].reduce((a, e) => a + e.cost, 0),
-      }));
-  }, [entries]);
+      .map((d) => {
+        const items = map[d];
+        const sub = items.reduce((a, e) => a + (Number(e.cost) || 0), 0);
+        const isAllPaid = items.length > 0 && items.every((e) => e.paid);
+        const isAnyPaid = items.some((e) => e.paid);
+        return {
+          day: d,
+          items,
+          sub,
+          isAllPaid,
+          isPartiallyPaid: isAnyPaid && !isAllPaid,
+          paidSub: items.filter((e) => e.paid).reduce((a, e) => a + (Number(e.cost) || 0), 0),
+          pendingSub: items.filter((e) => !e.paid).reduce((a, e) => a + (Number(e.cost) || 0), 0),
+        };
+      });
+  }, [filteredEntries]);
+
+  const targetEntry = useMemo(() => {
+    if (!settleTargetEntryId) return null;
+    return entries.find((e) => e.id === settleTargetEntryId) || null;
+  }, [entries, settleTargetEntryId]);
+
+  // For settle modal: amount and count of items being settled
+  const targetSettleAmount = useMemo(() => {
+    if (targetEntry) {
+      return Number(targetEntry.cost) || 0;
+    }
+    if (settleTargetDay !== null) {
+      return entries
+        .filter((e) => e.day === settleTargetDay && !e.paid)
+        .reduce((a, e) => a + (Number(e.cost) || 0), 0);
+    }
+    return pendingTotal;
+  }, [entries, settleTargetDay, targetEntry, pendingTotal]);
+
+  const targetSettleCount = useMemo(() => {
+    if (targetEntry) {
+      return 1;
+    }
+    if (settleTargetDay !== null) {
+      return entries.filter((e) => e.day === settleTargetDay && !e.paid).length;
+    }
+    return pendingCount;
+  }, [entries, settleTargetDay, targetEntry, pendingCount]);
 
   const yearRows = useMemo(() => {
     const totals = [];
@@ -324,12 +421,125 @@ export default function KharchaTrackerScreen({ onBack }) {
       name,
       cost,
       day: selDay,
+      paid: false,
       addedBy: cloudMeta ? cloudMeta.deviceName : '',
       updatedAt: Date.now(),
     };
     setData((prev) => ({ ...prev, [monthKey]: [entry, ...(prev[monthKey] || [])] }));
     setItemName('');
     setItemCost('');
+  };
+
+  // Modal openers
+  const openSettleModalForMonth = () => {
+    setSettleTargetDay(null);
+    setSettleTargetEntryId(null);
+    setPaymentMode('UPI');
+    setPaymentNote('');
+    setSettleModalOpen(true);
+  };
+
+  const openSettleModalForDay = (day) => {
+    setSettleTargetDay(day);
+    setSettleTargetEntryId(null);
+    setPaymentMode('UPI');
+    setPaymentNote('');
+    setSettleModalOpen(true);
+  };
+
+  const openSettleModalForEntry = (entry) => {
+    setSettleTargetEntryId(entry.id);
+    setSettleTargetDay(null);
+    setPaymentMode(entry.paymentMode || 'UPI');
+    setPaymentNote(entry.paymentNote || '');
+    setSettleModalOpen(true);
+  };
+
+  // Toggle single item paid status
+  const handleToggleEntryPaid = (id) => {
+    const entry = entries.find((e) => e.id === id);
+    if (!entry) return;
+    if (entry.paid) {
+      // If already paid -> toggle off to unpaid
+      setData((prev) => {
+        const list = prev[monthKey] || [];
+        return {
+          ...prev,
+          [monthKey]: list.map((e) => {
+            if (e.id !== id) return e;
+            return {
+              ...e,
+              paid: false,
+              paidAt: null,
+              paymentMode: null,
+              paymentNote: '',
+              updatedAt: Date.now(),
+            };
+          }),
+        };
+      });
+    } else {
+      // Unpaid -> open payment modal so user can pick GPay, Cash, or Bank!
+      openSettleModalForEntry(entry);
+    }
+  };
+
+  // Toggle all items on a day
+  const handleToggleDayPaid = (day, targetPaid) => {
+    setData((prev) => {
+      const list = prev[monthKey] || [];
+      return {
+        ...prev,
+        [monthKey]: list.map((e) => {
+          if (e.day !== day) return e;
+          return {
+            ...e,
+            paid: targetPaid,
+            paidAt: targetPaid ? Date.now() : null,
+            paymentMode: targetPaid ? (e.paymentMode || 'UPI') : null,
+            paymentNote: targetPaid ? (e.paymentNote || '') : '',
+            updatedAt: Date.now(),
+          };
+        }),
+      };
+    });
+  };
+
+  // Settle target (all pending, specific day, or single entry)
+  const closeSettleModal = () => {
+    setSettleModalOpen(false);
+    setSettleTargetDay(null);
+    setSettleTargetEntryId(null);
+    setPaymentNote('');
+  };
+
+  const doSettle = () => {
+    const now = Date.now();
+    setData((prev) => {
+      const list = prev[monthKey] || [];
+      return {
+        ...prev,
+        [monthKey]: list.map((e) => {
+          if (settleTargetEntryId !== null) {
+            if (e.id !== settleTargetEntryId) return e;
+          } else if (settleTargetDay !== null) {
+            if (e.day !== settleTargetDay) return e;
+            if (e.paid) return e;
+          } else {
+            if (e.paid) return e;
+          }
+          return {
+            ...e,
+            paid: true,
+            paidAt: e.paidAt || now,
+            paymentMode,
+            paymentNote: paymentNote.trim(),
+            updatedAt: now,
+          };
+        }),
+      };
+    });
+    closeSettleModal();
   };
 
   const handleDelete = (id) => {
@@ -348,6 +558,8 @@ export default function KharchaTrackerScreen({ onBack }) {
         ...prev,
         [monthKey]: (prev[monthKey] || []).filter((e) => e.id !== confirm.id),
       }));
+    } else if (confirm.type === 'unmarkDay') {
+      handleToggleDayPaid(confirm.day, false);
     } else {
       setData((prev) => {
         const next = { ...prev };
@@ -360,20 +572,62 @@ export default function KharchaTrackerScreen({ onBack }) {
 
   const handleShare = async () => {
     if (entries.length === 0) return;
-    let text = `📒 *Kharcha Tracker — ${MONTHS_HI[selMonth - 1]} ${selYear}*\n`;
-    text += `--------------------------------\n`;
-    dayGroups.forEach((g) => {
-      text += `📅 ${g.day} ${MONTHS_EN[selMonth - 1]}\n`;
-      g.items.forEach((e) => {
-        text += `   • ${e.name}: ${fmt(e.cost)}\n`;
+    const pendingList = entries.filter((e) => !e.paid);
+    const paidList = entries.filter((e) => e.paid);
+
+    let text = `📒 *Daily Expenses — ${MONTHS_HI[selMonth - 1]} ${selYear}*\n`;
+    text += `════════════════════════════════\n`;
+
+    if (pendingList.length > 0) {
+      text += `⏳ *बाकी हिसाब (Pending Dues): ${fmt(pendingTotal)}*\n`;
+      const pendingMap = {};
+      pendingList.forEach((e) => {
+        (pendingMap[e.day] = pendingMap[e.day] || []).push(e);
       });
-      if (g.items.length > 1) text += `   ↳ दिन का कुल: ${fmt(g.sub)}\n`;
-    });
-    text += `--------------------------------\n`;
+      Object.keys(pendingMap)
+        .map(Number)
+        .sort((a, b) => b - a)
+        .forEach((d) => {
+          text += `📅 ${d} ${MONTHS_EN[selMonth - 1]}:\n`;
+          pendingMap[d].forEach((e) => {
+            text += `   • ${e.name}: ${fmt(e.cost)}\n`;
+          });
+        });
+      text += `────────────────────────────────\n`;
+    }
+
+    if (paidList.length > 0) {
+      text += `✓ *चुकता हिसाब (Paid / Settled): ${fmt(paidTotal)}*\n`;
+      const paidMap = {};
+      paidList.forEach((e) => {
+        (paidMap[e.day] = paidMap[e.day] || []).push(e);
+      });
+      Object.keys(paidMap)
+        .map(Number)
+        .sort((a, b) => b - a)
+        .forEach((d) => {
+          text += `📅 ${d} ${MONTHS_EN[selMonth - 1]}:\n`;
+          paidMap[d].forEach((e) => {
+            const noteSuffix = e.paymentNote
+              ? ` [${e.paymentMode || 'Paid'} - "${e.paymentNote}"]`
+              : e.paymentMode
+                ? ` [${e.paymentMode}]`
+                : '';
+            text += `   • ${e.name}: ${fmt(e.cost)}${noteSuffix}\n`;
+          });
+        });
+      text += `────────────────────────────────\n`;
+    }
+
     text += `*महीने का कुल खर्चा: ${fmt(monthTotal)}* (${entries.length} entries)\n`;
+    if (pendingTotal > 0) {
+      text += `*बकाया राशि: ${fmt(pendingTotal)}*\n`;
+    } else {
+      text += `*सारा हिसाब चुकता है ✅*\n`;
+    }
     try {
       await Share.share({ message: text });
-    } catch (e) {
+    } catch (_e) {
       // user dismissed
     }
   };
@@ -477,7 +731,7 @@ export default function KharchaTrackerScreen({ onBack }) {
       if (!text) return;
       const parsed = JSON.parse(text);
       if (!isValidBackup(parsed)) {
-        Alert.alert('गलत फाइल', 'यह फाइल Kharcha Tracker का सही बैकअप नहीं लग रही।');
+        Alert.alert('गलत फाइल', 'यह फाइल Daily Expenses का सही बैकअप नहीं लग रही।');
         return;
       }
       setRestoreData(parsed);
@@ -505,7 +759,7 @@ export default function KharchaTrackerScreen({ onBack }) {
   return (
     <View style={styles.container}>
       <ScreenHeader
-        title="Kharcha Tracker"
+        title="Daily Expenses"
         subtitle="महीने-दर-महीने खर्चा का हिसाब"
         icon="notebook-outline"
         theme="emerald"
@@ -548,7 +802,7 @@ export default function KharchaTrackerScreen({ onBack }) {
           </View>
         </View>
 
-        {/* Hero Card — month total */}
+        {/* Hero Card — month total + Settlement Overview */}
         <LinearGradient
           colors={['#34D399', '#059669', '#047857']}
           start={{ x: 0, y: 0 }}
@@ -563,17 +817,58 @@ export default function KharchaTrackerScreen({ onBack }) {
             {MONTHS_HI[selMonth - 1]} {selYear} का कुल खर्चा
           </Text>
           <Text style={styles.heroTotal}>{fmt(monthTotal)}</Text>
+
+          {/* Paid vs Pending Breakdown Pills inside Hero */}
+          {entries.length > 0 && (
+            <View style={styles.heroBreakdownContainer}>
+              <View style={styles.heroStatBox}>
+                <View style={styles.heroStatHeader}>
+                  <View style={styles.heroGreenDot} />
+                  <Text style={styles.heroStatLabel}>Paid</Text>
+                </View>
+                <Text style={styles.heroStatValue}>{fmt(paidTotal)}</Text>
+              </View>
+
+              <View style={styles.heroStatDivider} />
+
+              <View style={styles.heroStatBox}>
+                <View style={styles.heroStatHeader}>
+                  <View style={styles.heroAmberDot} />
+                  <Text style={styles.heroStatLabel}>Pending</Text>
+                </View>
+                <Text style={styles.heroStatValue}>{fmt(pendingTotal)}</Text>
+              </View>
+            </View>
+          )}
+
           <View style={styles.heroFooter}>
             <Text style={styles.heroItemCount}>
               {entries.length} {entries.length === 1 ? 'Entry' : 'Entries'}
+              {entries.length > 0 && ` · ${paidCount} Paid`}
             </Text>
+
+            {pendingTotal > 0 ? (
+              <TouchableOpacity
+                style={styles.heroSettleBtn}
+                onPress={openSettleModalForMonth}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="flash" size={13} color="#022C22" />
+                <Text style={styles.heroSettleBtnText}>Settle Due</Text>
+              </TouchableOpacity>
+            ) : entries.length > 0 ? (
+              <View style={styles.allSettledPill}>
+                <Ionicons name="checkmark-circle" size={13} color="#FFFFFF" />
+                <Text style={styles.allSettledText}>All Settled 🎉</Text>
+              </View>
+            ) : null}
           </View>
         </LinearGradient>
 
         {/* Add Expense Card with date pill */}
         <View style={styles.card}>
           <View style={styles.addHead}>
-            <Text style={styles.cardTitle}>खर्चा जोड़ें (Add Expense):</Text>
+            <Text style={styles.cardTitle}>Add Expense</Text>
             <TouchableOpacity
               style={styles.datePill}
               onPress={() => setDayPickerOpen(true)}
@@ -628,6 +923,63 @@ export default function KharchaTrackerScreen({ onBack }) {
             )}
           </View>
 
+          {/* Status Filter Tabs (सब / बाकी / चुकता) */}
+          {entries.length > 0 && (
+            <View style={styles.filterTabsRow}>
+              <TouchableOpacity
+                style={[styles.filterTab, statusFilter === 'all' && styles.filterTabActive]}
+                onPress={() => setStatusFilter('all')}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.filterTabText, statusFilter === 'all' && styles.filterTabTextActive]}>
+                  All ({entries.length})
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.filterTab,
+                  statusFilter === 'pending' && styles.filterTabActivePending,
+                ]}
+                onPress={() => setStatusFilter('pending')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.pendingDot} />
+                <Text
+                  style={[
+                    styles.filterTabText,
+                    statusFilter === 'pending' && styles.filterTabTextActivePending,
+                  ]}
+                >
+                  Pending ({pendingCount})
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.filterTab,
+                  statusFilter === 'paid' && styles.filterTabActivePaid,
+                ]}
+                onPress={() => setStatusFilter('paid')}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name="checkmark-circle"
+                  size={13}
+                  color={statusFilter === 'paid' ? '#022C22' : '#34D399'}
+                />
+                <Text
+                  style={[
+                    styles.filterTabText,
+                    statusFilter === 'paid' && styles.filterTabTextActivePaid,
+                  ]}
+                >
+                  Paid ({paidCount})
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {entries.length === 0 ? (
             <View style={styles.emptyBox}>
               <Ionicons name="book-outline" size={40} color={Colors.textDim} />
@@ -636,6 +988,24 @@ export default function KharchaTrackerScreen({ onBack }) {
               </Text>
               <Text style={styles.emptySub}>
                 Upar se saman aur kiमत likh ke + dabao.
+              </Text>
+            </View>
+          ) : filteredEntries.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <Ionicons
+                name={statusFilter === 'pending' ? 'checkmark-done-circle-outline' : 'hourglass-outline'}
+                size={40}
+                color={statusFilter === 'pending' ? '#34D399' : Colors.amber}
+              />
+              <Text style={styles.emptyText}>
+                {statusFilter === 'pending'
+                  ? 'बधाई हो! कोई बाकी हिसाब नहीं है 🎉'
+                  : 'अभी तक कोई चुकता हिसाब नहीं है'}
+              </Text>
+              <Text style={styles.emptySub}>
+                {statusFilter === 'pending'
+                  ? 'इस महीने का सारा खर्चा चुकता हो चुका है।'
+                  : 'जब आप भुगतान करेंगे, यहाँ चुकता रिकॉर्ड दिखेगा।'}
               </Text>
             </View>
           ) : (
@@ -649,74 +1019,304 @@ export default function KharchaTrackerScreen({ onBack }) {
               bounces={false}
               {...(Platform.OS === 'web'
                 ? {
-                    onTouchStart: (e) => e.stopPropagation(),
-                    onTouchMove: (e) => e.stopPropagation(),
-                  }
+                  onTouchStart: (e) => e.stopPropagation(),
+                  onTouchMove: (e) => e.stopPropagation(),
+                }
                 : {})}
             >
-              {dayGroups.map((g) =>
-                g.items.length === 1 ? (
-                  // Single item on this day → flat row
-                  <View key={`day-${g.day}`} style={styles.entryRow}>
-                    <View style={styles.dateBadge}>
-                      <Text style={styles.dateBadgeDay}>{g.day}</Text>
-                      <Text style={styles.dateBadgeMon}>{MONTHS_EN[selMonth - 1]}</Text>
-                    </View>
-                    <Text style={styles.entryName} numberOfLines={1}>
-                      {g.items[0].name}
-                      {byline(g.items[0])}
-                    </Text>
-                    <Text style={styles.entryCost}>{fmt(g.items[0].cost)}</Text>
-                    <TouchableOpacity
-                      style={styles.delBtn}
-                      onPress={() => handleDelete(g.items[0].id)}
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons name="trash-outline" size={15} color="#F87171" />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  // Multiple items on this day → grouped card with day total
-                  <View key={`day-${g.day}`} style={styles.dayGroup}>
-                    <View style={styles.dayHead}>
-                      <View style={styles.dateBadge}>
-                        <Text style={styles.dateBadgeDay}>{g.day}</Text>
-                        <Text style={styles.dateBadgeMon}>{MONTHS_EN[selMonth - 1]}</Text>
+              {dayGroups.map((g, index) => {
+                const prevGroup = index > 0 ? dayGroups[index - 1] : null;
+                const isMilestone =
+                  statusFilter === 'all' &&
+                  g.isAllPaid &&
+                  prevGroup &&
+                  !prevGroup.isAllPaid &&
+                  pendingTotal > 0;
+                const bannerNote = g.items.find((item) => item.paymentNote)?.paymentNote || '';
+
+                return (
+                  <React.Fragment key={`day-wrap-${g.day}`}>
+                    {isMilestone && (
+                      <View style={styles.settlementBanner}>
+                        <View style={styles.settlementBannerLine} />
+                        <View style={styles.settlementBannerBadge}>
+                          <Ionicons name="checkmark-done-circle" size={15} color="#34D399" />
+                          <Text style={styles.settlementBannerText}>यहाँ तक का हिसाब चुकता है (Settled)</Text>
+                          {bannerNote ? (
+                            <View style={styles.bannerNotePill}>
+                              <Ionicons name="chatbubble-ellipses-outline" size={10} color="#FBBF24" />
+                              <Text style={styles.bannerNoteText} numberOfLines={1}>
+                                {bannerNote}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </View>
+                        <View style={styles.settlementBannerLine} />
                       </View>
-                      <View style={styles.dayHeadInfo}>
-                        <Text style={styles.dayHeadCount}>
-                          {g.items.length} {g.items.length === 1 ? 'Item' : 'Items'}
+                    )}
+
+                    {g.items.length === 1 ? (
+                      // Single item on this day → flat row with check button & paid badge
+                      <View key={`day-${g.day}`} style={[styles.entryRow, g.items[0].paid && styles.entryRowPaid]}>
+                        <TouchableOpacity
+                          style={[styles.paidToggleCircle, g.items[0].paid && styles.paidToggleCircleActive]}
+                          onPress={() => handleToggleEntryPaid(g.items[0].id)}
+                          activeOpacity={0.7}
+                        >
+                          {g.items[0].paid ? (
+                            <Ionicons name="checkmark" size={13} color="#022C22" />
+                          ) : (
+                            <View style={styles.paidToggleCircleDot} />
+                          )}
+                        </TouchableOpacity>
+
+                        <View style={[styles.dateBadge, g.items[0].paid && styles.dateBadgePaid]}>
+                          <Text style={[styles.dateBadgeDay, g.items[0].paid && styles.dateBadgeDayPaid]}>
+                            {g.day}
+                          </Text>
+                          <Text style={styles.dateBadgeMon}>{MONTHS_EN[selMonth - 1]}</Text>
+                        </View>
+
+                        <View style={styles.entryInfoWrap}>
+                          <Text
+                            style={[styles.entryName, g.items[0].paid && styles.entryNamePaid]}
+                            numberOfLines={1}
+                          >
+                            {g.items[0].name}
+                            {byline(g.items[0])}
+                          </Text>
+                          {g.items[0].paid ? (
+                            <View style={styles.entryPaidCol}>
+                              <View style={styles.paidBadgeInlineWrap}>
+                                <TouchableOpacity
+                                  style={styles.paidBadgeInline}
+                                  onPress={() => openSettleModalForEntry(g.items[0])}
+                                  activeOpacity={0.7}
+                                >
+                                  <Text style={styles.paidBadgeInlineText}>Paid</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  onPress={() =>
+                                    g.items[0].paymentNote
+                                      ? toggleTooltip(g.items[0].id)
+                                      : openSettleModalForEntry(g.items[0])
+                                  }
+                                  activeOpacity={0.7}
+                                >
+                                  {renderPaymentModeIcon(g.items[0].paymentMode || 'UPI')}
+                                </TouchableOpacity>
+                                {g.items[0].paymentNote ? (
+                                  <TouchableOpacity
+                                    onPress={() => toggleTooltip(g.items[0].id)}
+                                    hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                                    activeOpacity={0.7}
+                                  >
+                                    <Ionicons
+                                      name={
+                                        activeTooltipId === g.items[0].id
+                                          ? 'chatbubble-ellipses'
+                                          : 'chatbubble-ellipses-outline'
+                                      }
+                                      size={11}
+                                      color="#FBBF24"
+                                      style={styles.noteIndicatorIcon}
+                                    />
+                                  </TouchableOpacity>
+                                ) : null}
+                              </View>
+                              {activeTooltipId === g.items[0].id && g.items[0].paymentNote ? (
+                                <TouchableOpacity
+                                  activeOpacity={0.9}
+                                  onPress={() => setActiveTooltipId(null)}
+                                  style={styles.noteTooltipWrap}
+                                >
+                                  <View style={styles.noteTooltipArrow} />
+                                  <View style={styles.noteTooltipBubble}>
+                                    <Text style={styles.noteTooltipText}>{g.items[0].paymentNote}</Text>
+                                  </View>
+                                </TouchableOpacity>
+                              ) : null}
+                            </View>
+                          ) : (
+                            <Text style={styles.pendingBadgeInlineText}>Pending</Text>
+                          )}
+                        </View>
+
+                        <Text style={[styles.entryCost, g.items[0].paid && styles.entryCostPaid]}>
+                          {fmt(g.items[0].cost)}
                         </Text>
-                      </View>
-                      <View style={styles.dayHeadTotalWrap}>
-                        <Text style={styles.dayHeadTotal}>{fmt(g.sub)}</Text>
-                      </View>
-                    </View>
-                    {g.items.map((e, idx) => (
-                      <View
-                        key={e.id}
-                        style={[
-                          styles.itemRow,
-                          idx === g.items.length - 1 && styles.itemRowLast,
-                        ]}
-                      >
-                        <Text style={styles.itemName} numberOfLines={1}>
-                          {e.name}
-                          {byline(e)}
-                        </Text>
-                        <Text style={styles.itemCost}>{fmt(e.cost)}</Text>
+
                         <TouchableOpacity
                           style={styles.delBtn}
-                          onPress={() => handleDelete(e.id)}
+                          onPress={() => handleDelete(g.items[0].id)}
                           activeOpacity={0.7}
                         >
                           <Ionicons name="trash-outline" size={15} color="#F87171" />
                         </TouchableOpacity>
                       </View>
-                    ))}
-                  </View>
-                ),
-              )}
+                    ) : (
+                      // Multiple items on this day → grouped card with day total & settlement actions
+                      <View key={`day-${g.day}`} style={[styles.dayGroup, g.isAllPaid && styles.dayGroupPaid]}>
+                        <View style={styles.dayHead}>
+                          <View style={[styles.dateBadge, g.isAllPaid && styles.dateBadgePaid]}>
+                            <Text style={[styles.dateBadgeDay, g.isAllPaid && styles.dateBadgeDayPaid]}>
+                              {g.day}
+                            </Text>
+                            <Text style={styles.dateBadgeMon}>{MONTHS_EN[selMonth - 1]}</Text>
+                          </View>
+
+                          <View style={styles.dayHeadInfo}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <Text style={styles.dayHeadCount}>
+                                {g.items.length} {g.items.length === 1 ? 'Item' : 'Items'}
+                              </Text>
+
+                              {/* Status Tag / Action on Day Card */}
+                              {g.isAllPaid ? (
+                                <TouchableOpacity
+                                  style={styles.dayPaidTag}
+                                  onPress={() => setConfirm({ type: 'unmarkDay', day: g.day })}
+                                  activeOpacity={0.7}
+                                >
+                                  <Ionicons name="checkmark-circle" size={12} color="#34D399" />
+                                  <Text style={styles.dayPaidTagText}>Paid</Text>
+                                </TouchableOpacity>
+                              ) : g.isPartiallyPaid ? (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                                  <View style={styles.dayPartialTag}>
+                                    <Text style={styles.dayPartialTagText}>Partial</Text>
+                                  </View>
+                                  <TouchableOpacity
+                                    style={styles.daySettleQuickBtn}
+                                    onPress={() => openSettleModalForDay(g.day)}
+                                    activeOpacity={0.8}
+                                  >
+                                    <Ionicons name="checkmark" size={11} color="#022C22" />
+                                    <Text style={styles.daySettleQuickText}>Settle Due</Text>
+                                  </TouchableOpacity>
+                                </View>
+                              ) : (
+                                <TouchableOpacity
+                                  style={styles.daySettleQuickBtn}
+                                  onPress={() => openSettleModalForDay(g.day)}
+                                  activeOpacity={0.8}
+                                >
+                                  <Ionicons name="checkmark" size={11} color="#022C22" />
+                                  <Text style={styles.daySettleQuickText}>Settle</Text>
+                                </TouchableOpacity>
+                              )}
+                            </View>
+                          </View>
+
+                          <View style={[styles.dayHeadTotalWrap, g.isAllPaid && styles.dayHeadTotalWrapPaid]}>
+                            <Text style={[styles.dayHeadTotal, g.isAllPaid && styles.dayHeadTotalPaid]}>
+                              {fmt(g.sub)}
+                            </Text>
+                          </View>
+                        </View>
+
+                        {g.items.map((e, idx) => (
+                          <View
+                            key={e.id}
+                            style={[
+                              styles.itemRow,
+                              idx === g.items.length - 1 && styles.itemRowLast,
+                              e.paid && styles.itemRowPaid,
+                            ]}
+                          >
+                            <TouchableOpacity
+                              style={[styles.itemCheckCircle, e.paid && styles.itemCheckCircleActive]}
+                              onPress={() => handleToggleEntryPaid(e.id)}
+                              activeOpacity={0.7}
+                            >
+                              {e.paid ? (
+                                <Ionicons name="checkmark" size={11} color="#022C22" />
+                              ) : (
+                                <View style={styles.itemCheckCircleDot} />
+                              )}
+                            </TouchableOpacity>
+
+                            <View style={styles.itemTextWrap}>
+                              <Text
+                                style={[styles.itemName, e.paid && styles.itemNamePaid]}
+                                numberOfLines={1}
+                              >
+                                {e.name}
+                                {byline(e)}
+                              </Text>
+                              {e.paid && (
+                                <View style={styles.itemPaidMetaContainer}>
+                                  <View style={styles.itemPaidMetaRow}>
+                                    <TouchableOpacity
+                                      style={styles.itemPaidMetaInline}
+                                      onPress={() => openSettleModalForEntry(e)}
+                                      activeOpacity={0.7}
+                                    >
+                                      <Text style={styles.itemPaidMeta}>Paid</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                      onPress={() =>
+                                        e.paymentNote
+                                          ? toggleTooltip(e.id)
+                                          : openSettleModalForEntry(e)
+                                      }
+                                      activeOpacity={0.7}
+                                    >
+                                      {renderPaymentModeIcon(e.paymentMode || 'UPI')}
+                                    </TouchableOpacity>
+                                    {e.paymentNote ? (
+                                      <TouchableOpacity
+                                        onPress={() => toggleTooltip(e.id)}
+                                        hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                                        activeOpacity={0.7}
+                                      >
+                                        <Ionicons
+                                          name={
+                                            activeTooltipId === e.id
+                                              ? 'chatbubble-ellipses'
+                                              : 'chatbubble-ellipses-outline'
+                                          }
+                                          size={11}
+                                          color="#FBBF24"
+                                          style={styles.noteIndicatorIcon}
+                                        />
+                                      </TouchableOpacity>
+                                    ) : null}
+                                  </View>
+                                  {activeTooltipId === e.id && e.paymentNote ? (
+                                    <TouchableOpacity
+                                      activeOpacity={0.9}
+                                      onPress={() => setActiveTooltipId(null)}
+                                      style={styles.noteTooltipWrap}
+                                    >
+                                      <View style={styles.noteTooltipArrow} />
+                                      <View style={styles.noteTooltipBubble}>
+                                        <Text style={styles.noteTooltipText}>{e.paymentNote}</Text>
+                                      </View>
+                                    </TouchableOpacity>
+                                  ) : null}
+                                </View>
+                              )}
+                            </View>
+
+                            <Text style={[styles.itemCost, e.paid && styles.itemCostPaid]}>
+                              {fmt(e.cost)}
+                            </Text>
+
+                            <TouchableOpacity
+                              style={styles.delBtn}
+                              onPress={() => handleDelete(e.id)}
+                              activeOpacity={0.7}
+                            >
+                              <Ionicons name="trash-outline" size={15} color="#F87171" />
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </ScrollView>
           )}
         </View>
@@ -1004,6 +1604,7 @@ export default function KharchaTrackerScreen({ onBack }) {
                             <View
                               style={[
                                 styles.dayDot,
+                                dayStatusMap[d]?.hasPending ? styles.dayDotPending : styles.dayDotPaid,
                                 isActive && styles.dayDotActive,
                               ]}
                             />
@@ -1046,7 +1647,7 @@ export default function KharchaTrackerScreen({ onBack }) {
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* Delete / Clear confirmation popup */}
+      {/* Delete / Clear / Unmark confirmation popup */}
       <Modal
         visible={confirm !== null}
         transparent
@@ -1057,16 +1658,31 @@ export default function KharchaTrackerScreen({ onBack }) {
           <View style={styles.modalBackdrop}>
             <TouchableWithoutFeedback>
               <View style={styles.confirmPanel}>
-                <View style={styles.confirmIconWrap}>
-                  <Ionicons name="trash-outline" size={26} color="#F87171" />
+                <View
+                  style={[
+                    styles.confirmIconWrap,
+                    confirm?.type === 'unmarkDay' && styles.confirmIconWrapAmber,
+                  ]}
+                >
+                  <Ionicons
+                    name={confirm?.type === 'unmarkDay' ? 'alert-circle-outline' : 'trash-outline'}
+                    size={26}
+                    color={confirm?.type === 'unmarkDay' ? '#FBBF24' : '#F87171'}
+                  />
                 </View>
                 <Text style={styles.confirmTitle}>
-                  {confirm?.type === 'entry' ? 'Entry डिलीट करें?' : 'पूरे महीने का रिकॉर्ड मिटाएं?'}
+                  {confirm?.type === 'entry'
+                    ? 'Entry डिलीट करें?'
+                    : confirm?.type === 'unmarkDay'
+                      ? 'हिसाब वापस बाकी करें?'
+                      : 'पूरे महीने का रिकॉर्ड मिटाएं?'}
                 </Text>
                 <Text style={styles.confirmMsg}>
                   {confirm?.type === 'entry'
                     ? `"${confirm.name}" वाली यह entry delete हो जाएगी। यह वापस नहीं आएगी।`
-                    : `${MONTHS_HI[selMonth - 1]} ${selYear} की सारी entries delete हो जाएँगी। यह वापस नहीं मिलेगी।`}
+                    : confirm?.type === 'unmarkDay'
+                      ? `${confirm.day} ${MONTHS_EN[selMonth - 1]} का हिसाब चुकता से वापस बाकी (Pending) में बदल जाएगा।`
+                      : `${MONTHS_HI[selMonth - 1]} ${selYear} की सारी entries delete हो जाएँगी। यह वापस नहीं मिलेगी।`}
                 </Text>
                 <View style={styles.confirmBtnRow}>
                   <TouchableOpacity
@@ -1077,13 +1693,128 @@ export default function KharchaTrackerScreen({ onBack }) {
                     <Text style={styles.confirmCancelText}>रुको ✋</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={styles.confirmDangerBtn}
+                    style={[
+                      styles.confirmDangerBtn,
+                      confirm?.type === 'unmarkDay' && styles.confirmAmberBtn,
+                    ]}
                     onPress={doConfirm}
                     activeOpacity={0.8}
                   >
                     <Text style={styles.confirmDangerText}>
-                      {confirm?.type === 'entry' ? 'हाँ, डिलीट करें' : 'हाँ, मिटाएं'}
+                      {confirm?.type === 'entry'
+                        ? 'हाँ, डिलीट करें'
+                        : confirm?.type === 'unmarkDay'
+                          ? 'हाँ, बाकी करें'
+                          : 'हाँ, मिटाएं'}
                     </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Settle Balance Modal */}
+      <Modal
+        visible={settleModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={closeSettleModal}
+      >
+        <TouchableWithoutFeedback onPress={closeSettleModal}>
+          <View style={styles.modalBackdrop}>
+            <TouchableWithoutFeedback>
+              <View style={styles.settlePanel}>
+                <View style={styles.settleIconWrap}>
+                  <Ionicons name="shield-checkmark" size={28} color="#34D399" />
+                </View>
+
+                <Text style={styles.settleTitle}>हिसाब चुकता करें</Text>
+                <Text style={styles.settleSubTitle}>
+                  {targetEntry
+                    ? `"${targetEntry.name}" का भुगतान दर्ज करें`
+                    : settleTargetDay !== null
+                    ? `${settleTargetDay} ${MONTHS_EN[selMonth - 1]} का बकाया भुगतान दर्ज करें`
+                    : `${MONTHS_HI[selMonth - 1]} ${selYear} का कुल बकाया भुगतान दर्ज करें`}
+                </Text>
+
+                <View style={styles.settleAmountBox}>
+                  <Text style={styles.settleAmountLabel}>
+                    {targetEntry ? 'भुगतान राशि (Amount)' : 'कुल बकाया राशि (Total Due)'}
+                  </Text>
+                  <Text style={styles.settleAmountValue}>
+                    {fmt(targetSettleAmount)}
+                  </Text>
+                  <Text style={styles.settleCountBadge}>
+                    {targetSettleCount} {targetSettleCount === 1 ? 'Item' : 'Items'} चुकता होंगे
+                  </Text>
+                </View>
+
+                {/* Payment Mode Selector */}
+                <Text style={styles.settleSectionLabel}>भुगतान का माध्यम (Payment Mode):</Text>
+                <View style={styles.settleModesRow}>
+                  {[
+                    { key: 'UPI', label: 'UPI / GPay', type: 'gpay' },
+                    { key: 'Cash', label: 'नकद (Cash)', type: 'emoji', emoji: '💵' },
+                    { key: 'Bank', label: 'बैंक (Bank)', type: 'mci', icon: 'bank', size: 13, color: '#38BDF8' },
+                  ].map((m) => {
+                    const isActive = paymentMode === m.key;
+                    const iconColor = isActive ? '#022C22' : (m.color || '#34D399');
+                    return (
+                      <TouchableOpacity
+                        key={m.key}
+                        style={[
+                          styles.settleModePill,
+                          isActive && styles.settleModePillActive,
+                        ]}
+                        onPress={() => setPaymentMode(m.key)}
+                        activeOpacity={0.8}
+                      >
+                        {m.type === 'gpay' ? (
+                          <GPayLogo size={14} />
+                        ) : m.type === 'emoji' ? (
+                          <Text style={styles.settleModeEmoji}>{m.emoji}</Text>
+                        ) : (
+                          <MaterialCommunityIcons name={m.icon} size={m.size} color={iconColor} />
+                        )}
+                        <Text
+                          style={[
+                            styles.settleModePillText,
+                            isActive && styles.settleModePillTextActive,
+                          ]}
+                        >
+                          {m.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Optional note */}
+                <TextInput
+                  style={styles.settleNoteInput}
+                  value={paymentNote}
+                  onChangeText={setPaymentNote}
+                  placeholder="नोट (वैकल्पिक, उदा: Bhaiya ko cash diye)..."
+                  placeholderTextColor={Colors.textDim}
+                />
+
+                <View style={styles.confirmBtnRow}>
+                  <TouchableOpacity
+                    style={styles.confirmCancelBtn}
+                    onPress={closeSettleModal}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.confirmCancelText}>रुको ✋</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.settleConfirmBtn}
+                    onPress={doSettle}
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name="checkmark" size={17} color="#022C22" />
+                    <Text style={styles.settleConfirmBtnText}>भुगतान दर्ज करें</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -1364,11 +2095,11 @@ const styles = StyleSheet.create({
     maxHeight: 280,
     ...(Platform.OS === 'web'
       ? {
-          overflowY: 'auto',
-          overscrollBehavior: 'contain',
-          WebkitOverflowScrolling: 'touch',
-          touchAction: 'pan-y',
-        }
+        overflowY: 'auto',
+        overscrollBehavior: 'contain',
+        WebkitOverflowScrolling: 'touch',
+        touchAction: 'pan-y',
+      }
       : {}),
   },
   entriesScrollContent: {
@@ -1401,7 +2132,7 @@ const styles = StyleSheet.create({
   entryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
     backgroundColor: 'rgba(11, 15, 25, 0.6)',
     borderWidth: 1,
     borderColor: Colors.inputBorder,
@@ -1477,7 +2208,6 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingTop: 8,
     paddingBottom: 8,
-    paddingLeft: 12,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(30, 41, 59, 0.7)',
   },
@@ -1986,5 +2716,574 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     color: '#FFFFFF',
+  },
+
+  // ── Hero Breakdown & Settle Button ──
+  heroBreakdownContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.22)',
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginTop: 12,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  heroStatBox: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  heroStatHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 3,
+  },
+  heroGreenDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#6EE7B7',
+  },
+  heroAmberDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#FDE047',
+  },
+  heroStatLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(255, 255, 255, 0.88)',
+  },
+  heroStatValue: {
+    fontSize: 17,
+    fontWeight: '900',
+    color: '#FFFFFF',
+  },
+  heroStatDivider: {
+    width: 1,
+    height: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  heroSettleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+  },
+  heroSettleBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#065F46',
+  },
+  allSettledPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+  },
+  allSettledText: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+
+  // ── Status Filter Tabs ──
+  filterTabsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  filterTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: 'rgba(11, 15, 25, 0.6)',
+    borderWidth: 1,
+    borderColor: Colors.inputBorder,
+  },
+  filterTabActive: {
+    backgroundColor: 'rgba(52, 211, 153, 0.15)',
+    borderColor: 'rgba(52, 211, 153, 0.45)',
+  },
+  filterTabActivePending: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderColor: 'rgba(245, 158, 11, 0.45)',
+  },
+  filterTabActivePaid: {
+    backgroundColor: 'rgba(52, 211, 153, 0.2)',
+    borderColor: '#34D399',
+  },
+  filterTabText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: Colors.textMuted,
+  },
+  filterTabTextActive: {
+    color: '#34D399',
+    fontWeight: '800',
+  },
+  filterTabTextActivePending: {
+    color: '#FBBF24',
+    fontWeight: '800',
+  },
+  filterTabTextActivePaid: {
+    color: '#34D399',
+    fontWeight: '800',
+  },
+  pendingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#F59E0B',
+  },
+
+  // ── Settlement Timeline Milestone Banner ──
+  settlementBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginVertical: 12,
+  },
+  settlementBannerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(52, 211, 153, 0.28)',
+  },
+  settlementBannerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(6, 78, 59, 0.65)',
+    borderWidth: 1,
+    borderColor: 'rgba(52, 211, 153, 0.45)',
+    borderRadius: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+  },
+  settlementBannerText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#6EE7B7',
+  },
+  bannerNotePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginLeft: 4,
+  },
+  bannerNoteText: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: '#FDE047',
+    maxWidth: 120,
+  },
+
+  // ── Paid/Pending Card & Row Styling ──
+  entryRowPaid: {
+    borderLeftColor: '#10B981',
+    backgroundColor: 'rgba(11, 15, 25, 0.45)',
+  },
+  dayGroupPaid: {
+    borderLeftColor: '#10B981',
+    backgroundColor: 'rgba(11, 15, 25, 0.45)',
+  },
+  paidToggleCircle: {
+    width: 18,
+    height: 18,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: Colors.inputBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(11, 15, 25, 0.7)',
+  },
+  paidToggleCircleActive: {
+    backgroundColor: '#34D399',
+    borderColor: '#059669',
+  },
+  paidToggleCircleDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: Colors.textDim,
+  },
+  dateBadgePaid: {
+    backgroundColor: 'rgba(16, 185, 129, 0.18)',
+    borderColor: 'rgba(52, 211, 153, 0.5)',
+  },
+  dateBadgeDayPaid: {
+    color: '#6EE7B7',
+  },
+  entryInfoWrap: {
+    flex: 1,
+  },
+  entryNamePaid: {
+    color: Colors.textMuted,
+  },
+  entryCostPaid: {
+    color: 'rgba(52, 211, 153, 0.75)',
+  },
+  paidBadgeInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 2,
+  },
+  paidBadgeInlineText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#34D399',
+  },
+  pendingBadgeInlineText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FBBF24',
+    marginTop: 2,
+  },
+  dayPaidTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(52, 211, 153, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(52, 211, 153, 0.35)',
+    borderRadius: 8,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+  },
+  dayPaidTagText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#34D399',
+  },
+  dayPartialTag: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.35)',
+    borderRadius: 8,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+  },
+  dayPartialTagText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FBBF24',
+  },
+  daySettleQuickBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#34D399',
+    borderRadius: 8,
+    paddingVertical: 2.5,
+    paddingHorizontal: 7,
+  },
+  daySettleQuickText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#022C22',
+  },
+  dayHeadTotalWrapPaid: {
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    borderColor: 'rgba(52, 211, 153, 0.25)',
+  },
+  dayHeadTotalPaid: {
+    color: '#6EE7B7',
+  },
+  itemRowPaid: {
+    opacity: 0.85,
+  },
+  itemCheckCircle: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    borderColor: Colors.inputBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(11, 15, 25, 0.7)',
+  },
+  itemCheckCircleActive: {
+    backgroundColor: '#34D399',
+    borderColor: '#059669',
+  },
+  itemCheckCircleDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.textDim,
+  },
+  itemTextWrap: {
+    flex: 1,
+  },
+  itemNamePaid: {
+    color: Colors.textMuted,
+  },
+  itemCostPaid: {
+    color: 'rgba(52, 211, 153, 0.75)',
+  },
+  itemPaidMeta: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: '#34D399',
+  },
+  itemPaidMetaInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginTop: 1,
+  },
+  modeIconRaw: {
+    marginLeft: 3,
+  },
+  cashEmoji: {
+    fontSize: 11,
+    lineHeight: 13,
+    marginLeft: 3,
+  },
+  settleModeEmoji: {
+    fontSize: 13,
+    lineHeight: 15,
+  },
+  paidBadgeInlineWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+    marginTop: 2,
+  },
+  itemPaidMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+    marginTop: 1,
+  },
+  entryPaidCol: {
+    marginTop: 2,
+  },
+  itemPaidMetaContainer: {
+    marginTop: 1,
+  },
+  noteIndicatorIcon: {
+    marginLeft: 3,
+  },
+  noteTooltipWrap: {
+    marginTop: 3,
+    alignSelf: 'flex-start',
+    maxWidth: '96%',
+    zIndex: 10,
+  },
+  noteTooltipArrow: {
+    width: 0,
+    height: 0,
+    marginLeft: 55,
+    borderLeftWidth: 5,
+    borderRightWidth: 5,
+    borderBottomWidth: 5,
+    borderStyle: 'solid',
+    backgroundColor: 'transparent',
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: 'rgba(251, 191, 36, 0.45)',
+  },
+  noteTooltipBubble: {
+    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.45)',
+    borderRadius: 7,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  noteTooltipText: {
+    fontSize: 10.5,
+    lineHeight: 14,
+    color: '#FDE68A',
+    fontWeight: '500',
+    flexShrink: 1,
+  },
+  notePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(251, 191, 36, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(251, 191, 36, 0.35)',
+    borderRadius: 6,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  notePillText: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: '#FBBF24',
+    maxWidth: 140,
+  },
+
+  // ── Confirmation Modal Amber Style ──
+  confirmIconWrapAmber: {
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  confirmAmberBtn: {
+    backgroundColor: '#D97706',
+  },
+
+  // ── Calendar Dots ──
+  dayDotPending: {
+    backgroundColor: '#F59E0B',
+  },
+  dayDotPaid: {
+    backgroundColor: '#34D399',
+  },
+
+  // ── Settle Balance Modal Styles ──
+  settlePanel: {
+    width: 320,
+    backgroundColor: Colors.bgSecondary,
+    borderWidth: 1,
+    borderColor: 'rgba(52, 211, 153, 0.3)',
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+  },
+  settleIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(52, 211, 153, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(52, 211, 153, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  settleTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: Colors.text,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  settleSubTitle: {
+    fontSize: 12,
+    color: Colors.textDim,
+    textAlign: 'center',
+    marginBottom: 14,
+  },
+  settleAmountBox: {
+    alignSelf: 'stretch',
+    backgroundColor: 'rgba(11, 15, 25, 0.7)',
+    borderWidth: 1,
+    borderColor: 'rgba(52, 211, 153, 0.25)',
+    borderRadius: 14,
+    padding: 12,
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  settleAmountLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.textMuted,
+    marginBottom: 2,
+  },
+  settleAmountValue: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#34D399',
+  },
+  settleCountBadge: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#FBBF24',
+    marginTop: 2,
+  },
+  settleSectionLabel: {
+    alignSelf: 'flex-start',
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+    marginBottom: 8,
+  },
+  settleModesRow: {
+    flexDirection: 'row',
+    gap: 6,
+    alignSelf: 'stretch',
+    marginBottom: 12,
+  },
+  settleModePill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    borderRadius: 10,
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    borderWidth: 1,
+    borderColor: Colors.inputBorder,
+  },
+  settleModePillActive: {
+    backgroundColor: '#34D399',
+    borderColor: '#059669',
+  },
+  settleModePillText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: Colors.textMuted,
+  },
+  settleModePillTextActive: {
+    color: '#022C22',
+    fontWeight: '900',
+  },
+  settleNoteInput: {
+    alignSelf: 'stretch',
+    backgroundColor: 'rgba(11, 15, 25, 0.7)',
+    borderWidth: 1,
+    borderColor: Colors.inputBorder,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 12,
+    color: Colors.text,
+    marginBottom: 16,
+  },
+  settleConfirmBtn: {
+    flex: 1.3,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 11,
+    borderRadius: 12,
+    backgroundColor: '#34D399',
+  },
+  settleConfirmBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#022C22',
   },
 });

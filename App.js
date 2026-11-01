@@ -140,7 +140,7 @@ function MainApp() {
     },
     {
       id: 'kharcha',
-      label: 'Kharcha Tracker',
+      label: 'Daily Expenses',
       icon: 'notebook-outline',
       iconActive: 'notebook',
       type: 'mci',

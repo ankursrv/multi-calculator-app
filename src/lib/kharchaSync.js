@@ -239,7 +239,7 @@ export function applyRows(data, ops) {
       return;
     }
     if (monthKey) {
-      next[monthKey] = next[monthKey].map((e) => (e.id === op.id ? op.entry : e));
+      next[monthKey] = next[monthKey].map((e) => (e.id === op.id ? { ...e, ...op.entry } : e));
       return;
     }
     if (!op.monthKey) return;
