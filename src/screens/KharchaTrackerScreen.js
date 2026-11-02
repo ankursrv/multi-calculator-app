@@ -276,13 +276,13 @@ export default function KharchaTrackerScreen({ onBack }) {
     };
   }, [cloudMeta, runSync]);
 
-  const handleMetaChange = (meta) => {
+  const handleMetaChange = (meta, isNewFamily = false) => {
     metaRef.current = meta;
     setCloudMeta(meta);
     setStatusText('');
     // Joining/create pulls the family history; leaving stops all sync.
     if (meta) {
-      setData((prev) => ensureIds(prev, meta.deviceName));
+      setData((prev) => ensureIds(prev, meta.deviceName, isNewFamily));
       clearTimeout(pushTimerRef.current);
       pushTimerRef.current = setTimeout(runSync, 300);
     }
@@ -648,10 +648,9 @@ export default function KharchaTrackerScreen({ onBack }) {
     }
   };
 
-  // "Kisne add kiya" — only for another family member's entry, rendered inline
-  // so the existing row layout does not shift at all.
+  // "Kisne add kiya" — rendered inline so the existing row layout does not shift at all.
   const byline = (e) =>
-    cloudMeta && e.addedBy && e.addedBy !== cloudMeta.deviceName ? (
+    cloudMeta && e.addedBy ? (
       <Text style={styles.itemByline}> · {e.addedBy}</Text>
     ) : null;
 

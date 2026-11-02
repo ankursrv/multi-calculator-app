@@ -107,14 +107,17 @@ export function decodeAddedBy(raw) {
 
 // Entries restored from an older backup file (or made before this branch)
 // have no cloud fields — give them an id + timestamp so they can sync.
-export function ensureIds(data, deviceName) {
+export function ensureIds(data, deviceName, forceUpdateAddedBy = false) {
   let touched = false;
   const next = {};
   Object.keys(data).forEach((monthKey) => {
     const list = Array.isArray(data[monthKey]) ? data[monthKey] : [];
     next[monthKey] = list.map((entry) => {
       const dec = decodeAddedBy(entry && entry.addedBy);
-      const cleanAddedBy = dec.deviceName || (entry && entry.addedBy) || deviceName || '';
+      let cleanAddedBy = dec.deviceName || (entry && entry.addedBy) || deviceName || '';
+      if ((forceUpdateAddedBy || cleanAddedBy === 'Test1') && deviceName) {
+        cleanAddedBy = deviceName;
+      }
       if (entry && entry.id && entry.updatedAt && entry.addedBy === cleanAddedBy) return entry;
       touched = true;
       return {

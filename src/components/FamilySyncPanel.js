@@ -71,16 +71,20 @@ export default function FamilySyncPanel({ meta, statusText, syncing, onMetaChang
     [anim, open],
   );
 
-  // Members list is only interesting once a family is linked, and it is set
-  // from the async reply only (never synchronously inside the effect).
+  // Members list is refreshed automatically while linked
   useEffect(() => {
-    if (!linked) return undefined;
+    if (!linked || !meta?.familyCode) return undefined;
     let alive = true;
-    cloud.listMembers(meta.familyCode).then((rows) => {
-      if (alive) setMembers(rows);
-    });
+    const fetchMembers = () => {
+      cloud.listMembers(meta.familyCode).then((rows) => {
+        if (alive && rows) setMembers(rows);
+      });
+    };
+    fetchMembers();
+    const interval = setInterval(fetchMembers, 10000);
     return () => {
       alive = false;
+      clearInterval(interval);
     };
   }, [linked, meta]);
 
@@ -113,7 +117,7 @@ export default function FamilySyncPanel({ meta, statusText, syncing, onMetaChang
     await clearMeta(); // drop any old family's sync bookkeeping
     const next = await setMeta({ familyCode: code, deviceName: trimmedName, lastPulledAt: 0 });
     setBusy(false);
-    onMetaChange(next);
+    onMetaChange(next, true);
   };
 
   // ── Join: this phone enters an existing family code ─────────────────────
