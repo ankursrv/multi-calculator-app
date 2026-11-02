@@ -68,6 +68,43 @@ function forEachEntry(data, fn) {
   });
 }
 
+// ── Payment Metadata Encoding for Cloud Sync ──────────────────────────────
+// Encodes payment state into added_by so sync works immediately with no database schema change
+export function encodeAddedBy(deviceName, entry) {
+  const base = String(deviceName || '').trim();
+  if (!entry || !entry.paid) return base;
+  const payload = {
+    p: 1,
+    m: entry.paymentMode || 'UPI',
+    a: entry.paidAt || Date.now(),
+    n: entry.paymentNote ? String(entry.paymentNote).trim() : '',
+  };
+  return `${base}§§PM§§${JSON.stringify(payload)}`;
+}
+
+export function decodeAddedBy(raw) {
+  if (!raw || typeof raw !== 'string') {
+    return { deviceName: '', paid: false, paymentMode: null, paidAt: null, paymentNote: '' };
+  }
+  const sepIdx = raw.indexOf('§§PM§§');
+  if (sepIdx === -1) {
+    return { deviceName: raw.trim(), paid: false, paymentMode: null, paidAt: null, paymentNote: '' };
+  }
+  const deviceName = raw.slice(0, sepIdx).trim();
+  try {
+    const meta = JSON.parse(raw.slice(sepIdx + 6));
+    return {
+      deviceName,
+      paid: !!meta.p,
+      paymentMode: meta.m || 'UPI',
+      paidAt: meta.a || null,
+      paymentNote: meta.n || '',
+    };
+  } catch (_e) {
+    return { deviceName, paid: false, paymentMode: null, paidAt: null, paymentNote: '' };
+  }
+}
+
 // Entries restored from an older backup file (or made before this branch)
 // have no cloud fields — give them an id + timestamp so they can sync.
 export function ensureIds(data, deviceName) {
@@ -76,13 +113,15 @@ export function ensureIds(data, deviceName) {
   Object.keys(data).forEach((monthKey) => {
     const list = Array.isArray(data[monthKey]) ? data[monthKey] : [];
     next[monthKey] = list.map((entry) => {
-      if (entry && entry.id && entry.updatedAt) return entry;
+      const dec = decodeAddedBy(entry && entry.addedBy);
+      const cleanAddedBy = dec.deviceName || (entry && entry.addedBy) || deviceName || '';
+      if (entry && entry.id && entry.updatedAt && entry.addedBy === cleanAddedBy) return entry;
       touched = true;
       return {
         ...entry,
         id: entry && entry.id ? entry.id : newEntryId(),
-        updatedAt: Date.now(),
-        addedBy: (entry && entry.addedBy) || deviceName || '',
+        updatedAt: entry && entry.updatedAt ? entry.updatedAt : Date.now(),
+        addedBy: cleanAddedBy,
       };
     });
   });
@@ -111,7 +150,24 @@ export async function pushLocal(data, meta) {
     seen[entry.id] = 1;
     const prev = snapshot[entry.id];
     const updatedAt = entry.updatedAt || 0;
-    if (prev && prev.u >= updatedAt && !prev.d) return; // already in sync
+
+    const isPaid = entry.paid ? 1 : 0;
+    const paymentMode = entry.paymentMode || '';
+    const paymentNote = entry.paymentNote || '';
+    const paidAt = entry.paidAt || 0;
+
+    const paymentChanged =
+      !prev ||
+      prev.p === undefined ||
+      prev.p !== isPaid ||
+      prev.m !== paymentMode ||
+      prev.n !== paymentNote ||
+      prev.a !== paidAt;
+
+    if (prev && prev.u >= updatedAt && !prev.d && !paymentChanged) return; // already in sync
+
+    const effectiveUpdatedAt = paymentChanged ? Math.max(updatedAt, Date.now()) : updatedAt;
+
     upserts.push({
       id: entry.id,
       family_code: meta.familyCode,
@@ -119,8 +175,8 @@ export async function pushLocal(data, meta) {
       day: Number(entry.day) || 1,
       name: String(entry.name || ''),
       cost: Number(entry.cost) || 0,
-      added_by: entry.addedBy || '',
-      updated_at: updatedAt,
+      added_by: encodeAddedBy(entry.addedBy, entry),
+      updated_at: effectiveUpdatedAt,
       deleted: false,
     });
   });
@@ -148,7 +204,17 @@ export async function pushLocal(data, meta) {
   const ok = await cloud.pushEntries(pending);
   if (!ok) return { ok: false, pushed: 0 }; // stays queued for the next tick
 
-  for (const row of upserts) snapshot[row.id] = { u: row.updated_at, d: 0 };
+  for (const row of upserts) {
+    const dec = decodeAddedBy(row.added_by);
+    snapshot[row.id] = {
+      u: row.updated_at,
+      d: 0,
+      p: dec.paid ? 1 : 0,
+      m: dec.paymentMode || '',
+      a: dec.paidAt || 0,
+      n: dec.paymentNote || '',
+    };
+  }
   for (const row of deletes) snapshot[row.id] = { u: row.updated_at, d: 1 };
   await saveSnapshot(snapshot);
   return { ok: true, pushed: pending.length };
@@ -188,6 +254,12 @@ export async function pullRemote(data, meta) {
       return;
     }
 
+    const dec = decodeAddedBy(row.added_by);
+    const paid = row.paid !== undefined ? !!row.paid : dec.paid;
+    const paymentMode = row.payment_mode || dec.paymentMode || null;
+    const paidAt = Number(row.paid_at) || dec.paidAt || null;
+    const paymentNote = row.payment_note !== undefined ? String(row.payment_note || '') : dec.paymentNote;
+
     // This device still holds a newer edit that has not been pushed yet, or a
     // delete that has not landed — local wins until our own write is sent.
     // Comparing against the snapshot (not the clock) keeps phone clock skew
@@ -205,11 +277,22 @@ export async function pullRemote(data, meta) {
         name: row.name,
         cost: Number(row.cost) || 0,
         day: Number(row.day) || 1,
-        addedBy: row.added_by || '',
+        addedBy: dec.deviceName,
         updatedAt: at,
+        paid,
+        paymentMode,
+        paidAt,
+        paymentNote,
       },
     });
-    snapshot[row.id] = { u: at, d: 0 };
+    snapshot[row.id] = {
+      u: at,
+      d: 0,
+      p: paid ? 1 : 0,
+      m: paymentMode || '',
+      a: paidAt || 0,
+      n: paymentNote || '',
+    };
   });
 
   await saveSnapshot(snapshot);

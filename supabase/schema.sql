@@ -36,6 +36,12 @@ create table if not exists public.kharcha_entries (
   deleted      boolean not null default false
 );
 
+-- Payment sync columns (kharchaSync automatically supports both encoded added_by and dedicated columns)
+-- alter table public.kharcha_entries add column if not exists paid boolean not null default false;
+-- alter table public.kharcha_entries add column if not exists payment_mode text null;
+-- alter table public.kharcha_entries add column if not exists paid_at bigint null;
+-- alter table public.kharcha_entries add column if not exists payment_note text not null default '';
+
 -- Delta pull isi index se aata hai: "is family ke rows jo last sync ke baad badle".
 create index if not exists kharcha_entries_family_updated
   on public.kharcha_entries (family_code, updated_at);

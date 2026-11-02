@@ -193,7 +193,7 @@ export default function HomeScreen({ onSelectScreen }) {
                   महीने-दर-महीने खर्चा का हिसाब - हर सामान, हर कीमत
                 </Text>
                 <Text style={styles.trackerCardDescEng} numberOfLines={1}>
-                  Monthly & yearly expense register · 100% Offline
+                  Monthly & yearly expense register
                 </Text>
               </View>
 
