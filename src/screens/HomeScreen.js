@@ -114,7 +114,7 @@ export default function HomeScreen({ onSelectScreen }) {
         showsVerticalScrollIndicator={false}
         removeClippedSubviews={false}
       >
-        {/* Featured Calculator Card: Samaan-Bhav & Kirana */}
+        {/* Featured Calculator Card: Kirana Calculator */}
         <View style={styles.cardsList}>
           <TouchableOpacity
             style={styles.popularCardWrapper}
@@ -143,7 +143,7 @@ export default function HomeScreen({ onSelectScreen }) {
 
               {/* Body */}
               <View style={styles.popularCardBody}>
-                <Text style={styles.popularCardTitle}>Samaan-Bhav & Kirana</Text>
+                <Text style={styles.popularCardTitle}>Kirana Calculator</Text>
 
                 <Text style={styles.popularCardDescHindi}>
                   भाव से बचत या वजन से रुपये की लागत निकालें

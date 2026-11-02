@@ -104,7 +104,7 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
       <View style={styles.container}>
         {/* Fixed Header with subtle shadow fade */}
         <ScreenHeader
-          title="Samaan-Bhav & Kirana"
+          title="Kirana Calculator"
           subtitle="सामान का भाव - वजन और मूल्य कैलकुलेटर"
           icon="scale-bathroom"
           onBack={onBack}
@@ -113,251 +113,251 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
 
         <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
 
-        {/* Mode Switcher Tabs */}
-        <View style={styles.modeTabsCard}>
-          {/* Tab 1: रुपये से वजन */}
-          <TouchableOpacity
-            style={styles.modeTab}
-            onPress={() => setMode('priceToWeight')}
-            activeOpacity={0.8}
-          >
-            {mode === 'priceToWeight' ? (
-              <LinearGradient
-                colors={Colors.gradientColors}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.activeTabGradient}
-              >
-                <Text style={styles.activeTabTitle}>रुपये से वजन</Text>
-                <Text style={styles.activeTabSub}>Money ➔ Weight</Text>
-              </LinearGradient>
-            ) : (
-              <View style={styles.inactiveTab}>
-                <Text style={styles.inactiveTabTitle}>रुपये से वजन</Text>
-                <Text style={styles.inactiveTabSub}>Money ➔ Weight</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          {/* Mode Switcher Tabs */}
+          <View style={styles.modeTabsCard}>
+            {/* Tab 1: रुपये से वजन */}
+            <TouchableOpacity
+              style={styles.modeTab}
+              onPress={() => setMode('priceToWeight')}
+              activeOpacity={0.8}
+            >
+              {mode === 'priceToWeight' ? (
+                <LinearGradient
+                  colors={Colors.gradientColors}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.activeTabGradient}
+                >
+                  <Text style={styles.activeTabTitle}>रुपये से वजन</Text>
+                  <Text style={styles.activeTabSub}>Money ➔ Weight</Text>
+                </LinearGradient>
+              ) : (
+                <View style={styles.inactiveTab}>
+                  <Text style={styles.inactiveTabTitle}>रुपये से वजन</Text>
+                  <Text style={styles.inactiveTabSub}>Money ➔ Weight</Text>
+                </View>
+              )}
+            </TouchableOpacity>
 
-          {/* Tab 2: वजन से रुपये */}
-          <TouchableOpacity
-            style={styles.modeTab}
-            onPress={() => setMode('weightToPrice')}
-            activeOpacity={0.8}
-          >
-            {mode === 'weightToPrice' ? (
-              <LinearGradient
-                colors={Colors.gradientColors}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.activeTabGradient}
-              >
-                <Text style={styles.activeTabTitle}>वजन से रुपये</Text>
-                <Text style={styles.activeTabSub}>Weight ➔ Money</Text>
-              </LinearGradient>
-            ) : (
-              <View style={styles.inactiveTab}>
-                <Text style={styles.inactiveTabTitle}>वजन से रुपये</Text>
-                <Text style={styles.inactiveTabSub}>Weight ➔ Money</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {/* INPUTS CARD (Slate-800/60 with Slate-700 Border) */}
-        <View style={styles.inputsCard}>
-          {/* Row 1: Market Rate & Per Unit */}
-          <View style={styles.inputRow}>
-            {/* Market Rate */}
-            <View style={{ flex: 1.2 }}>
-              <Text style={styles.inputFloatingLabel}>Market Rate (भाव / दर)</Text>
-              <View style={styles.fieldBox}>
-                <Text style={styles.rupeeSymbol}>₹</Text>
-                <TextInput
-                  style={[styles.fieldInput, !rate && styles.fieldHint]}
-                  value={rate}
-                  onChangeText={setRate}
-                  keyboardType="numeric"
-                  placeholder="Enter rate"
-                  placeholderTextColor={Colors.placeholderHint}
-                />
-              </View>
-            </View>
-
-            {/* Per Unit */}
-            <View style={{ flex: 1 }}>
-              <Text style={styles.inputFloatingLabel}>Per Unit (प्रति)</Text>
-              <TouchableOpacity
-                style={styles.dropdownBox}
-                onPress={() => setUnitModalVisible(true)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.dropdownText} numberOfLines={1}>
-                  {rateUnit}
-                </Text>
-                <Ionicons name="caret-down" size={14} color={Colors.amber} />
-              </TouchableOpacity>
-            </View>
+            {/* Tab 2: वजन से रुपये */}
+            <TouchableOpacity
+              style={styles.modeTab}
+              onPress={() => setMode('weightToPrice')}
+              activeOpacity={0.8}
+            >
+              {mode === 'weightToPrice' ? (
+                <LinearGradient
+                  colors={Colors.gradientColors}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.activeTabGradient}
+                >
+                  <Text style={styles.activeTabTitle}>वजन से रुपये</Text>
+                  <Text style={styles.activeTabSub}>Weight ➔ Money</Text>
+                </LinearGradient>
+              ) : (
+                <View style={styles.inactiveTab}>
+                  <Text style={styles.inactiveTabTitle}>वजन से रुपये</Text>
+                  <Text style={styles.inactiveTabSub}>Weight ➔ Money</Text>
+                </View>
+              )}
+            </TouchableOpacity>
           </View>
 
-          {/* Divider */}
-          <View style={styles.cardDivider} />
+          {/* INPUTS CARD (Slate-800/60 with Slate-700 Border) */}
+          <View style={styles.inputsCard}>
+            {/* Row 1: Market Rate & Per Unit */}
+            <View style={styles.inputRow}>
+              {/* Market Rate */}
+              <View style={{ flex: 1.2 }}>
+                <Text style={styles.inputFloatingLabel}>Market Rate (भाव / दर)</Text>
+                <View style={styles.fieldBox}>
+                  <Text style={styles.rupeeSymbol}>₹</Text>
+                  <TextInput
+                    style={[styles.fieldInput, !rate && styles.fieldHint]}
+                    value={rate}
+                    onChangeText={setRate}
+                    keyboardType="numeric"
+                    placeholder="Enter rate"
+                    placeholderTextColor={Colors.placeholderHint}
+                  />
+                </View>
+              </View>
 
-          {/* Row 2: Based on Mode */}
-          {mode === 'priceToWeight' ? (
-            <View>
-              <Text style={styles.inputFloatingLabel}>
-                Target Budget / Money (कितने रुपये का चाहिए?)
-              </Text>
-              <View style={styles.fieldBox}>
-                <Text style={styles.rupeeSymbol}>₹</Text>
-                <TextInput
-                  style={[
-                    styles.fieldInput,
-                    { color: '#FFFFFF', fontSize: 20 },
-                    !budget && styles.fieldHint,
-                  ]}
-                  value={budget}
-                  onChangeText={setBudget}
-                  keyboardType="numeric"
-                  placeholder="Enter amount"
-                  placeholderTextColor={Colors.placeholderHint}
-                />
+              {/* Per Unit */}
+              <View style={{ flex: 1 }}>
+                <Text style={styles.inputFloatingLabel}>Per Unit (प्रति)</Text>
+                <TouchableOpacity
+                  style={styles.dropdownBox}
+                  onPress={() => setUnitModalVisible(true)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.dropdownText} numberOfLines={1}>
+                    {rateUnit}
+                  </Text>
+                  <Ionicons name="caret-down" size={14} color={Colors.amber} />
+                </TouchableOpacity>
               </View>
             </View>
-          ) : (
-            <View>
-              <Text style={styles.inputFloatingLabel}>
-                Kitna Samaan Chahiye (Weight / Quantity):
-              </Text>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <View style={[styles.fieldBox, { flex: 1.2 }]}>
+
+            {/* Divider */}
+            <View style={styles.cardDivider} />
+
+            {/* Row 2: Based on Mode */}
+            {mode === 'priceToWeight' ? (
+              <View>
+                <Text style={styles.inputFloatingLabel}>
+                  Target Budget / Money (कितने रुपये का चाहिए?)
+                </Text>
+                <View style={styles.fieldBox}>
+                  <Text style={styles.rupeeSymbol}>₹</Text>
                   <TextInput
                     style={[
                       styles.fieldInput,
                       { color: '#FFFFFF', fontSize: 20 },
-                      !weight && styles.fieldHint,
+                      !budget && styles.fieldHint,
                     ]}
-                    value={weight}
-                    onChangeText={setWeight}
+                    value={budget}
+                    onChangeText={setBudget}
                     keyboardType="numeric"
-                    placeholder="Enter weight"
+                    placeholder="Enter amount"
                     placeholderTextColor={Colors.placeholderHint}
                   />
                 </View>
+              </View>
+            ) : (
+              <View>
+                <Text style={styles.inputFloatingLabel}>
+                  Kitna Samaan Chahiye (Weight / Quantity):
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <View style={[styles.fieldBox, { flex: 1.2 }]}>
+                    <TextInput
+                      style={[
+                        styles.fieldInput,
+                        { color: '#FFFFFF', fontSize: 20 },
+                        !weight && styles.fieldHint,
+                      ]}
+                      value={weight}
+                      onChangeText={setWeight}
+                      keyboardType="numeric"
+                      placeholder="Enter weight"
+                      placeholderTextColor={Colors.placeholderHint}
+                    />
+                  </View>
 
-                {/* Weight Unit Switch */}
-                <View style={[styles.fieldBox, { flex: 1, paddingHorizontal: 4 }]}>
-                  <TouchableOpacity
-                    style={[
-                      styles.weightUnitBtn,
-                      weightUnit === 'Gram' && styles.weightUnitBtnActive,
-                    ]}
-                    onPress={() => setWeightUnit('Gram')}
-                  >
-                    <Text
+                  {/* Weight Unit Switch */}
+                  <View style={[styles.fieldBox, { flex: 1, paddingHorizontal: 4 }]}>
+                    <TouchableOpacity
                       style={[
-                        styles.weightUnitText,
-                        weightUnit === 'Gram' && styles.weightUnitTextActive,
+                        styles.weightUnitBtn,
+                        weightUnit === 'Gram' && styles.weightUnitBtnActive,
                       ]}
+                      onPress={() => setWeightUnit('Gram')}
                     >
-                      Gram (g)
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.weightUnitBtn,
-                      weightUnit === 'Kilogram' && styles.weightUnitBtnActive,
-                    ]}
-                    onPress={() => setWeightUnit('Kilogram')}
-                  >
-                    <Text
+                      <Text
+                        style={[
+                          styles.weightUnitText,
+                          weightUnit === 'Gram' && styles.weightUnitTextActive,
+                        ]}
+                      >
+                        Gram (g)
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
                       style={[
-                        styles.weightUnitText,
-                        weightUnit === 'Kilogram' && styles.weightUnitTextActive,
+                        styles.weightUnitBtn,
+                        weightUnit === 'Kilogram' && styles.weightUnitBtnActive,
                       ]}
+                      onPress={() => setWeightUnit('Kilogram')}
                     >
-                      Kg (किलो)
-                    </Text>
-                  </TouchableOpacity>
+                      <Text
+                        style={[
+                          styles.weightUnitText,
+                          weightUnit === 'Kilogram' && styles.weightUnitTextActive,
+                        ]}
+                      >
+                        Kg (किलो)
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
-            </View>
-          )}
-        </View>
+            )}
+          </View>
 
-        {/* HERO RESULT CARD (Exact match to Screenshot 2 Amber-500 to Orange-600 Gradient) */}
-        <LinearGradient
-          colors={Colors.gradientCardColors}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.heroResultCard}
-        >
-          {mode === 'priceToWeight' ? (
-            <>
-              <Text style={styles.heroLabel}>कुल सामान मिलेगा (Quantity Received):</Text>
-              <Text style={styles.heroMainValue}>
-                {qtyResult.valid ? `${qtyResult.grams} Gram` : '0.00 Gram'}
-              </Text>
-              <Text style={styles.heroSubValue}>
-                = {qtyResult.valid ? `${qtyResult.kg} Kilogram` : '0.000 Kg'}
-              </Text>
-            </>
-          ) : (
-            <>
-              <Text style={styles.heroLabel}>कुल भुगतान राशि (Total Price to Pay):</Text>
-              <Text style={styles.heroMainValue}>
-                {priceResult.valid ? `₹ ${priceResult.cost}` : '₹ 0.00'}
-              </Text>
-              <Text style={styles.heroSubValue}>
-                {priceResult.valid
-                  ? `(${weight} ${weightUnit} का कुल हिसाब)`
-                  : `(0 ${weightUnit} का कुल हिसाब)`}
-              </Text>
-            </>
-          )}
-        </LinearGradient>
-
-        {/* Unit Dropdown Modal */}
-        <Modal
-          visible={unitModalVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setUnitModalVisible(false)}
-        >
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setUnitModalVisible(false)}
+          {/* HERO RESULT CARD (Exact match to Screenshot 2 Amber-500 to Orange-600 Gradient) */}
+          <LinearGradient
+            colors={Colors.gradientCardColors}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.heroResultCard}
           >
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Select Unit (प्रति इकाई):</Text>
-              {unitsList.map((u) => (
-                <TouchableOpacity
-                  key={u.val}
-                  style={[styles.modalItem, rateUnit === u.val && styles.modalItemActive]}
-                  onPress={() => {
-                    setRateUnit(u.val);
-                    setUnitModalVisible(false);
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.modalItemText,
-                      rateUnit === u.val && styles.modalItemTextActive,
-                    ]}
+            {mode === 'priceToWeight' ? (
+              <>
+                <Text style={styles.heroLabel}>कुल सामान मिलेगा (Quantity Received):</Text>
+                <Text style={styles.heroMainValue}>
+                  {qtyResult.valid ? `${qtyResult.grams} Gram` : '0.00 Gram'}
+                </Text>
+                <Text style={styles.heroSubValue}>
+                  = {qtyResult.valid ? `${qtyResult.kg} Kilogram` : '0.000 Kg'}
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.heroLabel}>कुल भुगतान राशि (Total Price to Pay):</Text>
+                <Text style={styles.heroMainValue}>
+                  {priceResult.valid ? `₹ ${priceResult.cost}` : '₹ 0.00'}
+                </Text>
+                <Text style={styles.heroSubValue}>
+                  {priceResult.valid
+                    ? `(${weight} ${weightUnit} का कुल हिसाब)`
+                    : `(0 ${weightUnit} का कुल हिसाब)`}
+                </Text>
+              </>
+            )}
+          </LinearGradient>
+
+          {/* Unit Dropdown Modal */}
+          <Modal
+            visible={unitModalVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setUnitModalVisible(false)}
+          >
+            <TouchableOpacity
+              style={styles.modalOverlay}
+              activeOpacity={1}
+              onPress={() => setUnitModalVisible(false)}
+            >
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Select Unit (प्रति इकाई):</Text>
+                {unitsList.map((u) => (
+                  <TouchableOpacity
+                    key={u.val}
+                    style={[styles.modalItem, rateUnit === u.val && styles.modalItemActive]}
+                    onPress={() => {
+                      setRateUnit(u.val);
+                      setUnitModalVisible(false);
+                    }}
                   >
-                    {u.label}
-                  </Text>
-                  {rateUnit === u.val && (
-                    <Ionicons name="checkmark-circle" size={18} color={Colors.amber} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-          </TouchableOpacity>
-        </Modal>
-      </ScrollView>
+                    <Text
+                      style={[
+                        styles.modalItemText,
+                        rateUnit === u.val && styles.modalItemTextActive,
+                      ]}
+                    >
+                      {u.label}
+                    </Text>
+                    {rateUnit === u.val && (
+                      <Ionicons name="checkmark-circle" size={18} color={Colors.amber} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </TouchableOpacity>
+          </Modal>
+        </ScrollView>
       </View>
     </KeyboardAvoidingView>
   );
