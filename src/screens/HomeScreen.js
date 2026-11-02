@@ -131,14 +131,14 @@ export default function HomeScreen({ onSelectScreen }) {
               {/* Exact SVG glow from user's samaa-bhav-card-glow.svg */}
               <SamaaBhavCardGlow />
 
-              {/* Left Calculator Icon */}
+              {/* Left Weighing-Scale Icon (Kirana = weight ↔ price) */}
               <LinearGradient
                 colors={['#FFAA00', '#FF7700', '#F54A00']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 0.2, y: 1 }}
                 style={styles.popularIconBox}
               >
-                <MaterialCommunityIcons name="calculator-variant" size={30} color="#FFFFFF" />
+                <MaterialCommunityIcons name="scale-balance" size={30} color="#FFFFFF" />
               </LinearGradient>
 
               {/* Body */}

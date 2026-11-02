@@ -176,7 +176,7 @@ function LoginForm({ onClose, onSuccess }) {
                         setError('');
                         setName(t);
                       }}
-                      placeholder="e.g. Rahul Sharma"
+                      placeholder="Enter your name"
                       placeholderTextColor={Colors.textDim}
                       autoFocus={true}
                     />
@@ -194,13 +194,16 @@ function LoginForm({ onClose, onSuccess }) {
                       <Text style={styles.countryCodeText}>{countryCode}</Text>
                     </View>
                     <TextInput
-                      style={styles.phoneInput}
+                      style={[
+                        styles.phoneInput,
+                        phone.length > 0 && styles.phoneInputFilled,
+                      ]}
                       value={phone}
                       onChangeText={(t) => {
                         setError('');
                         setPhone(t.replace(/\D/g, '').slice(0, 10));
                       }}
-                      placeholder="98765 43210"
+                      placeholder="Enter your mobile number"
                       placeholderTextColor={Colors.textDim}
                       keyboardType="phone-pad"
                       maxLength={10}
@@ -478,10 +481,12 @@ const styles = StyleSheet.create({
     flex: 1,
     height: '100%',
     paddingHorizontal: 12,
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 14.5,
+    fontWeight: '600',
     color: '#F8FAFC',
-    letterSpacing: 1.5,
+  },
+  phoneInputFilled: {
+    letterSpacing: 1,
   },
   clearPhoneBtn: {
     paddingHorizontal: 10,
