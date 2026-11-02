@@ -16,7 +16,7 @@ import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from './src/theme/colors';
-import { AuthProvider } from './src/context/AuthContext';
+import { AuthProvider, useAuth } from './src/context/AuthContext';
 
 // Screens
 import HomeScreen from './src/screens/HomeScreen';
@@ -74,6 +74,7 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
 
 function MainApp() {
   const insets = useSafeAreaInsets();
+  const { expensesStorageKey } = useAuth();
   const [currentScreen, setCurrentScreen] = useState('home');
   const [activeBottomTab, setActiveBottomTab] = useState('home');
 
@@ -215,7 +216,10 @@ function MainApp() {
         {currentScreen === 'unit' && <UnitConverter />}
         {currentScreen === 'emi' && <EmiCalculator />}
         {currentScreen === 'kharcha' && (
-          <KharchaTrackerScreen onBack={() => navigateTo('home')} />
+          <KharchaTrackerScreen
+            key={expensesStorageKey}
+            onBack={() => navigateTo('home')}
+          />
         )}
 
         {currentScreen === 'fd' && (

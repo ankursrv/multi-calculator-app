@@ -17,6 +17,55 @@ export function getUserBadgeInitials(name) {
 
 const AuthContext = createContext(null);
 
+// Ensure user's personal storage is strictly separate from guest storage
+export async function purgeGuestItemsFromUser(userId) {
+  if (!userId) return;
+  try {
+    const guestRaw = await AsyncStorage.getItem(GUEST_EXPENSES_KEY);
+    if (!guestRaw) return;
+    const guestData = JSON.parse(guestRaw);
+    if (!guestData || typeof guestData !== 'object') return;
+
+    const guestIds = new Set();
+    Object.values(guestData).forEach((items) => {
+      if (Array.isArray(items)) {
+        items.forEach((item) => {
+          if (item && item.id) guestIds.add(item.id);
+        });
+      }
+    });
+    if (guestIds.size === 0) return;
+
+    const userKey = `kharchaTrackerData_${userId}`;
+    const userRaw = await AsyncStorage.getItem(userKey);
+    if (!userRaw) return;
+    const userData = JSON.parse(userRaw);
+    if (!userData || typeof userData !== 'object') return;
+
+    let changed = false;
+    const cleaned = {};
+    Object.keys(userData).forEach((monthKey) => {
+      const items = Array.isArray(userData[monthKey]) ? userData[monthKey] : [];
+      const kept = items.filter((item) => {
+        if (item && item.id && guestIds.has(item.id)) {
+          changed = true;
+          return false;
+        }
+        return true;
+      });
+      if (kept.length > 0) {
+        cleaned[monthKey] = kept;
+      }
+    });
+
+    if (changed) {
+      await AsyncStorage.setItem(userKey, JSON.stringify(cleaned));
+    }
+  } catch (_e) {
+    // ignore
+  }
+}
+
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [authLoaded, setAuthLoaded] = useState(false);
@@ -30,6 +79,7 @@ export function AuthProvider({ children }) {
           const parsed = JSON.parse(raw);
           if (parsed && parsed.id) {
             setCurrentUser(parsed);
+            purgeGuestItemsFromUser(parsed.id).catch(() => {});
           }
         }
       } catch (_e) {
@@ -48,50 +98,10 @@ export function AuthProvider({ children }) {
     return `kharchaTrackerData_${currentUser.id}`;
   }, [currentUser]);
 
-  // Check if guest has existing expenses that can be merged
-  const checkHasGuestExpenses = useCallback(async () => {
-    try {
-      const raw = await AsyncStorage.getItem(GUEST_EXPENSES_KEY);
-      if (!raw) return false;
-      const data = JSON.parse(raw);
-      if (!data || typeof data !== 'object') return false;
-      return Object.values(data).some((arr) => Array.isArray(arr) && arr.length > 0);
-    } catch (_e) {
-      return false;
-    }
-  }, []);
 
-  // Migrate / Merge guest data into the user's storage
-  const mergeGuestDataIntoUser = useCallback(async (userId) => {
-    if (!userId) return;
-    try {
-      const guestRaw = await AsyncStorage.getItem(GUEST_EXPENSES_KEY);
-      if (!guestRaw) return;
-      const guestData = JSON.parse(guestRaw);
-      if (!guestData || typeof guestData !== 'object') return;
 
-      const userKey = `kharchaTrackerData_${userId}`;
-      const userRaw = await AsyncStorage.getItem(userKey);
-      const userData = userRaw ? JSON.parse(userRaw) : {};
-
-      // Merge each month list, deduplicating by ID
-      const merged = { ...userData };
-      Object.keys(guestData).forEach((monthKey) => {
-        const guestItems = Array.isArray(guestData[monthKey]) ? guestData[monthKey] : [];
-        const existingItems = Array.isArray(merged[monthKey]) ? merged[monthKey] : [];
-        const existingIds = new Set(existingItems.map((item) => item.id));
-        const additions = guestItems.filter((item) => !existingIds.has(item.id));
-        merged[monthKey] = [...existingItems, ...additions];
-      });
-
-      await AsyncStorage.setItem(userKey, JSON.stringify(merged));
-    } catch (_e) {
-      // ignore
-    }
-  }, []);
-
-  // Login with phone number and mandatory name
-  const loginWithPhone = useCallback(async ({ name, phone, countryCode = '+91', mergeGuest = false }) => {
+  // Login with phone number and mandatory name — completely separate from guest
+  const loginWithPhone = useCallback(async ({ name, phone, countryCode = '+91' }) => {
     const cleanPhone = String(phone).replace(/\D/g, '');
     const cleanName = name ? name.trim() : '';
     const userId = `${countryCode.replace('+', '')}_${cleanPhone}`;
@@ -122,14 +132,13 @@ export function AuthProvider({ children }) {
 
     await AsyncStorage.setItem(userProfileKey, JSON.stringify(profile));
 
-    if (mergeGuest) {
-      await mergeGuestDataIntoUser(userId);
-    }
+    // Ensure strict separation: purge any stale merged guest items from this account
+    await purgeGuestItemsFromUser(userId);
 
     await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(profile));
     setCurrentUser(profile);
     return profile;
-  }, [mergeGuestDataIntoUser]);
+  }, []);
 
   // Update profile (name, avatarImage, phone)
   const updateProfile = useCallback(async (updates) => {
@@ -159,8 +168,6 @@ export function AuthProvider({ children }) {
     loginWithPhone,
     updateProfile,
     logout,
-    checkHasGuestExpenses,
-    mergeGuestDataIntoUser,
   }), [
     currentUser,
     authLoaded,
@@ -168,8 +175,7 @@ export function AuthProvider({ children }) {
     loginWithPhone,
     updateProfile,
     logout,
-    checkHasGuestExpenses,
-    mergeGuestDataIntoUser,
+    purgeGuestItemsFromUser,
   ]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

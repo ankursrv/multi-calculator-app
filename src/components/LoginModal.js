@@ -16,7 +16,7 @@ import { Colors } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
 
 function LoginForm({ onClose, onSuccess }) {
-  const { loginWithPhone, checkHasGuestExpenses } = useAuth();
+  const { loginWithPhone } = useAuth();
 
   const [step, setStep] = useState(1); // 1 = Name + Phone input, 2 = 6-box OTP
   const countryCode = '+91';
@@ -27,22 +27,7 @@ function LoginForm({ onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [countdown, setCountdown] = useState(30);
-  const [hasGuestData, setHasGuestData] = useState(false);
-
   const otpInputsRef = useRef([]);
-
-  // Check guest expenses once on mount
-  useEffect(() => {
-    let active = true;
-    checkHasGuestExpenses()
-      .then((has) => {
-        if (active) setHasGuestData(has);
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, [checkHasGuestExpenses]);
 
   // Resend OTP countdown timer
   useEffect(() => {
@@ -130,7 +115,6 @@ function LoginForm({ onClose, onSuccess }) {
         name: name.trim(),
         phone,
         countryCode,
-        mergeGuest: true, // Preserve all offline guest expenses
       });
       setLoading(false);
       if (onSuccess) onSuccess();
@@ -229,14 +213,7 @@ function LoginForm({ onClose, onSuccess }) {
                   </View>
                 </View>
 
-                {hasGuestData && (
-                  <View style={styles.mergeHint}>
-                    <Ionicons name="cloud-upload-outline" size={13} color="#34D399" />
-                    <Text style={styles.mergeHintText}>
-                      Your current offline expenses will be safely linked to this account.
-                    </Text>
-                  </View>
-                )}
+
 
                 <TouchableOpacity
                   style={[styles.primaryBtn, (!isFormValid || loading) && styles.primaryBtnDisabled]}

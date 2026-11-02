@@ -172,6 +172,8 @@ export default function KharchaTrackerScreen({ onBack }) {
   const pushTimerRef = useRef(null);
 
   // ── Persistence ──────────────────────────────────────────────
+  const [loadedKey, setLoadedKey] = useState(null);
+
   useEffect(() => {
     let isCancelled = false;
     (async () => {
@@ -181,11 +183,15 @@ export default function KharchaTrackerScreen({ onBack }) {
         if (!isCancelled) {
           if (raw) setData(JSON.parse(raw));
           else setData({});
+          setLoadedKey(expensesStorageKey);
+          setLoaded(true);
         }
       } catch (_e) {
-        if (!isCancelled) setData({});
-      } finally {
-        if (!isCancelled) setLoaded(true);
+        if (!isCancelled) {
+          setData({});
+          setLoadedKey(expensesStorageKey);
+          setLoaded(true);
+        }
       }
     })();
     return () => {
@@ -194,9 +200,10 @@ export default function KharchaTrackerScreen({ onBack }) {
   }, [expensesStorageKey]);
 
   useEffect(() => {
-    if (!loaded) return;
+    // Only persist if data was specifically loaded for the current storage key
+    if (!loaded || loadedKey !== expensesStorageKey) return;
     AsyncStorage.setItem(expensesStorageKey, JSON.stringify(data)).catch(() => { });
-  }, [data, loaded, expensesStorageKey]);
+  }, [data, loaded, loadedKey, expensesStorageKey]);
 
   // ── Family sync plumbing ─────────────────────────────────────────
   // Always read the freshest data through a ref so the background sync never
