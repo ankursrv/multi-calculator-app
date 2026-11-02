@@ -648,9 +648,10 @@ export default function KharchaTrackerScreen({ onBack }) {
     }
   };
 
-  // "Kisne add kiya" — rendered inline so the existing row layout does not shift at all.
+  // "Kisne add kiya" — only for another family member's entry, rendered inline
+  // so the user never sees their own name on their own entries.
   const byline = (e) =>
-    cloudMeta && e.addedBy ? (
+    cloudMeta && e.addedBy && e.addedBy !== cloudMeta.deviceName ? (
       <Text style={styles.itemByline}> · {e.addedBy}</Text>
     ) : null;
 
@@ -760,9 +761,10 @@ export default function KharchaTrackerScreen({ onBack }) {
 
   const doRestore = () => {
     if (!restoreData) return;
+    const sanitized = ensureIds(restoreData, cloudMeta ? cloudMeta.deviceName : '');
     // Linked to a family: merge by entry id so the restore cannot wipe what the
     // others have added. Not linked: load the file exactly as it is.
-    setData((prev) => (cloudMeta ? mergeBackup(prev, restoreData, cloudMeta.deviceName) : restoreData));
+    setData((prev) => (cloudMeta ? mergeBackup(prev, sanitized, cloudMeta.deviceName) : sanitized));
     setRestoreData(null);
     setYearSummaryOpen(false);
     Alert.alert('डेटा वापस आ गया ✅', 'बैकअप से सारा खर्चा फोन में लाद दिया गया है।');

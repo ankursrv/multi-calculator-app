@@ -115,8 +115,8 @@ export function ensureIds(data, deviceName, forceUpdateAddedBy = false) {
     next[monthKey] = list.map((entry) => {
       const dec = decodeAddedBy(entry && entry.addedBy);
       let cleanAddedBy = dec.deviceName || (entry && entry.addedBy) || deviceName || '';
-      if ((forceUpdateAddedBy || cleanAddedBy === 'Test1') && deviceName) {
-        cleanAddedBy = deviceName;
+      if (cleanAddedBy === 'Test1' || forceUpdateAddedBy) {
+        cleanAddedBy = deviceName || '';
       }
       if (entry && entry.id && entry.updatedAt && entry.addedBy === cleanAddedBy) return entry;
       touched = true;
