@@ -141,7 +141,7 @@ export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveI
 
           {/* Split Calculator */}
           <View style={styles.splitRow}>
-            <Text style={styles.splitLabel}>बिल बांटें (Split among people):</Text>
+            <Text style={styles.splitLabel}>Split among people</Text>
             <View style={styles.splitControls}>
               {['1', '2', '3', '4', '5'].map((num) => (
                 <TouchableOpacity

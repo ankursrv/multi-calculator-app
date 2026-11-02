@@ -221,11 +221,9 @@ export default function FdCalculator({ onBack }) {
         <View style={styles.infoBox}>
           <View style={styles.infoTitleRow}>
             <Ionicons name="information-circle" size={16} color="#38BDF8" />
-            <Text style={styles.infoTitle}>FD हिसाब कैसे काम करता है?</Text>
+            <Text style={styles.infoTitle}>महत्वपूर्ण सूचना</Text>
           </View>
           <Text style={styles.infoDesc}>
-            अवधि के दिन/महीने/साल में value डालें और तुरंत ब्याज देखें।
-            ब्याज त्रैमासिक (quarterly) चक्रवृद्धि से निकाला जाता है — जैसा ज़्यादातर बैंक देते हैं।
             यह अनुमानित हिसाब है, वास्तविक ब्याज दर आपके बैंक पर निर्भर करती है।
           </Text>
         </View>
