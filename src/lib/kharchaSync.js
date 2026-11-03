@@ -12,51 +12,81 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { cloud } from './cloudApi';
 
-const META_KEY = 'kharchaCloudMeta';
-const SNAPSHOT_KEY = 'kharchaSyncSnapshot';
+const LEGACY_META_KEY = 'kharchaCloudMeta';
+const LEGACY_SNAPSHOT_KEY = 'kharchaSyncSnapshot';
+
+export function getMetaKey(userScope) {
+  const scope = (userScope && String(userScope).trim()) || 'guest';
+  return `kharchaCloudMeta_${scope}`;
+}
+
+export function getSnapshotKey(userScope) {
+  const scope = (userScope && String(userScope).trim()) || 'guest';
+  return `kharchaSyncSnapshot_${scope}`;
+}
 
 // ── Persisted helper state ────────────────────────────────────────────────
-export async function readMeta() {
+export async function readMeta(userScope = 'guest') {
   try {
-    const raw = await AsyncStorage.getItem(META_KEY);
-    if (!raw) return null;
-    const meta = JSON.parse(raw);
-    return meta && meta.familyCode ? meta : null;
+    const key = getMetaKey(userScope);
+    const raw = await AsyncStorage.getItem(key);
+    if (raw) {
+      const meta = JSON.parse(raw);
+      return meta && meta.familyCode ? meta : null;
+    }
+    // Backward compatibility: If no scoped meta exists and we are in 'guest' scope,
+    // migrate any legacy meta to guest scope and clean up legacy key.
+    if (!userScope || userScope === 'guest') {
+      const legacyRaw = await AsyncStorage.getItem(LEGACY_META_KEY);
+      if (legacyRaw) {
+        const meta = JSON.parse(legacyRaw);
+        if (meta && meta.familyCode) {
+          await AsyncStorage.setItem(key, legacyRaw).catch(() => {});
+          await AsyncStorage.removeItem(LEGACY_META_KEY).catch(() => {});
+          return meta;
+        }
+      }
+    }
+    return null;
   } catch (_e) {
     return null;
   }
 }
 
-export async function saveMeta(patch) {
-  const current = (await readMeta()) || {};
+export async function saveMeta(patch, userScope = 'guest') {
+  const current = (await readMeta(userScope)) || {};
   const next = { ...current, ...patch };
-  await AsyncStorage.setItem(META_KEY, JSON.stringify(next)).catch(() => {});
+  await AsyncStorage.setItem(getMetaKey(userScope), JSON.stringify(next)).catch(() => {});
   return next;
 }
 
-export async function setMeta(next) {
-  await AsyncStorage.setItem(META_KEY, JSON.stringify(next)).catch(() => {});
+export async function setMeta(next, userScope = 'guest') {
+  await AsyncStorage.setItem(getMetaKey(userScope), JSON.stringify(next)).catch(() => {});
   return next;
 }
 
-export async function clearMeta() {
-  await AsyncStorage.removeItem(META_KEY).catch(() => {});
-  await AsyncStorage.removeItem(SNAPSHOT_KEY).catch(() => {});
+export async function clearMeta(userScope = 'guest') {
+  await AsyncStorage.removeItem(getMetaKey(userScope)).catch(() => {});
+  await AsyncStorage.removeItem(getSnapshotKey(userScope)).catch(() => {});
+  if (!userScope || userScope === 'guest') {
+    await AsyncStorage.removeItem(LEGACY_META_KEY).catch(() => {});
+    await AsyncStorage.removeItem(LEGACY_SNAPSHOT_KEY).catch(() => {});
+  }
 }
 
 // Snapshot = what this device last successfully put in / took out of the
 // cloud: { [entryId]: { u: updatedAt, d: deletedFlag } }.
-async function readSnapshot() {
+async function readSnapshot(userScope = 'guest') {
   try {
-    const raw = await AsyncStorage.getItem(SNAPSHOT_KEY);
+    const raw = await AsyncStorage.getItem(getSnapshotKey(userScope));
     return raw ? JSON.parse(raw) : {};
   } catch (_e) {
     return {};
   }
 }
 
-async function saveSnapshot(map) {
-  await AsyncStorage.setItem(SNAPSHOT_KEY, JSON.stringify(map)).catch(() => {});
+async function saveSnapshot(map, userScope = 'guest') {
+  await AsyncStorage.setItem(getSnapshotKey(userScope), JSON.stringify(map)).catch(() => {});
 }
 
 // ── Local data helpers ────────────────────────────────────────────────────
@@ -141,10 +171,17 @@ export function newEntryId() {
 // upsert row; anything in the snapshot that vanished locally becomes a soft
 // delete. On success the snapshot advances, which is what "queued" means:
 // unpushed work is automatically retried on the next sync.
-export async function pushLocal(data, meta) {
+export async function pushLocal(data, meta, userScope = 'guest') {
   if (!meta || !meta.familyCode) return { ok: false, pushed: 0 };
 
-  const snapshot = await readSnapshot();
+  // STRICT PERMISSION CHECK:
+  // Members who joined via code are read-only and have no write permission.
+  // They must NEVER push edits, updates, or deletions to Supabase.
+  if (meta.role === 'member') {
+    return { ok: true, pushed: 0 };
+  }
+
+  const snapshot = await readSnapshot(userScope);
   const seen = {};
   const upserts = [];
 
@@ -219,7 +256,7 @@ export async function pushLocal(data, meta) {
     };
   }
   for (const row of deletes) snapshot[row.id] = { u: row.updated_at, d: 1 };
-  await saveSnapshot(snapshot);
+  await saveSnapshot(snapshot, userScope);
   return { ok: true, pushed: pending.length };
 }
 
@@ -229,22 +266,23 @@ export async function pushLocal(data, meta) {
 // against whatever the local data looks like at that moment — a kharcha added
 // while the network request was still in flight must never be overwritten by a
 // stale copy of the register.
-export async function pullRemote(data, meta) {
+export async function pullRemote(data, meta, userScope = 'guest') {
   if (!meta || !meta.familyCode) return { ok: false, changed: false, applied: [], data };
 
   const rows = await cloud.pullEntries(meta.familyCode, meta.lastPulledAt || 0);
   if (!rows) return { ok: false, changed: false, applied: [], data }; // offline
   if (rows.length === 0) {
-    const nextMeta = await saveMeta({ ...meta, lastPulledAt: Date.now() });
+    const nextMeta = await saveMeta({ ...meta, lastPulledAt: Date.now() }, userScope);
     return { ok: true, changed: false, applied: [], data, meta: nextMeta };
   }
 
-  const snapshot = await readSnapshot();
+  const snapshot = await readSnapshot(userScope);
   const index = {};
   forEachEntry(data, (monthKey, entry) => {
     if (entry && entry.id) index[entry.id] = entry;
   });
 
+  const isMember = meta.role === 'member';
   const applied = [];
   rows.forEach((row) => {
     const at = Number(row.updated_at) || 0;
@@ -263,11 +301,9 @@ export async function pullRemote(data, meta) {
     const paidAt = Number(row.paid_at) || dec.paidAt || null;
     const paymentNote = row.payment_note !== undefined ? String(row.payment_note || '') : dec.paymentNote;
 
-    // This device still holds a newer edit that has not been pushed yet, or a
-    // delete that has not landed — local wins until our own write is sent.
-    // Comparing against the snapshot (not the clock) keeps phone clock skew
-    // from breaking the sync.
-    const dirty = !here ? !!prev : prev === undefined || prev.u !== here.updatedAt;
+    // For owner: local edits/deletes win until sent.
+    // For members: read-only, always apply cloud entries.
+    const dirty = !isMember && (!here ? !!prev : prev === undefined || prev.u !== here.updatedAt);
     if (dirty) return;
     if (!here && !row.month_key) return;
 
@@ -298,9 +334,9 @@ export async function pullRemote(data, meta) {
     };
   });
 
-  await saveSnapshot(snapshot);
+  await saveSnapshot(snapshot, userScope);
   const newest = rows.reduce((a, r) => Math.max(a, Number(r.updated_at) || 0), meta.lastPulledAt || 0);
-  const nextMeta = await saveMeta({ ...meta, lastPulledAt: newest });
+  const nextMeta = await saveMeta({ ...meta, lastPulledAt: newest }, userScope);
   return { ok: true, changed: applied.length > 0, applied, data, meta: nextMeta };
 }
 
@@ -336,10 +372,10 @@ export function applyRows(data, ops) {
 }
 
 // One full round trip: push whatever is pending, then pull whatever is new.
-export async function syncOnce(data, meta) {
+export async function syncOnce(data, meta, userScope = 'guest') {
   if (!meta || !meta.familyCode) return { ok: false, changed: false, applied: [], pushed: 0 };
-  const push = await pushLocal(data, meta);
-  const pull = await pullRemote(data, meta);
+  const push = await pushLocal(data, meta, userScope);
+  const pull = await pullRemote(data, meta, userScope);
   return {
     ok: push.ok && pull.ok,
     pushed: push.pushed,

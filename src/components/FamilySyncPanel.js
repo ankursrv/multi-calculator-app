@@ -25,7 +25,7 @@ const EMERALD = '#34D399';
 const EMERALD_SOFT = 'rgba(52, 211, 153, 0.14)';
 const AMBER = '#FBBF24';
 
-export default function FamilySyncPanel({ meta, statusText, syncing, onMetaChange, onSyncNow }) {
+export default function FamilySyncPanel({ meta, statusText, syncing, onMetaChange, onSyncNow, userScope }) {
   const [mode, setMode] = useState(null); // 'create' | 'join' | null
   const [name, setName] = useState('');
   const [joinCode, setJoinCode] = useState('');
@@ -114,8 +114,13 @@ export default function FamilySyncPanel({ meta, statusText, syncing, onMetaChang
       return;
     }
     await cloud.addMember(code, trimmedName);
-    await clearMeta(); // drop any old family's sync bookkeeping
-    const next = await setMeta({ familyCode: code, deviceName: trimmedName, lastPulledAt: 0 });
+    await clearMeta(userScope); // drop any old family's sync bookkeeping
+    const next = await setMeta({
+      familyCode: code,
+      deviceName: trimmedName,
+      role: 'owner',
+      lastPulledAt: 0,
+    }, userScope);
     setBusy(false);
     onMetaChange(next, true);
   };
@@ -145,14 +150,19 @@ export default function FamilySyncPanel({ meta, statusText, syncing, onMetaChang
       return;
     }
     await cloud.addMember(code, trimmedName);
-    await clearMeta();
-    const next = await setMeta({ familyCode: code, deviceName: trimmedName, lastPulledAt: 0 });
+    await clearMeta(userScope);
+    const next = await setMeta({
+      familyCode: code,
+      deviceName: trimmedName,
+      role: 'member',
+      lastPulledAt: 0,
+    }, userScope);
     setBusy(false);
     onMetaChange(next);
   };
 
   const handleLeave = async () => {
-    await clearMeta();
+    await clearMeta(userScope);
     setMembers(null);
     setName(''); // Family से हटते ही सिर्फ नाम की field reset हो, बाकी सब वैसा ही रहेगा
     onMetaChange(null);
@@ -290,7 +300,10 @@ export default function FamilySyncPanel({ meta, statusText, syncing, onMetaChang
                 <Text style={styles.codeLabel}>Family कोड</Text>
                 <Text style={styles.codeValue}>{meta.familyCode}</Text>
               </View>
-              <Text style={styles.you}>आप: {meta.deviceName}</Text>
+              <Text style={styles.you}>
+                आप: {meta.deviceName}
+                {meta.role === 'member' ? ' (View Only)' : ''}
+              </Text>
 
               <View style={styles.membersRow}>
                 <Text style={[styles.label, styles.membersLabel]}>सदस्य</Text>

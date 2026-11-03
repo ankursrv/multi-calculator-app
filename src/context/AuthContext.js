@@ -160,9 +160,15 @@ export function AuthProvider({ children }) {
     setCurrentUser(null);
   }, []);
 
+  // Compute active user scope ('guest' or user ID) for separate sync profiles
+  const userScope = useMemo(() => {
+    return currentUser && currentUser.id ? currentUser.id : 'guest';
+  }, [currentUser]);
+
   const value = useMemo(() => ({
     currentUser,
     isLoggedIn: !!currentUser,
+    userScope,
     authLoaded,
     expensesStorageKey,
     loginWithPhone,
@@ -170,12 +176,12 @@ export function AuthProvider({ children }) {
     logout,
   }), [
     currentUser,
+    userScope,
     authLoaded,
     expensesStorageKey,
     loginWithPhone,
     updateProfile,
     logout,
-    purgeGuestItemsFromUser,
   ]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
