@@ -8,7 +8,9 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
+  Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -33,8 +35,10 @@ export default function FamilySyncPanel({ meta, statusText, syncing, onMetaChang
   const [members, setMembers] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [confirmLeave, setConfirmLeave] = useState(false);
   const [codeVisible, setCodeVisible] = useState(false);
+  const [showMembersModal, setShowMembersModal] = useState(false);
+  const [memberToDelete, setMemberToDelete] = useState(null);
+  const [deletingMember, setDeletingMember] = useState(false);
 
   const linked = !!(meta && meta.familyCode);
   const trimmedName = name.trim();
@@ -94,7 +98,6 @@ export default function FamilySyncPanel({ meta, statusText, syncing, onMetaChang
     setJoinCode('');
     setDraftCode('');
     setError('');
-    setConfirmLeave(false);
     setCodeVisible(false);
   };
 
@@ -162,10 +165,33 @@ export default function FamilySyncPanel({ meta, statusText, syncing, onMetaChang
   };
 
   const handleLeave = async () => {
+    if (meta?.familyCode && meta?.deviceName) {
+      await cloud.removeMember(meta.familyCode, meta.deviceName).catch(() => { });
+    }
     await clearMeta(userScope);
     setMembers(null);
     setName(''); // Family से हटते ही सिर्फ नाम की field reset हो, बाकी सब वैसा ही रहेगा
+    setShowMembersModal(false);
+    setMemberToDelete(null);
     onMetaChange(null);
+  };
+
+  const handleConfirmDeleteMember = async () => {
+    if (!memberToDelete || !meta?.familyCode) return;
+    setDeletingMember(true);
+    try {
+      if (memberToDelete === meta?.deviceName) {
+        await handleLeave();
+        return;
+      }
+      await cloud.removeMember(meta.familyCode, memberToDelete);
+      setMembers((prev) => (prev ? prev.filter((m) => m.device_name !== memberToDelete) : []));
+      setMemberToDelete(null);
+    } catch (_e) {
+      // ignore
+    } finally {
+      setDeletingMember(false);
+    }
   };
 
   // ── Render ──────────────────────────────────────────────────────────────
@@ -301,24 +327,31 @@ export default function FamilySyncPanel({ meta, statusText, syncing, onMetaChang
                 <Text style={styles.codeValue}>{meta.familyCode}</Text>
               </View>
               <Text style={styles.you}>
-                आप: {meta.deviceName}
+                You: {meta.deviceName}
                 {meta.role === 'member' ? ' (View Only)' : ''}
               </Text>
 
-              <View style={styles.membersRow}>
-                <Text style={[styles.label, styles.membersLabel]}>सदस्य</Text>
+              <View style={styles.membersRowInline}>
+                <Text style={[styles.label, styles.membersLabel]}>
+                  सदस्य ({members ? members.length : 0}):
+                </Text>
                 {members === null ? (
                   <Text style={styles.subHint}>लोड हो रहा है…</Text>
                 ) : members.length === 0 ? (
                   <Text style={styles.subHint}>अभी सिर्फ आप हैं।</Text>
                 ) : (
-                  <View style={[styles.chips, styles.membersChips]}>
+                  <View style={styles.membersChipsInline}>
                     {members.map((m) => (
-                      <View key={m.device_name} style={[styles.chip, m.device_name === meta.deviceName && styles.chipMe]}>
+                      <TouchableOpacity
+                        key={m.device_name}
+                        style={[styles.chip, m.device_name === meta.deviceName && styles.chipMe]}
+                        onPress={() => setShowMembersModal(true)}
+                        activeOpacity={0.8}
+                      >
                         <Text style={[styles.chipText, m.device_name === meta.deviceName && styles.chipTextMe]}>
                           {m.device_name}
                         </Text>
-                      </View>
+                      </TouchableOpacity>
                     ))}
                   </View>
                 )}
@@ -330,27 +363,19 @@ export default function FamilySyncPanel({ meta, statusText, syncing, onMetaChang
                   <Text style={styles.statusText}>{syncing ? 'Sync हो रहा है…' : statusText || 'Sync चालू'}</Text>
                 </View>
                 <Pressable style={styles.ghostBtnSmall} onPress={onSyncNow} disabled={syncing} accessibilityRole="button">
-                  <Text style={styles.ghostBtnText}>अभी Sync करें</Text>
+                  <Text style={styles.ghostBtnText}>Sync Now</Text>
                 </Pressable>
               </View>
 
-              {confirmLeave ? (
-                <View style={styles.leaveRow}>
-                  <Text style={styles.leaveQues}>Family से हटना है? खर्चा फोन में बना रहेगा, बस आगे से Sync नहीं होगा।</Text>
-                  <View style={styles.btnRow}>
-                    <Pressable style={styles.dangerBtn} onPress={handleLeave} accessibilityRole="button">
-                      <Text style={styles.dangerBtnText}>हाँ, हट जाएं</Text>
-                    </Pressable>
-                    <Pressable style={styles.ghostBtn} onPress={() => setConfirmLeave(false)} accessibilityRole="button">
-                      <Text style={styles.ghostBtnText}>नहीं</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              ) : (
-                <Pressable style={styles.linkBtn} onPress={() => setConfirmLeave(true)} accessibilityRole="button">
-                  <Text style={styles.linkBtnText}>Family से हटें</Text>
-                </Pressable>
-              )}
+              <TouchableOpacity
+                style={styles.showMembersBtnBottom}
+                onPress={() => setShowMembersModal(true)}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+              >
+                <Ionicons name="people" size={14} color={EMERALD} />
+                <Text style={styles.showMembersBtnText}>Show Members</Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -359,6 +384,154 @@ export default function FamilySyncPanel({ meta, statusText, syncing, onMetaChang
           </Text>
         </View>
       </Animated.View>
+
+      {/* ── Show Members Modal ─────────────────────────────────────── */}
+      <Modal
+        visible={showMembersModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowMembersModal(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowMembersModal(false)}>
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation?.()}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Ionicons name="people-circle-outline" size={24} color={EMERALD} />
+                <Text style={styles.modalTitle}>Family Members</Text>
+              </View>
+              <Pressable
+                style={styles.modalCloseBtn}
+                onPress={() => setShowMembersModal(false)}
+                hitSlop={10}
+                accessibilityRole="button"
+              >
+                <Ionicons name="close" size={20} color={Colors.textSecondary} />
+              </Pressable>
+            </View>
+
+            {/* Table Header */}
+            <View style={styles.tableHeader}>
+              <View style={styles.tableColLeft}>
+                <Text style={[styles.tableHeaderCell, { textAlign: 'left' }]}>MEMBER</Text>
+              </View>
+              <View style={styles.tableColCenter}>
+                <Text style={styles.tableHeaderCell}>CODE</Text>
+              </View>
+              <View style={styles.tableColRight}>
+                <Text style={[styles.tableHeaderCell, { textAlign: 'right' }]}>ACTION</Text>
+              </View>
+            </View>
+
+            {/* Members List Table */}
+            <ScrollView
+              style={styles.modalList}
+              showsVerticalScrollIndicator={true}
+              nestedScrollEnabled={true}
+            >
+              {members === null ? (
+                <View style={styles.modalEmptyState}>
+                  <ActivityIndicator size="small" color={EMERALD} />
+                  <Text style={styles.modalEmptyText}>लोड हो रहा है…</Text>
+                </View>
+              ) : members.length === 0 ? (
+                <View style={styles.modalEmptyState}>
+                  <Text style={styles.modalEmptyText}>अभी सिर्फ आप हैं।</Text>
+                </View>
+              ) : (
+                members.map((m) => {
+                  const canDelete = meta?.role !== 'member';
+
+                  return (
+                    <View key={m.device_name} style={styles.tableRow}>
+                      <View style={styles.tableColLeft}>
+                        <Text style={[styles.tableNameText, { textAlign: 'left' }]} numberOfLines={1}>
+                          {m.device_name}
+                        </Text>
+                      </View>
+
+                      <View style={styles.tableColCenter}>
+                        <Text style={styles.tableCodeText} numberOfLines={1}>
+                          {meta?.familyCode || '-'}
+                        </Text>
+                      </View>
+
+                      <View style={styles.tableColRight}>
+                        {canDelete ? (
+                          <Pressable
+                            style={styles.deleteMemberBtn}
+                            onPress={() => setMemberToDelete(m.device_name)}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Delete ${m.device_name}`}
+                          >
+                            <Ionicons name="trash-outline" size={14} color="#EF4444" />
+                            <Text style={styles.deleteMemberBtnText}>Delete</Text>
+                          </Pressable>
+                        ) : (
+                          <Text style={styles.tableEmptyActionText}>—</Text>
+                        )}
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* ── Permanent Delete Confirmation Modal ────────────────────── */}
+      <Modal
+        visible={!!memberToDelete}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => !deletingMember && setMemberToDelete(null)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => !deletingMember && setMemberToDelete(null)}
+        >
+          <Pressable style={[styles.modalContent, styles.deleteConfirmContent]} onPress={(e) => e.stopPropagation?.()}>
+            <View style={styles.deleteWarnIconCircle}>
+              <Ionicons name="close-circle-outline" size={34} color="#EF4444" />
+            </View>
+
+            <Text style={styles.deleteConfirmTitle}>Permanently Delete</Text>
+
+            <Text style={styles.deleteConfirmText}>
+              Are you sure you want to delete member{' '}
+              <Text style={styles.deleteHighlight}>{memberToDelete}</Text>?
+            </Text>
+
+            <View style={styles.deleteActionRow}>
+              <Pressable
+                style={styles.cancelBtn}
+                onPress={() => setMemberToDelete(null)}
+                disabled={deletingMember}
+                accessibilityRole="button"
+              >
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </Pressable>
+
+              <Pressable
+                style={[styles.confirmDeleteBtn, deletingMember && { opacity: 0.7 }]}
+                onPress={handleConfirmDeleteMember}
+                disabled={deletingMember}
+                accessibilityRole="button"
+              >
+                {deletingMember ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons name="trash-outline" size={15} color="#FFFFFF" />
+                    <Text style={styles.confirmDeleteBtnText}>Delete</Text>
+                  </>
+                )}
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -575,12 +748,34 @@ const styles = StyleSheet.create({
     gap: 7,
     marginTop: 2,
   },
-  membersRow: {
+  membersRowInline: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
+    marginTop: 10,
+  },
+  membersChipsInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  showMembersBtnBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(52, 211, 153, 0.14)',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    alignSelf: 'flex-start',
     marginTop: 12,
+  },
+  showMembersBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#34D399',
   },
   membersLabel: {
     marginTop: 0,
@@ -636,30 +831,197 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     flexShrink: 1,
   },
-  leaveRow: {
-    marginTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: Colors.cardBorder,
-    paddingTop: 4,
-  },
-  leaveQues: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: Colors.textMuted,
-    marginTop: 8,
-  },
-  dangerBtn: {
+
+  // ── Show Members & Delete Confirmation Modals ──
+  modalOverlay: {
     flex: 1,
-    backgroundColor: Colors.dangerBg,
+    backgroundColor: 'rgba(0, 0, 0, 0.78)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: '#0F172A',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
+    padding: 18,
+    maxHeight: '82%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  modalList: {
+    maxHeight: 280,
+    marginVertical: 4,
+  },
+  modalEmptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+    gap: 8,
+  },
+  modalEmptyText: {
+    fontSize: 13,
+    color: Colors.textMuted,
+  },
+  // Members Table UI
+  tableHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.12)',
+    marginTop: 6,
+    marginBottom: 2,
+  },
+  tableColLeft: {
+    flex: 1.2,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  tableColCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tableColRight: {
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  tableHeaderCell: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    textAlign: 'center',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  tableNameText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.text,
+  },
+  tableCodeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#34D399',
+    letterSpacing: 0.8,
+    textAlign: 'center',
+  },
+  tableEmptyActionText: {
+    fontSize: 13,
+    color: Colors.textDim,
+    textAlign: 'right',
+  },
+  deleteMemberBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 4,
+    paddingVertical: 4,
+  },
+  deleteMemberBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#EF4444',
+  },
+
+  // Delete Confirm Modal
+  deleteConfirmContent: {
+    alignItems: 'center',
+    padding: 22,
+  },
+  deleteWarnIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(239, 68, 68, 0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  deleteConfirmTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  deleteConfirmText: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  deleteHighlight: {
+    fontWeight: '800',
+    color: '#EF4444',
+  },
+  deleteActionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+  },
+  cancelBtn: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 12,
-    paddingHorizontal: 10,
     paddingVertical: 11,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dangerBtnText: {
-    color: Colors.danger,
-    fontSize: 13.5,
-    fontWeight: '800',
+  cancelBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  confirmDeleteBtn: {
+    flex: 1.3,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#EF4444',
+    borderRadius: 12,
+    paddingVertical: 11,
+  },
+  confirmDeleteBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

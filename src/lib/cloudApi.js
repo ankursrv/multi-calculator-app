@@ -57,7 +57,7 @@ export const cloud = {
 
   async listMembers(code) {
     return request('kharcha_members', {
-      query: `?select=device_name,joined_at&code=eq.${code}&order=joined_at.asc`,
+      query: `?select=device_name,joined_at&code=eq.${code}&joined_at=gt.0&order=joined_at.asc`,
     });
   },
 
@@ -67,6 +67,16 @@ export const cloud = {
       method: 'POST',
       body: [{ code, device_name: deviceName, joined_at: Date.now() }],
       prefer: 'resolution=merge-duplicates,return=minimal',
+    });
+    return ok !== null;
+  },
+
+  // Permanently remove a member from Supabase by marking joined_at = 0
+  async removeMember(code, deviceName) {
+    const ok = await request('kharcha_members', {
+      method: 'PATCH',
+      query: `?code=eq.${code}&device_name=eq.${encodeURIComponent(deviceName)}`,
+      body: { joined_at: 0 },
     });
     return ok !== null;
   },
