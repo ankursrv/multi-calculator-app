@@ -18,6 +18,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Path } from 'react-native-svg';
 import { Colors } from '../theme/colors';
 import { CLOUD_ENABLED, FAMILY_CODE_LENGTH, makeFamilyCode, normalizeFamilyCode } from '../lib/supabaseConfig';
 import { cloud } from '../lib/cloudApi';
@@ -493,7 +494,10 @@ export default function FamilySyncPanel({ meta, statusText, syncing, onMetaChang
         >
           <Pressable style={[styles.modalContent, styles.deleteConfirmContent]} onPress={(e) => e.stopPropagation?.()}>
             <View style={styles.deleteWarnIconCircle}>
-              <Ionicons name="close-circle-outline" size={34} color="#EF4444" />
+              <Svg width={30} height={30} viewBox="0 0 64 64">
+                <Path d="M0 0h64v64H0z" fill="none" />
+                <Path fill="#EF4444" d="M62 10.571L53.429 2L32 23.429L10.571 2L2 10.571L23.429 32L2 53.429L10.571 62L32 40.571L53.429 62L62 53.429L40.571 32z" />
+              </Svg>
             </View>
 
             <Text style={styles.deleteConfirmTitle}>Permanently Delete</Text>
@@ -971,7 +975,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(239, 68, 68, 0.35)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
+    marginBottom: 44,
   },
   deleteConfirmTitle: {
     fontSize: 16,
