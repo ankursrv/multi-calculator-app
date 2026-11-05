@@ -15,8 +15,6 @@ import FdHeroIllustration from '../components/FdHeroIllustration';
 
 // ---- simple tenure helpers (no date pickers, no external dependency) ----
 const DAY_MS = 24 * 60 * 60 * 1000;
-const TODAY = new Date();
-TODAY.setHours(0, 0, 0, 0);
 
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -28,7 +26,9 @@ const formatTenureDays = (days) => {
 };
 
 const maturityDateText = (days) => {
-  const d = new Date(TODAY.getTime() + days * DAY_MS);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(today.getTime() + days * DAY_MS);
   const dd = String(d.getDate()).padStart(2, '0');
   return `${dd} ${MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}`;
 };

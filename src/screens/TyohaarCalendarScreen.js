@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -23,6 +23,7 @@ import GrahaRashiChakra from '../components/GrahaRashiChakra';
 import FestivalIcon from '../components/FestivalIcon';
 import FestivalArt, { festivalArt } from '../components/FestivalArt';
 import webPrintHtml from '../utils/webPrintHtml';
+import useCurrentDate from '../hooks/useCurrentDate';
 import {
   CITIES,
   CITY_STORAGE_KEY,
@@ -40,21 +41,14 @@ import {
 } from '../utils/hinduPanchang';
 
 // Engine covers 1900-2100; a ±15 year window is plenty for a phone calendar
-const TODAY = new Date();
-const THIS_YEAR = TODAY.getFullYear();
-const THIS_MONTH = TODAY.getMonth() + 1;
-const THIS_DAY = TODAY.getDate();
-
+const currentYearBase = new Date().getFullYear();
 const YEARS = [];
-for (let y = THIS_YEAR - 15; y <= THIS_YEAR + 15; y++) YEARS.push(y);
+for (let y = currentYearBase - 15; y <= currentYearBase + 15; y++) YEARS.push(y);
 
 const MONTH_INDEXES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 const monthIndex = (y, m) => y * 12 + (m - 1);
 const IDX_MIN = monthIndex(YEARS[0], 1);
 const IDX_MAX = monthIndex(YEARS[YEARS.length - 1], 12);
-
-const isToday = (d) =>
-  d.year === THIS_YEAR && d.month === THIS_MONTH && d.day === THIS_DAY;
 
 // Section accent colors for the day-detail sheet
 const TONE = {
@@ -75,8 +69,9 @@ const LEGEND = [
 ];
 
 export default function TyohaarCalendarScreen({ onBack }) {
-  const [selYear, setSelYear] = useState(THIS_YEAR);
-  const [selMonth, setSelMonth] = useState(THIS_MONTH);
+  const { year: currentYear, month: currentMonth, day: currentDay, isToday } = useCurrentDate();
+  const [selYear, setSelYear] = useState(currentYear);
+  const [selMonth, setSelMonth] = useState(currentMonth);
   const [cityId, setCityId] = useState(DEFAULT_CITY.id);
   const [openDropdown, setOpenDropdown] = useState(null); // 'month' | 'year' | 'city'
   const [detailDay, setDetailDay] = useState(null);
@@ -85,6 +80,19 @@ export default function TyohaarCalendarScreen({ onBack }) {
   const [sheetAnim] = useState(() => new Animated.Value(0));
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState(false);
+
+  // If user was viewing current month and midnight crosses into a new month, advance view
+  const prevDateRef = useRef({ year: currentYear, month: currentMonth, day: currentDay });
+  useEffect(() => {
+    const prev = prevDateRef.current;
+    if (prev.year !== currentYear || prev.month !== currentMonth || prev.day !== currentDay) {
+      if (selYear === prev.year && selMonth === prev.month) {
+        setSelYear(currentYear);
+        setSelMonth(currentMonth);
+      }
+      prevDateRef.current = { year: currentYear, month: currentMonth, day: currentDay };
+    }
+  }, [currentYear, currentMonth, currentDay, selYear, selMonth]);
 
   // Selected city is remembered across app launches
   useEffect(() => {
@@ -123,8 +131,8 @@ export default function TyohaarCalendarScreen({ onBack }) {
   // Hero banner always shows *today* — computed from the real date, so browsing
   // another month never relabels the 1st of that month as "आज"
   const todayInfo = useMemo(
-    () => getDayPanchang(THIS_YEAR, THIS_MONTH, THIS_DAY, city),
-    [city],
+    () => getDayPanchang(currentYear, currentMonth, currentDay, city),
+    [currentYear, currentMonth, currentDay, city],
   );
 
   // Upcoming festivals for the hero card, today first. एकादशी / प्रदोष /
@@ -134,7 +142,7 @@ export default function TyohaarCalendarScreen({ onBack }) {
   const upcomingEvents = useMemo(() => {
     const out = [];
     for (let i = 0; i <= 40 && out.length < 5; i++) {
-      const d = new Date(THIS_YEAR, THIS_MONTH - 1, THIS_DAY + i);
+      const d = new Date(currentYear, currentMonth - 1, currentDay + i);
       const p = getDayPanchang(d.getFullYear(), d.getMonth() + 1, d.getDate(), city);
       const f = p && p.festivals[0];
       if (f) {
@@ -148,7 +156,7 @@ export default function TyohaarCalendarScreen({ onBack }) {
       }
     }
     return out;
-  }, [city]);
+  }, [currentYear, currentMonth, currentDay, city]);
 
   const heroEvent = upcomingEvents[Math.min(heroIdx, upcomingEvents.length - 1)] || null;
   // Falls back to the plain maroon palette when there is nothing to show
@@ -179,8 +187,8 @@ export default function TyohaarCalendarScreen({ onBack }) {
   };
 
   const goToday = () => {
-    setSelYear(THIS_YEAR);
-    setSelMonth(THIS_MONTH);
+    setSelYear(currentYear);
+    setSelMonth(currentMonth);
   };
 
   const openDay = (day) => {

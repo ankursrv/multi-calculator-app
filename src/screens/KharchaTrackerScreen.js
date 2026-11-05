@@ -27,6 +27,7 @@ import GPayLogo from '../components/GPayLogo';
 import { CLOUD_ENABLED } from '../lib/supabaseConfig';
 import { applyRows, ensureIds, mergeBackup, newEntryId, readMeta, syncOnce } from '../lib/kharchaSync';
 import { useAuth } from '../context/AuthContext';
+import useCurrentDate from '../hooks/useCurrentDate';
 
 // Animate the backup hint's collapse/expand on Android too (iOS is on by default).
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -91,10 +92,9 @@ const WEEKDAYS = [
   { hi: 'शनि', en: 'Sat' },
 ];
 
-const NOW = new Date();
-const THIS_YEAR = NOW.getFullYear();
+const currentYearBase = new Date().getFullYear();
 const YEARS = [];
-for (let y = THIS_YEAR - 8; y <= THIS_YEAR + 1; y++) YEARS.push(y);
+for (let y = currentYearBase - 8; y <= currentYearBase + 1; y++) YEARS.push(y);
 
 // Month navigation limits (same range as the year dropdown)
 const monthIndex = (y, m) => y * 12 + (m - 1);
@@ -128,15 +128,30 @@ function renderPaymentModeIcon(mode) {
 }
 
 export default function KharchaTrackerScreen({ onBack }) {
+  const { year: currentYear, month: currentMonth, day: currentDay } = useCurrentDate();
   const { expensesStorageKey, currentUser, isLoggedIn, userScope } = useAuth();
   // { "year-month": [{ id, name, cost, day }] }
   const [data, setData] = useState({});
   const [loaded, setLoaded] = useState(false);
 
-  const [selYear, setSelYear] = useState(THIS_YEAR);
-  const [selMonth, setSelMonth] = useState(NOW.getMonth() + 1);
+  const [selYear, setSelYear] = useState(currentYear);
+  const [selMonth, setSelMonth] = useState(currentMonth);
   // Entry date — defaults to today while viewing the current month
-  const [selDay, setSelDay] = useState(NOW.getDate());
+  const [selDay, setSelDay] = useState(currentDay);
+
+  // If user had "today" selected and date rolls over at midnight or on resume, advance selected date
+  const prevDateRef = useRef({ year: currentYear, month: currentMonth, day: currentDay });
+  useEffect(() => {
+    const prev = prevDateRef.current;
+    if (prev.year !== currentYear || prev.month !== currentMonth || prev.day !== currentDay) {
+      if (selYear === prev.year && selMonth === prev.month && selDay === prev.day) {
+        setSelYear(currentYear);
+        setSelMonth(currentMonth);
+        setSelDay(currentDay);
+      }
+      prevDateRef.current = { year: currentYear, month: currentMonth, day: currentDay };
+    }
+  }, [currentYear, currentMonth, currentDay, selYear, selMonth, selDay]);
 
   const [itemName, setItemName] = useState('');
   const [itemCost, setItemCost] = useState('');
@@ -311,7 +326,7 @@ export default function KharchaTrackerScreen({ onBack }) {
 
   const daysInMonth = new Date(selYear, selMonth, 0).getDate();
   const firstDayOfWeek = new Date(selYear, selMonth - 1, 1).getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
-  const isCurrentMonth = selYear === THIS_YEAR && selMonth === NOW.getMonth() + 1;
+  const isCurrentMonth = selYear === currentYear && selMonth === currentMonth;
   const daysWithEntries = useMemo(() => {
     const s = new Set();
     entries.forEach((e) => s.add(e.day));
@@ -404,13 +419,13 @@ export default function KharchaTrackerScreen({ onBack }) {
   // ── Actions ──────────────────────────────────────────────────
   const pickYear = (y) => {
     setSelYear(y);
-    setSelDay(y === THIS_YEAR && selMonth === NOW.getMonth() + 1 ? NOW.getDate() : 1);
+    setSelDay(y === currentYear && selMonth === currentMonth ? currentDay : 1);
     setOpenDropdown(null);
   };
 
   const pickMonth = (m) => {
     setSelMonth(m);
-    setSelDay(m === NOW.getMonth() + 1 && selYear === THIS_YEAR ? NOW.getDate() : 1);
+    setSelDay(m === currentMonth && selYear === currentYear ? currentDay : 1);
     setOpenDropdown(null);
   };
 
@@ -430,11 +445,11 @@ export default function KharchaTrackerScreen({ onBack }) {
     const y = Math.floor(nextIdx / 12);
     const m = (nextIdx % 12) + 1;
     const maxDay = new Date(y, m, 0).getDate();
-    const isNowMonth = y === THIS_YEAR && m === NOW.getMonth() + 1;
+    const isNowMonth = y === currentYear && m === currentMonth;
     setSelYear(y);
     setSelMonth(m);
     // keep the chosen day when it exists, otherwise fall back to a valid one
-    setSelDay((d) => (d > maxDay ? (isNowMonth ? NOW.getDate() : maxDay) : d));
+    setSelDay((d) => (d > maxDay ? (isNowMonth ? currentDay : maxDay) : d));
   };
 
   const handleAdd = () => {
@@ -677,7 +692,7 @@ export default function KharchaTrackerScreen({ onBack }) {
     ) : null;
 
   const dayPillLabel =
-    isCurrentMonth && selDay === NOW.getDate()
+    isCurrentMonth && selDay === currentDay
       ? 'Today'
       : `${selDay} ${MONTHS_EN[selMonth - 1]}`;
 
@@ -1166,8 +1181,8 @@ export default function KharchaTrackerScreen({ onBack }) {
                                     g.items[0].paymentNote
                                       ? toggleTooltip(g.items[0].id)
                                       : isReadOnly
-                                      ? undefined
-                                      : openSettleModalForEntry(g.items[0])
+                                        ? undefined
+                                        : openSettleModalForEntry(g.items[0])
                                   }
                                   activeOpacity={isReadOnly && !g.items[0].paymentNote ? 1 : 0.7}
                                   disabled={isReadOnly && !g.items[0].paymentNote}
@@ -1339,8 +1354,8 @@ export default function KharchaTrackerScreen({ onBack }) {
                                         e.paymentNote
                                           ? toggleTooltip(e.id)
                                           : isReadOnly
-                                          ? undefined
-                                          : openSettleModalForEntry(e)
+                                            ? undefined
+                                            : openSettleModalForEntry(e)
                                       }
                                       activeOpacity={isReadOnly && !e.paymentNote ? 1 : 0.7}
                                       disabled={isReadOnly && !e.paymentNote}
@@ -1662,7 +1677,7 @@ export default function KharchaTrackerScreen({ onBack }) {
 
                   {/* Days of month */}
                   {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => {
-                    const isToday = isCurrentMonth && d === NOW.getDate();
+                    const isToday = isCurrentMonth && d === currentDay;
                     const isActive = d === selDay;
                     const isSunday = (firstDayOfWeek + d - 1) % 7 === 0;
                     const hasData = daysWithEntries.has(d);
@@ -1714,16 +1729,16 @@ export default function KharchaTrackerScreen({ onBack }) {
                     style={styles.dayTodayBtn}
                     onPress={() => {
                       if (!isCurrentMonth) {
-                        setSelYear(THIS_YEAR);
-                        setSelMonth(NOW.getMonth() + 1);
+                        setSelYear(currentYear);
+                        setSelMonth(currentMonth);
                       }
-                      pickDay(NOW.getDate());
+                      pickDay(currentDay);
                     }}
                     activeOpacity={0.7}
                   >
                     <Ionicons name="today-outline" size={14} color="#34D399" />
                     <Text style={styles.dayTodayBtnText}>
-                      आज ({NOW.getDate()} {MONTHS_EN[NOW.getMonth()]})
+                      आज ({currentDay} {MONTHS_EN[currentMonth - 1]})
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -1821,8 +1836,8 @@ export default function KharchaTrackerScreen({ onBack }) {
                   {targetEntry
                     ? `"${targetEntry.name}" का भुगतान दर्ज करें`
                     : settleTargetDay !== null
-                    ? `${settleTargetDay} ${MONTHS_EN[selMonth - 1]} का बकाया भुगतान दर्ज करें`
-                    : `${MONTHS_HI[selMonth - 1]} ${selYear} का कुल बकाया भुगतान दर्ज करें`}
+                      ? `${settleTargetDay} ${MONTHS_EN[selMonth - 1]} का बकाया भुगतान दर्ज करें`
+                      : `${MONTHS_HI[selMonth - 1]} ${selYear} का कुल बकाया भुगतान दर्ज करें`}
                 </Text>
 
                 <View style={styles.settleAmountBox}>

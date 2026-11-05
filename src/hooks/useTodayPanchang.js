@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import useCurrentDate from './useCurrentDate';
 import {
   CITY_STORAGE_KEY,
   DEFAULT_CITY,
@@ -10,12 +11,6 @@ import {
   splitTithi,
 } from '../utils/hinduPanchang';
 
-// Read once at module load — the home card only ever needs "today"
-const NOW = new Date();
-const THIS_YEAR = NOW.getFullYear();
-const THIS_MONTH = NOW.getMonth() + 1;
-const THIS_DAY = NOW.getDate();
-
 /**
  * Today's panchang for the home-screen card, as three one-line strings:
  * headLine (तिथि · नक्षत्र · चन्द्र राशि), angaLine (योग · करण) and subLine
@@ -23,6 +18,7 @@ const THIS_DAY = NOW.getDate();
  * calculation, cached in the util layer.
  */
 export default function useTodayPanchang() {
+  const { year, month, day: currentDay } = useCurrentDate();
   const [cityId, setCityId] = useState(DEFAULT_CITY.id);
 
   useEffect(() => {
@@ -38,8 +34,8 @@ export default function useTodayPanchang() {
 
   const city = useMemo(() => findCity(cityId), [cityId]);
   const day = useMemo(
-    () => getDayPanchang(THIS_YEAR, THIS_MONTH, THIS_DAY, city),
-    [city],
+    () => getDayPanchang(year, month, currentDay, city),
+    [year, month, currentDay, city],
   );
 
   if (!day) return { city, headLine: '', angaLine: '', subLine: '' };
@@ -57,10 +53,10 @@ export default function useTodayPanchang() {
   // no event. Event days drop the year: measured over 2026–2035, every variant
   // that keeps it reaches 173–189px against the 188dp column, while these two
   // forms top out at 171px. The rest of the day's events stay on the Tyohaar screen.
-  const dateText = `${THIS_DAY} ${monthNameHi(THIS_MONTH)} ${THIS_YEAR}`;
+  const dateText = `${currentDay} ${monthNameHi(month)} ${year}`;
   const event = day.festivals[0];
   const subLine = event
-    ? `${THIS_DAY} ${monthNameHi(THIS_MONTH)} · ${event.name.replace(/\s*\([^)]*\)/, '').trim()}`
+    ? `${currentDay} ${monthNameHi(month)} · ${event.name.replace(/\s*\([^)]*\)/, '').trim()}`
     : `${dateText} · ${day.weekdayHi}`;
 
   return { city, headLine, angaLine, subLine };
