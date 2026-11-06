@@ -174,12 +174,11 @@ export function newEntryId() {
 export async function pushLocal(data, meta, userScope = 'guest') {
   if (!meta || !meta.familyCode) return { ok: false, pushed: 0 };
 
-  // STRICT PERMISSION CHECK:
-  // Members who joined via code are read-only and have no write permission.
-  // They must NEVER push edits, updates, or deletions to Supabase.
-  if (meta.role === 'member') {
-    return { ok: true, pushed: 0 };
-  }
+  // PERMISSION RULE:
+  // Members who joined via the family code may only add brand-new entries.
+  // Edits/updates of rows that already exist in the cloud and soft-deletes
+  // are owned by the family device — members never push those.
+  const isMember = meta.role === 'member';
 
   const snapshot = await readSnapshot(userScope);
   const seen = {};
@@ -189,6 +188,8 @@ export async function pushLocal(data, meta, userScope = 'guest') {
     if (!entry || !entry.id) return;
     seen[entry.id] = 1;
     const prev = snapshot[entry.id];
+    // A member may only push entries this device has never synced before.
+    if (isMember && prev !== undefined) return;
     const updatedAt = entry.updatedAt || 0;
 
     const isPaid = entry.paid ? 1 : 0;
@@ -222,21 +223,23 @@ export async function pushLocal(data, meta, userScope = 'guest') {
   });
 
   const deletes = [];
-  Object.keys(snapshot).forEach((id) => {
-    if (seen[id] || snapshot[id].d) return;
-    // Locally gone but still alive in the cloud => someone deleted it here.
-    deletes.push({
-      id,
-      family_code: meta.familyCode,
-      month_key: '',
-      day: 1,
-      name: '',
-      cost: 0,
-      added_by: '',
-      updated_at: Date.now(),
-      deleted: true,
+  if (!isMember) {
+    Object.keys(snapshot).forEach((id) => {
+      if (seen[id] || snapshot[id].d) return;
+      // Locally gone but still alive in the cloud => someone deleted it here.
+      deletes.push({
+        id,
+        family_code: meta.familyCode,
+        month_key: '',
+        day: 1,
+        name: '',
+        cost: 0,
+        added_by: '',
+        updated_at: Date.now(),
+        deleted: true,
+      });
     });
-  });
+  }
 
   const pending = upserts.concat(deletes);
   if (pending.length === 0) return { ok: true, pushed: 0 };
@@ -302,7 +305,7 @@ export async function pullRemote(data, meta, userScope = 'guest') {
     const paymentNote = row.payment_note !== undefined ? String(row.payment_note || '') : dec.paymentNote;
 
     // For owner: local edits/deletes win until sent.
-    // For members: read-only, always apply cloud entries.
+    // For members: cloud is the truth (they only add new entries, never edit/delete).
     const dirty = !isMember && (!here ? !!prev : prev === undefined || prev.u !== here.updatedAt);
     if (dirty) return;
     if (!here && !row.month_key) return;

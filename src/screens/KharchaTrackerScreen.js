@@ -161,8 +161,17 @@ export default function KharchaTrackerScreen({ onBack }) {
   const [yearSummaryOpen, setYearSummaryOpen] = useState(false);
   // Backup hint: collapsed to one line with an inline Read More / Read Less
   const [backupExpanded, setBackupExpanded] = useState(false);
-  // Delete/Clear confirmation popup — { type: 'entry'|'month'|'unmarkDay', id?, name?, day? }
+  // Delete/Clear confirmation popup — { type: 'entry'|'month'|'unmarkDay'|'blockedDelete', id?, name?, day? }
+  // Visibility is separate from the payload: the fade-out keeps the modal mounted for a
+  // moment after closing, and clearing the payload in that window would flash the
+  // fallback (month-clear) text. So the last payload simply stays rendered while it fades.
   const [confirm, setConfirm] = useState(null);
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const openConfirm = (payload) => {
+    setConfirm(payload);
+    setConfirmVisible(true);
+  };
+  const closeConfirm = () => setConfirmVisible(false);
   // Backup restore confirmation — holds the parsed backup object until confirmed
   const [restoreData, setRestoreData] = useState(null);
 
@@ -186,8 +195,9 @@ export default function KharchaTrackerScreen({ onBack }) {
   const busyRef = useRef(false);
   const pushTimerRef = useRef(null);
 
-  // Read-only access control: members who joined via family code cannot add, edit, or delete data
-  const isReadOnly = !!(cloudMeta && cloudMeta.role === 'member');
+  // Access control: members who joined via the family code can add entries,
+  // but delete/settle/restore attempts show a popup message instead.
+  const isMember = !!(cloudMeta && cloudMeta.role === 'member');
 
   // ── Persistence ──────────────────────────────────────────────
   const [loadedKey, setLoadedKey] = useState(null);
@@ -453,7 +463,6 @@ export default function KharchaTrackerScreen({ onBack }) {
   };
 
   const handleAdd = () => {
-    if (isReadOnly) return;
     const cost = parseFloat(itemCost);
     const name = itemName.trim();
     if (!name || !cost || cost <= 0) return;
@@ -473,7 +482,7 @@ export default function KharchaTrackerScreen({ onBack }) {
 
   // Modal openers
   const openSettleModalForMonth = () => {
-    if (isReadOnly) return;
+    if (isMember) return;
     setSettleTargetDay(null);
     setSettleTargetEntryId(null);
     setPaymentMode('UPI');
@@ -482,7 +491,7 @@ export default function KharchaTrackerScreen({ onBack }) {
   };
 
   const openSettleModalForDay = (day) => {
-    if (isReadOnly) return;
+    if (isMember) return;
     setSettleTargetDay(day);
     setSettleTargetEntryId(null);
     setPaymentMode('UPI');
@@ -491,7 +500,7 @@ export default function KharchaTrackerScreen({ onBack }) {
   };
 
   const openSettleModalForEntry = (entry) => {
-    if (isReadOnly) return;
+    if (isMember) return;
     setSettleTargetEntryId(entry.id);
     setSettleTargetDay(null);
     setPaymentMode(entry.paymentMode || 'UPI');
@@ -501,7 +510,7 @@ export default function KharchaTrackerScreen({ onBack }) {
 
   // Toggle single item paid status
   const handleToggleEntryPaid = (id) => {
-    if (isReadOnly) return;
+    if (isMember) return;
     const entry = entries.find((e) => e.id === id);
     if (!entry) return;
     if (entry.paid) {
@@ -531,7 +540,7 @@ export default function KharchaTrackerScreen({ onBack }) {
 
   // Toggle all items on a day
   const handleToggleDayPaid = (day, targetPaid) => {
-    if (isReadOnly) return;
+    if (isMember) return;
     setData((prev) => {
       const list = prev[monthKey] || [];
       return {
@@ -560,7 +569,7 @@ export default function KharchaTrackerScreen({ onBack }) {
   };
 
   const doSettle = () => {
-    if (isReadOnly) return;
+    if (isMember) return;
     const now = Date.now();
     setData((prev) => {
       const list = prev[monthKey] || [];
@@ -590,19 +599,25 @@ export default function KharchaTrackerScreen({ onBack }) {
   };
 
   const handleDelete = (id) => {
-    if (isReadOnly) return;
+    if (isMember) {
+      openConfirm({ type: 'blockedDelete' });
+      return;
+    }
     const entry = entries.find((e) => e.id === id);
-    setConfirm({ type: 'entry', id, name: entry ? entry.name : '' });
+    openConfirm({ type: 'entry', id, name: entry ? entry.name : '' });
   };
 
   const handleClearMonth = () => {
-    if (isReadOnly) return;
-    setConfirm({ type: 'month' });
+    if (isMember) {
+      openConfirm({ type: 'blockedDelete' });
+      return;
+    }
+    openConfirm({ type: 'month' });
   };
 
   const doConfirm = () => {
-    if (!confirm || isReadOnly) {
-      setConfirm(null);
+    if (!confirm || isMember) {
+      closeConfirm();
       return;
     }
     if (confirm.type === 'entry') {
@@ -619,7 +634,7 @@ export default function KharchaTrackerScreen({ onBack }) {
         return next;
       });
     }
-    setConfirm(null);
+    closeConfirm();
   };
 
   const handleShare = async () => {
@@ -797,8 +812,8 @@ export default function KharchaTrackerScreen({ onBack }) {
 
   const doRestore = () => {
     if (!restoreData) return;
-    if (isReadOnly) {
-      Alert.alert('अनुमति नहीं है', 'कोड से जुड़े सदस्य केवल खर्चा देख सकते हैं, रीस्टोर नहीं कर सकते।');
+    if (isMember) {
+      Alert.alert('अनुमति नहीं है', 'कोड से जुड़े सदस्य सिर्फ़ entry add कर सकते हैं — backup restore नहीं कर सकते।');
       setRestoreData(null);
       return;
     }
@@ -909,7 +924,7 @@ export default function KharchaTrackerScreen({ onBack }) {
               {entries.length > 0 && ` · ${paidCount} Paid`}
             </Text>
 
-            {pendingTotal > 0 && !isReadOnly ? (
+            {pendingTotal > 0 && !isMember ? (
               <TouchableOpacity
                 style={styles.heroSettleBtn}
                 onPress={openSettleModalForMonth}
@@ -927,56 +942,45 @@ export default function KharchaTrackerScreen({ onBack }) {
           </View>
         </LinearGradient>
 
-        {/* Add Expense Card with date pill */}
-        {isReadOnly ? (
-          <View style={[styles.card, styles.readOnlyNoticeCard]}>
-            <View style={styles.readOnlyNoticeRow}>
-              <Ionicons name="eye-outline" size={17} color="#34D399" />
-              <Text style={styles.readOnlyNoticeText}>
-                View Only — कोड से जुड़े सदस्य केवल खर्चा देख सकते हैं
-              </Text>
-            </View>
+        {/* Add Expense Card with date pill — joined members can add too */}
+        <View style={styles.card}>
+          <View style={styles.addHead}>
+            <Text style={styles.cardTitle}>Add Expense</Text>
+            <TouchableOpacity
+              style={styles.datePill}
+              onPress={() => setDayPickerOpen(true)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="calendar" size={15} color="#34D399" />
+              <Text style={styles.datePillText}>{dayPillLabel}</Text>
+              <View style={styles.chevronDownSmall} />
+            </TouchableOpacity>
           </View>
-        ) : (
-          <View style={styles.card}>
-            <View style={styles.addHead}>
-              <Text style={styles.cardTitle}>Add Expense</Text>
-              <TouchableOpacity
-                style={styles.datePill}
-                onPress={() => setDayPickerOpen(true)}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="calendar" size={15} color="#34D399" />
-                <Text style={styles.datePillText}>{dayPillLabel}</Text>
-                <View style={styles.chevronDownSmall} />
-              </TouchableOpacity>
-            </View>
 
-            <View style={styles.formRow}>
+          <View style={styles.formRow}>
+            <TextInput
+              style={[styles.input, styles.itemInput]}
+              value={itemName}
+              onChangeText={setItemName}
+              placeholder="Add Items..."
+              placeholderTextColor="rgb(100, 116, 139)"
+            />
+            <View style={styles.inputPrefixWrap}>
+              <Text style={styles.prefix}>₹</Text>
               <TextInput
-                style={[styles.input, styles.itemInput]}
-                value={itemName}
-                onChangeText={setItemName}
-                placeholder="Add Items..."
+                style={[styles.input, styles.costInput]}
+                value={itemCost}
+                onChangeText={setItemCost}
+                keyboardType="decimal-pad"
+                placeholder="Cost"
                 placeholderTextColor="rgb(100, 116, 139)"
               />
-              <View style={styles.inputPrefixWrap}>
-                <Text style={styles.prefix}>₹</Text>
-                <TextInput
-                  style={[styles.input, styles.costInput]}
-                  value={itemCost}
-                  onChangeText={setItemCost}
-                  keyboardType="decimal-pad"
-                  placeholder="Cost"
-                  placeholderTextColor="rgb(100, 116, 139)"
-                />
-              </View>
-              <TouchableOpacity style={styles.addBtn} onPress={handleAdd} activeOpacity={0.8}>
-                <Ionicons name="add" size={24} color="#022C22" />
-              </TouchableOpacity>
             </View>
+            <TouchableOpacity style={styles.addBtn} onPress={handleAdd} activeOpacity={0.8}>
+              <Ionicons name="add" size={24} color="#022C22" />
+            </TouchableOpacity>
           </View>
-        )}
+        </View>
 
         {/* Entries Card */}
         <View style={styles.card}>
@@ -989,11 +993,9 @@ export default function KharchaTrackerScreen({ onBack }) {
                 <TouchableOpacity style={styles.actionPill} onPress={handleShare} accessibilityLabel="Share">
                   <Ionicons name="share-social-outline" size={20} color="#34D399" />
                 </TouchableOpacity>
-                {!isReadOnly && (
-                  <TouchableOpacity style={styles.clearPill} onPress={handleClearMonth} accessibilityLabel="Clear">
-                    <Ionicons name="trash-outline" size={20} color={Colors.danger} />
-                  </TouchableOpacity>
-                )}
+                <TouchableOpacity style={styles.clearPill} onPress={handleClearMonth} accessibilityLabel="Clear">
+                  <Ionicons name="trash-outline" size={20} color={Colors.danger} />
+                </TouchableOpacity>
               </View>
             )}
           </View>
@@ -1137,11 +1139,11 @@ export default function KharchaTrackerScreen({ onBack }) {
                           style={[
                             styles.paidToggleCircle,
                             g.items[0].paid && styles.paidToggleCircleActive,
-                            isReadOnly && { opacity: 0.85 },
+                            isMember && { opacity: 0.85 },
                           ]}
-                          onPress={isReadOnly ? undefined : () => handleToggleEntryPaid(g.items[0].id)}
-                          activeOpacity={isReadOnly ? 1 : 0.7}
-                          disabled={isReadOnly}
+                          onPress={isMember ? undefined : () => handleToggleEntryPaid(g.items[0].id)}
+                          activeOpacity={isMember ? 1 : 0.7}
+                          disabled={isMember}
                         >
                           {g.items[0].paid ? (
                             <Ionicons name="checkmark" size={13} color="#022C22" />
@@ -1170,9 +1172,9 @@ export default function KharchaTrackerScreen({ onBack }) {
                               <View style={styles.paidBadgeInlineWrap}>
                                 <TouchableOpacity
                                   style={styles.paidBadgeInline}
-                                  onPress={isReadOnly ? undefined : () => openSettleModalForEntry(g.items[0])}
-                                  activeOpacity={isReadOnly ? 1 : 0.7}
-                                  disabled={isReadOnly}
+                                  onPress={isMember ? undefined : () => openSettleModalForEntry(g.items[0])}
+                                  activeOpacity={isMember ? 1 : 0.7}
+                                  disabled={isMember}
                                 >
                                   <Text style={styles.paidBadgeInlineText}>Paid</Text>
                                 </TouchableOpacity>
@@ -1180,12 +1182,12 @@ export default function KharchaTrackerScreen({ onBack }) {
                                   onPress={() =>
                                     g.items[0].paymentNote
                                       ? toggleTooltip(g.items[0].id)
-                                      : isReadOnly
+                                      : isMember
                                         ? undefined
                                         : openSettleModalForEntry(g.items[0])
                                   }
-                                  activeOpacity={isReadOnly && !g.items[0].paymentNote ? 1 : 0.7}
-                                  disabled={isReadOnly && !g.items[0].paymentNote}
+                                  activeOpacity={isMember && !g.items[0].paymentNote ? 1 : 0.7}
+                                  disabled={isMember && !g.items[0].paymentNote}
                                 >
                                   {renderPaymentModeIcon(g.items[0].paymentMode || 'UPI')}
                                 </TouchableOpacity>
@@ -1230,15 +1232,13 @@ export default function KharchaTrackerScreen({ onBack }) {
                           {fmt(g.items[0].cost)}
                         </Text>
 
-                        {!isReadOnly && (
-                          <TouchableOpacity
-                            style={styles.delBtn}
-                            onPress={() => handleDelete(g.items[0].id)}
-                            activeOpacity={0.7}
-                          >
-                            <Ionicons name="trash-outline" size={15} color="#F87171" />
-                          </TouchableOpacity>
-                        )}
+                        <TouchableOpacity
+                          style={styles.delBtn}
+                          onPress={() => handleDelete(g.items[0].id)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="trash-outline" size={15} color="#F87171" />
+                        </TouchableOpacity>
                       </View>
                     ) : (
                       // Multiple items on this day → grouped card with day total & settlement actions
@@ -1261,9 +1261,9 @@ export default function KharchaTrackerScreen({ onBack }) {
                               {g.isAllPaid ? (
                                 <TouchableOpacity
                                   style={styles.dayPaidTag}
-                                  onPress={isReadOnly ? undefined : () => setConfirm({ type: 'unmarkDay', day: g.day })}
-                                  activeOpacity={isReadOnly ? 1 : 0.7}
-                                  disabled={isReadOnly}
+                                  onPress={isMember ? undefined : () => openConfirm({ type: 'unmarkDay', day: g.day })}
+                                  activeOpacity={isMember ? 1 : 0.7}
+                                  disabled={isMember}
                                 >
                                   <Ionicons name="checkmark-circle" size={12} color="#34D399" />
                                   <Text style={styles.dayPaidTagText}>Paid</Text>
@@ -1273,7 +1273,7 @@ export default function KharchaTrackerScreen({ onBack }) {
                                   <View style={styles.dayPartialTag}>
                                     <Text style={styles.dayPartialTagText}>Partial</Text>
                                   </View>
-                                  {!isReadOnly && (
+                                  {!isMember && (
                                     <TouchableOpacity
                                       style={styles.daySettleQuickBtn}
                                       onPress={() => openSettleModalForDay(g.day)}
@@ -1284,7 +1284,7 @@ export default function KharchaTrackerScreen({ onBack }) {
                                     </TouchableOpacity>
                                   )}
                                 </View>
-                              ) : !isReadOnly ? (
+                              ) : !isMember ? (
                                 <TouchableOpacity
                                   style={styles.daySettleQuickBtn}
                                   onPress={() => openSettleModalForDay(g.day)}
@@ -1317,11 +1317,11 @@ export default function KharchaTrackerScreen({ onBack }) {
                               style={[
                                 styles.itemCheckCircle,
                                 e.paid && styles.itemCheckCircleActive,
-                                isReadOnly && { opacity: 0.85 },
+                                isMember && { opacity: 0.85 },
                               ]}
-                              onPress={isReadOnly ? undefined : () => handleToggleEntryPaid(e.id)}
-                              activeOpacity={isReadOnly ? 1 : 0.7}
-                              disabled={isReadOnly}
+                              onPress={isMember ? undefined : () => handleToggleEntryPaid(e.id)}
+                              activeOpacity={isMember ? 1 : 0.7}
+                              disabled={isMember}
                             >
                               {e.paid ? (
                                 <Ionicons name="checkmark" size={11} color="#022C22" />
@@ -1343,9 +1343,9 @@ export default function KharchaTrackerScreen({ onBack }) {
                                   <View style={styles.itemPaidMetaRow}>
                                     <TouchableOpacity
                                       style={styles.itemPaidMetaInline}
-                                      onPress={isReadOnly ? undefined : () => openSettleModalForEntry(e)}
-                                      activeOpacity={isReadOnly ? 1 : 0.7}
-                                      disabled={isReadOnly}
+                                      onPress={isMember ? undefined : () => openSettleModalForEntry(e)}
+                                      activeOpacity={isMember ? 1 : 0.7}
+                                      disabled={isMember}
                                     >
                                       <Text style={styles.itemPaidMeta}>Paid</Text>
                                     </TouchableOpacity>
@@ -1353,12 +1353,12 @@ export default function KharchaTrackerScreen({ onBack }) {
                                       onPress={() =>
                                         e.paymentNote
                                           ? toggleTooltip(e.id)
-                                          : isReadOnly
+                                          : isMember
                                             ? undefined
                                             : openSettleModalForEntry(e)
                                       }
-                                      activeOpacity={isReadOnly && !e.paymentNote ? 1 : 0.7}
-                                      disabled={isReadOnly && !e.paymentNote}
+                                      activeOpacity={isMember && !e.paymentNote ? 1 : 0.7}
+                                      disabled={isMember && !e.paymentNote}
                                     >
                                       {renderPaymentModeIcon(e.paymentMode || 'UPI')}
                                     </TouchableOpacity>
@@ -1401,15 +1401,13 @@ export default function KharchaTrackerScreen({ onBack }) {
                               {fmt(e.cost)}
                             </Text>
 
-                            {!isReadOnly && (
-                              <TouchableOpacity
-                                style={styles.delBtn}
-                                onPress={() => handleDelete(e.id)}
-                                activeOpacity={0.7}
-                              >
-                                <Ionicons name="trash-outline" size={15} color="#F87171" />
-                              </TouchableOpacity>
-                            )}
+                            <TouchableOpacity
+                              style={styles.delBtn}
+                              onPress={() => handleDelete(e.id)}
+                              activeOpacity={0.7}
+                            >
+                              <Ionicons name="trash-outline" size={15} color="#F87171" />
+                            </TouchableOpacity>
                           </View>
                         ))}
                       </View>
@@ -1750,65 +1748,88 @@ export default function KharchaTrackerScreen({ onBack }) {
 
       {/* Delete / Clear / Unmark confirmation popup */}
       <Modal
-        visible={confirm !== null}
+        visible={confirmVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => setConfirm(null)}
+        onRequestClose={closeConfirm}
       >
-        <TouchableWithoutFeedback onPress={() => setConfirm(null)}>
+        <TouchableWithoutFeedback onPress={closeConfirm}>
           <View style={styles.modalBackdrop}>
             <TouchableWithoutFeedback>
               <View style={styles.confirmPanel}>
                 <View
                   style={[
                     styles.confirmIconWrap,
-                    confirm?.type === 'unmarkDay' && styles.confirmIconWrapAmber,
+                    (confirm?.type === 'unmarkDay' || confirm?.type === 'blockedDelete') &&
+                    styles.confirmIconWrapAmber,
                   ]}
                 >
                   <Ionicons
-                    name={confirm?.type === 'unmarkDay' ? 'alert-circle-outline' : 'trash-outline'}
+                    name={
+                      confirm?.type === 'blockedDelete'
+                        ? 'lock-closed-outline'
+                        : confirm?.type === 'unmarkDay'
+                          ? 'alert-circle-outline'
+                          : 'trash-outline'
+                    }
                     size={26}
-                    color={confirm?.type === 'unmarkDay' ? '#FBBF24' : '#F87171'}
+                    color={confirm?.type === 'blockedDelete' ? '#FBBF24' : confirm?.type === 'unmarkDay' ? '#FBBF24' : '#F87171'}
                   />
                 </View>
                 <Text style={styles.confirmTitle}>
-                  {confirm?.type === 'entry'
-                    ? 'Entry डिलीट करें?'
-                    : confirm?.type === 'unmarkDay'
-                      ? 'हिसाब वापस बाकी करें?'
-                      : 'पूरे महीने का रिकॉर्ड मिटाएं?'}
+                  {confirm?.type === 'blockedDelete'
+                    ? 'आप delete नहीं कर सकते'
+                    : confirm?.type === 'entry'
+                      ? 'Entry डिलीट करें?'
+                      : confirm?.type === 'unmarkDay'
+                        ? 'हिसाब वापस बाकी करें?'
+                        : 'पूरे महीने का रिकॉर्ड मिटाएं?'}
                 </Text>
                 <Text style={styles.confirmMsg}>
-                  {confirm?.type === 'entry'
-                    ? `"${confirm.name}" वाली यह entry delete हो जाएगी। यह वापस नहीं आएगी।`
-                    : confirm?.type === 'unmarkDay'
-                      ? `${confirm.day} ${MONTHS_EN[selMonth - 1]} का हिसाब चुकता से वापस बाकी (Pending) में बदल जाएगा।`
-                      : `${MONTHS_HI[selMonth - 1]} ${selYear} की सारी entries delete हो जाएँगी। यह वापस नहीं मिलेगी।`}
+                  {confirm?.type === 'blockedDelete'
+                    ? 'कोड से जुड़े सदस्य सिर्फ़ नई entry add कर सकते हैं। Entry delete सिर्फ़ Family owner की device से होगा।'
+                    : confirm?.type === 'entry'
+                      ? `"${confirm.name}" वाली यह entry delete हो जाएगी। यह वापस नहीं आएगी।`
+                      : confirm?.type === 'unmarkDay'
+                        ? `${confirm.day} ${MONTHS_EN[selMonth - 1]} का हिसाब चुकता से वापस बाकी (Pending) में बदल जाएगा।`
+                        : `${MONTHS_HI[selMonth - 1]} ${selYear} की सारी entries delete हो जाएँगी। यह वापस नहीं मिलेगी।`}
                 </Text>
                 <View style={styles.confirmBtnRow}>
-                  <TouchableOpacity
-                    style={styles.confirmCancelBtn}
-                    onPress={() => setConfirm(null)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.confirmCancelText}>रुको ✋</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.confirmDangerBtn,
-                      confirm?.type === 'unmarkDay' && styles.confirmAmberBtn,
-                    ]}
-                    onPress={doConfirm}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.confirmDangerText}>
-                      {confirm?.type === 'entry'
-                        ? 'हाँ, डिलीट करें'
-                        : confirm?.type === 'unmarkDay'
-                          ? 'हाँ, बाकी करें'
-                          : 'हाँ, मिटाएं'}
-                    </Text>
-                  </TouchableOpacity>
+                  {confirm?.type === 'blockedDelete' ? (
+                    <TouchableOpacity
+                      style={styles.confirmCancelBtn}
+                      onPress={closeConfirm}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.confirmCancelText}>ठीक है 👍</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <>
+                      <TouchableOpacity
+                        style={styles.confirmCancelBtn}
+                        onPress={closeConfirm}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.confirmCancelText}>रुको ✋</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.confirmDangerBtn,
+                          confirm?.type === 'unmarkDay' && styles.confirmAmberBtn,
+                        ]}
+                        onPress={doConfirm}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.confirmDangerText}>
+                          {confirm?.type === 'entry'
+                            ? 'हाँ, डिलीट करें'
+                            : confirm?.type === 'unmarkDay'
+                              ? 'हाँ, बाकी करें'
+                              : 'हाँ, मिटाएं'}
+                        </Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
                 </View>
               </View>
             </TouchableWithoutFeedback>
@@ -2089,24 +2110,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.cardBorder,
     marginBottom: 16,
-  },
-  readOnlyNoticeCard: {
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    backgroundColor: 'rgba(52, 211, 153, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(52, 211, 153, 0.25)',
-  },
-  readOnlyNoticeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  readOnlyNoticeText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#34D399',
   },
   cardTitle: {
     fontSize: 14,

@@ -329,7 +329,7 @@ export default function FamilySyncPanel({ meta, statusText, syncing, onMetaChang
               </View>
               <Text style={styles.you}>
                 You: {meta.deviceName}
-                {meta.role === 'member' ? ' (View Only)' : ''}
+                {meta.role === 'member' ? ' (Add Only)' : ''}
               </Text>
 
               <View style={styles.membersRowInline}>
