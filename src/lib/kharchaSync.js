@@ -76,7 +76,7 @@ export async function clearMeta(userScope = 'guest') {
 
 // Snapshot = what this device last successfully put in / took out of the
 // cloud: { [entryId]: { u: updatedAt, d: deletedFlag } }.
-async function readSnapshot(userScope = 'guest') {
+export async function readSnapshot(userScope = 'guest') {
   try {
     const raw = await AsyncStorage.getItem(getSnapshotKey(userScope));
     return raw ? JSON.parse(raw) : {};
@@ -166,6 +166,34 @@ export function newEntryId() {
   return `${Date.now().toString(36)}${rand}`;
 }
 
+// ── Membership check ──────────────────────────────────────────────────────
+// When the family owner removes a member, that device must stop syncing.
+// Returns true while the device still appears in the family's active member
+// list. Only a genuine network failure (listMembers -> null) counts as
+// "can't tell" — a flaky connection must never kick somebody out of their own
+// family. An empty list, though, is a real server answer: every member row is
+// gone (owner removed everyone), so the device is no longer an active member.
+export async function checkActiveMembership(meta) {
+  if (!meta || !meta.familyCode || !meta.deviceName) return true;
+  const members = await cloud.listMembers(meta.familyCode);
+  if (members === null) return true; // offline — never kick on a failed request
+  const here = String(meta.deviceName).trim();
+  return members.some((m) => String(m.device_name || '').trim() === here);
+}
+
+// The owner IS the family — their name must always appear in the member list.
+// If the owner's own row went missing (deleted from another device, or by a
+// mistyped self-delete), re-register it so everyone's "सदस्य" list shows the
+// owner again. Never applied to members: a removed member must stay removed.
+export async function ensureOwnerMembership(meta) {
+  if (!meta || meta.role !== 'owner' || !meta.familyCode || !meta.deviceName) return;
+  const members = await cloud.listMembers(meta.familyCode);
+  if (members === null) return; // offline — retry on the next sync
+  const here = String(meta.deviceName).trim();
+  const found = members.some((m) => String(m.device_name || '').trim() === here);
+  if (!found) await cloud.addMember(meta.familyCode, meta.deviceName);
+}
+
 // ── Push: local changes -> cloud ──────────────────────────────────────────
 // Diffs the live data against the snapshot. Anything new/edited becomes an
 // upsert row; anything in the snapshot that vanished locally becomes a soft
@@ -175,9 +203,10 @@ export async function pushLocal(data, meta, userScope = 'guest') {
   if (!meta || !meta.familyCode) return { ok: false, pushed: 0 };
 
   // PERMISSION RULE:
-  // Members who joined via the family code may only add brand-new entries.
-  // Edits/updates of rows that already exist in the cloud and soft-deletes
-  // are owned by the family device — members never push those.
+  // Members who joined via the family code may add brand-new entries and push
+  // payment-only updates (भुगतान mark/unmark) of rows they already synced.
+  // Any other edit of an existing row and all soft-deletes stay owner-side —
+  // members never push those.
   const isMember = meta.role === 'member';
 
   const snapshot = await readSnapshot(userScope);
@@ -188,8 +217,6 @@ export async function pushLocal(data, meta, userScope = 'guest') {
     if (!entry || !entry.id) return;
     seen[entry.id] = 1;
     const prev = snapshot[entry.id];
-    // A member may only push entries this device has never synced before.
-    if (isMember && prev !== undefined) return;
     const updatedAt = entry.updatedAt || 0;
 
     const isPaid = entry.paid ? 1 : 0;
@@ -204,6 +231,10 @@ export async function pushLocal(data, meta, userScope = 'guest') {
       prev.m !== paymentMode ||
       prev.n !== paymentNote ||
       prev.a !== paidAt;
+
+    // A member touching an already-synced row may only push when the payment
+    // fields themselves changed — nothing else about the row moves.
+    if (isMember && prev !== undefined && !paymentChanged) return;
 
     if (prev && prev.u >= updatedAt && !prev.d && !paymentChanged) return; // already in sync
 
@@ -305,8 +336,18 @@ export async function pullRemote(data, meta, userScope = 'guest') {
     const paymentNote = row.payment_note !== undefined ? String(row.payment_note || '') : dec.paymentNote;
 
     // For owner: local edits/deletes win until sent.
-    // For members: cloud is the truth (they only add new entries, never edit/delete).
-    const dirty = !isMember && (!here ? !!prev : prev === undefined || prev.u !== here.updatedAt);
+    // For members: cloud is the truth — except a payment mark this device made
+    // but has not managed to push yet must not be silently rolled back by a
+    // pull; it goes up on the next sync round instead.
+    const memberPayDirty =
+      isMember && !!here && !!prev &&
+      ((here.paid ? 1 : 0) !== (prev.p || 0) ||
+        (here.paymentMode || '') !== (prev.m || '') ||
+        (here.paymentNote || '') !== (prev.n || '') ||
+        (here.paidAt || 0) !== (prev.a || 0));
+    const dirty = isMember
+      ? memberPayDirty
+      : (!here ? !!prev : prev === undefined || prev.u !== here.updatedAt);
     if (dirty) return;
     if (!here && !row.month_key) return;
 
@@ -372,6 +413,22 @@ export function applyRows(data, ops) {
     index[op.id] = op.monthKey;
   });
   return next;
+}
+
+// A kicked member must not keep seeing the family's register. The snapshot is
+// exactly the set of ids this device synced with the family (pulled down or
+// pushed up), so everything in it gets dropped from the local data. Entries
+// that never touched the cloud — the phone's own personal kharcha — stay.
+export function stripSyncedEntries(data, snapshot) {
+  const next = {};
+  let changed = false;
+  Object.keys(data).forEach((monthKey) => {
+    const list = Array.isArray(data[monthKey]) ? data[monthKey] : [];
+    const kept = list.filter((e) => !e || !e.id || snapshot[e.id] === undefined);
+    if (kept.length !== list.length) changed = true;
+    if (kept.length > 0) next[monthKey] = kept;
+  });
+  return changed ? next : data;
 }
 
 // One full round trip: push whatever is pending, then pull whatever is new.

@@ -25,7 +25,7 @@ import ScreenHeader from '../components/ScreenHeader';
 import FamilySyncPanel from '../components/FamilySyncPanel';
 import GPayLogo from '../components/GPayLogo';
 import { CLOUD_ENABLED } from '../lib/supabaseConfig';
-import { applyRows, ensureIds, mergeBackup, newEntryId, readMeta, syncOnce } from '../lib/kharchaSync';
+import { applyRows, checkActiveMembership, clearMeta, ensureOwnerMembership, ensureIds, mergeBackup, newEntryId, readMeta, readSnapshot, stripSyncedEntries, syncOnce } from '../lib/kharchaSync';
 import { useAuth } from '../context/AuthContext';
 import useCurrentDate from '../hooks/useCurrentDate';
 
@@ -161,7 +161,7 @@ export default function KharchaTrackerScreen({ onBack }) {
   const [yearSummaryOpen, setYearSummaryOpen] = useState(false);
   // Backup hint: collapsed to one line with an inline Read More / Read Less
   const [backupExpanded, setBackupExpanded] = useState(false);
-  // Delete/Clear confirmation popup — { type: 'entry'|'month'|'unmarkDay'|'blockedDelete', id?, name?, day? }
+  // Delete/Clear confirmation popup — { type: 'entry'|'month'|'unmarkDay'|'blockedDelete'|'kicked', id?, name?, day? }
   // Visibility is separate from the payload: the fade-out keeps the modal mounted for a
   // moment after closing, and clearing the payload in that window would flash the
   // fallback (month-clear) text. So the last payload simply stays rendered while it fades.
@@ -195,8 +195,9 @@ export default function KharchaTrackerScreen({ onBack }) {
   const busyRef = useRef(false);
   const pushTimerRef = useRef(null);
 
-  // Access control: members who joined via the family code can add entries,
-  // but delete/settle/restore attempts show a popup message instead.
+  // Access control: members who joined via the family code can add entries
+  // and mark payments (भुगतान), but delete/clear-month/restore attempts show a
+  // popup message instead.
   const isMember = !!(cloudMeta && cloudMeta.role === 'member');
 
   // ── Persistence ──────────────────────────────────────────────
@@ -267,6 +268,23 @@ export default function KharchaTrackerScreen({ onBack }) {
     busyRef.current = true;
     setSyncing(true);
     try {
+      // If the owner removed this device from the family, stop syncing for
+      // good: unlink locally, wipe the family's entries from this phone
+      // (never-synced personal data stays), and tell the user.
+      if (meta.role === 'member' && !(await checkActiveMembership(meta))) {
+        const syncedIds = await readSnapshot(userScope); // clearMeta deletes it
+        await clearMeta(userScope);
+        metaRef.current = null;
+        setData((prev) => stripSyncedEntries(prev, syncedIds));
+        setCloudMeta(null);
+        setStatusText('');
+        setConfirm({ type: 'kicked' });
+        setConfirmVisible(true);
+        return;
+      }
+      // Owners never get kicked, but their member row can still go missing —
+      // re-register it so the family's member list stays truthful.
+      if (meta.role === 'owner') await ensureOwnerMembership(meta);
       const result = await syncOnce(dataRef.current, meta, userScope);
       // Cursor goes in the ref only. Setting cloudMeta state here would re-run
       // the push effect below (it depends on cloudMeta) and turn the 25s poll
@@ -482,7 +500,6 @@ export default function KharchaTrackerScreen({ onBack }) {
 
   // Modal openers
   const openSettleModalForMonth = () => {
-    if (isMember) return;
     setSettleTargetDay(null);
     setSettleTargetEntryId(null);
     setPaymentMode('UPI');
@@ -491,7 +508,6 @@ export default function KharchaTrackerScreen({ onBack }) {
   };
 
   const openSettleModalForDay = (day) => {
-    if (isMember) return;
     setSettleTargetDay(day);
     setSettleTargetEntryId(null);
     setPaymentMode('UPI');
@@ -500,7 +516,6 @@ export default function KharchaTrackerScreen({ onBack }) {
   };
 
   const openSettleModalForEntry = (entry) => {
-    if (isMember) return;
     setSettleTargetEntryId(entry.id);
     setSettleTargetDay(null);
     setPaymentMode(entry.paymentMode || 'UPI');
@@ -510,7 +525,6 @@ export default function KharchaTrackerScreen({ onBack }) {
 
   // Toggle single item paid status
   const handleToggleEntryPaid = (id) => {
-    if (isMember) return;
     const entry = entries.find((e) => e.id === id);
     if (!entry) return;
     if (entry.paid) {
@@ -540,7 +554,6 @@ export default function KharchaTrackerScreen({ onBack }) {
 
   // Toggle all items on a day
   const handleToggleDayPaid = (day, targetPaid) => {
-    if (isMember) return;
     setData((prev) => {
       const list = prev[monthKey] || [];
       return {
@@ -569,7 +582,6 @@ export default function KharchaTrackerScreen({ onBack }) {
   };
 
   const doSettle = () => {
-    if (isMember) return;
     const now = Date.now();
     setData((prev) => {
       const list = prev[monthKey] || [];
@@ -616,7 +628,10 @@ export default function KharchaTrackerScreen({ onBack }) {
   };
 
   const doConfirm = () => {
-    if (!confirm || isMember) {
+    // Members may confirm a day-unmark (it's a payment action); delete and
+    // clear-month confirmations never reach them — those taps show the
+    // blocked popup instead.
+    if (!confirm || (isMember && confirm.type !== 'unmarkDay')) {
       closeConfirm();
       return;
     }
@@ -813,7 +828,7 @@ export default function KharchaTrackerScreen({ onBack }) {
   const doRestore = () => {
     if (!restoreData) return;
     if (isMember) {
-      Alert.alert('अनुमति नहीं है', 'कोड से जुड़े सदस्य सिर्फ़ entry add कर सकते हैं — backup restore नहीं कर सकते।');
+      Alert.alert('अनुमति नहीं है', 'कोड से जुड़े सदस्य entry add और भुगतान कर सकते हैं — backup restore नहीं कर सकते।');
       setRestoreData(null);
       return;
     }
@@ -924,7 +939,7 @@ export default function KharchaTrackerScreen({ onBack }) {
               {entries.length > 0 && ` · ${paidCount} Paid`}
             </Text>
 
-            {pendingTotal > 0 && !isMember ? (
+            {pendingTotal > 0 ? (
               <TouchableOpacity
                 style={styles.heroSettleBtn}
                 onPress={openSettleModalForMonth}
@@ -1109,7 +1124,6 @@ export default function KharchaTrackerScreen({ onBack }) {
                   prevGroup &&
                   !prevGroup.isAllPaid &&
                   pendingTotal > 0;
-                const bannerNote = g.items.find((item) => item.paymentNote)?.paymentNote || '';
 
                 return (
                   <React.Fragment key={`day-wrap-${g.day}`}>
@@ -1119,14 +1133,6 @@ export default function KharchaTrackerScreen({ onBack }) {
                         <View style={styles.settlementBannerBadge}>
                           <Ionicons name="checkmark-done-circle" size={15} color="#34D399" />
                           <Text style={styles.settlementBannerText}>यहाँ तक का हिसाब चुकता है (Settled)</Text>
-                          {bannerNote ? (
-                            <View style={styles.bannerNotePill}>
-                              <Ionicons name="chatbubble-ellipses-outline" size={10} color="#FBBF24" />
-                              <Text style={styles.bannerNoteText} numberOfLines={1}>
-                                {bannerNote}
-                              </Text>
-                            </View>
-                          ) : null}
                         </View>
                         <View style={styles.settlementBannerLine} />
                       </View>
@@ -1139,11 +1145,9 @@ export default function KharchaTrackerScreen({ onBack }) {
                           style={[
                             styles.paidToggleCircle,
                             g.items[0].paid && styles.paidToggleCircleActive,
-                            isMember && { opacity: 0.85 },
                           ]}
-                          onPress={isMember ? undefined : () => handleToggleEntryPaid(g.items[0].id)}
-                          activeOpacity={isMember ? 1 : 0.7}
-                          disabled={isMember}
+                          onPress={() => handleToggleEntryPaid(g.items[0].id)}
+                          activeOpacity={0.7}
                         >
                           {g.items[0].paid ? (
                             <Ionicons name="checkmark" size={13} color="#022C22" />
@@ -1172,9 +1176,8 @@ export default function KharchaTrackerScreen({ onBack }) {
                               <View style={styles.paidBadgeInlineWrap}>
                                 <TouchableOpacity
                                   style={styles.paidBadgeInline}
-                                  onPress={isMember ? undefined : () => openSettleModalForEntry(g.items[0])}
-                                  activeOpacity={isMember ? 1 : 0.7}
-                                  disabled={isMember}
+                                  onPress={() => openSettleModalForEntry(g.items[0])}
+                                  activeOpacity={0.7}
                                 >
                                   <Text style={styles.paidBadgeInlineText}>Paid</Text>
                                 </TouchableOpacity>
@@ -1182,46 +1185,47 @@ export default function KharchaTrackerScreen({ onBack }) {
                                   onPress={() =>
                                     g.items[0].paymentNote
                                       ? toggleTooltip(g.items[0].id)
-                                      : isMember
-                                        ? undefined
-                                        : openSettleModalForEntry(g.items[0])
+                                      : openSettleModalForEntry(g.items[0])
                                   }
-                                  activeOpacity={isMember && !g.items[0].paymentNote ? 1 : 0.7}
-                                  disabled={isMember && !g.items[0].paymentNote}
+                                  activeOpacity={0.7}
                                 >
                                   {renderPaymentModeIcon(g.items[0].paymentMode || 'UPI')}
                                 </TouchableOpacity>
                                 {g.items[0].paymentNote ? (
-                                  <TouchableOpacity
-                                    onPress={() => toggleTooltip(g.items[0].id)}
-                                    hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-                                    activeOpacity={0.7}
-                                  >
-                                    <Ionicons
-                                      name={
-                                        activeTooltipId === g.items[0].id
-                                          ? 'chatbubble-ellipses'
-                                          : 'chatbubble-ellipses-outline'
-                                      }
-                                      size={11}
-                                      color="#FBBF24"
-                                      style={styles.noteIndicatorIcon}
-                                    />
-                                  </TouchableOpacity>
+                                  <View style={styles.noteAnchorWrap}>
+                                    <TouchableOpacity
+                                      onPress={() => toggleTooltip(g.items[0].id)}
+                                      hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                                      activeOpacity={0.7}
+                                    >
+                                      <Ionicons
+                                        name={
+                                          activeTooltipId === g.items[0].id
+                                            ? 'chatbubble-ellipses'
+                                            : 'chatbubble-ellipses-outline'
+                                        }
+                                        size={11}
+                                        color="#FBBF24"
+                                        style={styles.noteIndicatorIcon}
+                                      />
+                                    </TouchableOpacity>
+                                    {activeTooltipId === g.items[0].id ? (
+                                      <TouchableOpacity
+                                        activeOpacity={0.9}
+                                        onPress={() => setActiveTooltipId(null)}
+                                        style={styles.noteTooltipWrap}
+                                      >
+                                        <View style={styles.noteTooltipArrow} />
+                                        <View style={styles.noteTooltipBubble}>
+                                          <Text style={styles.noteTooltipText} numberOfLines={4} ellipsizeMode="tail">
+                                            {g.items[0].paymentNote}
+                                          </Text>
+                                        </View>
+                                      </TouchableOpacity>
+                                    ) : null}
+                                  </View>
                                 ) : null}
                               </View>
-                              {activeTooltipId === g.items[0].id && g.items[0].paymentNote ? (
-                                <TouchableOpacity
-                                  activeOpacity={0.9}
-                                  onPress={() => setActiveTooltipId(null)}
-                                  style={styles.noteTooltipWrap}
-                                >
-                                  <View style={styles.noteTooltipArrow} />
-                                  <View style={styles.noteTooltipBubble}>
-                                    <Text style={styles.noteTooltipText}>{g.items[0].paymentNote}</Text>
-                                  </View>
-                                </TouchableOpacity>
-                              ) : null}
                             </View>
                           ) : (
                             <Text style={styles.pendingBadgeInlineText}>Pending</Text>
@@ -1261,9 +1265,8 @@ export default function KharchaTrackerScreen({ onBack }) {
                               {g.isAllPaid ? (
                                 <TouchableOpacity
                                   style={styles.dayPaidTag}
-                                  onPress={isMember ? undefined : () => openConfirm({ type: 'unmarkDay', day: g.day })}
-                                  activeOpacity={isMember ? 1 : 0.7}
-                                  disabled={isMember}
+                                  onPress={() => openConfirm({ type: 'unmarkDay', day: g.day })}
+                                  activeOpacity={0.7}
                                 >
                                   <Ionicons name="checkmark-circle" size={12} color="#34D399" />
                                   <Text style={styles.dayPaidTagText}>Paid</Text>
@@ -1273,18 +1276,16 @@ export default function KharchaTrackerScreen({ onBack }) {
                                   <View style={styles.dayPartialTag}>
                                     <Text style={styles.dayPartialTagText}>Partial</Text>
                                   </View>
-                                  {!isMember && (
-                                    <TouchableOpacity
-                                      style={styles.daySettleQuickBtn}
-                                      onPress={() => openSettleModalForDay(g.day)}
-                                      activeOpacity={0.8}
-                                    >
-                                      <Ionicons name="checkmark" size={11} color="#022C22" />
-                                      <Text style={styles.daySettleQuickText}>Settle Due</Text>
-                                    </TouchableOpacity>
-                                  )}
+                                  <TouchableOpacity
+                                    style={styles.daySettleQuickBtn}
+                                    onPress={() => openSettleModalForDay(g.day)}
+                                    activeOpacity={0.8}
+                                  >
+                                    <Ionicons name="checkmark" size={11} color="#022C22" />
+                                    <Text style={styles.daySettleQuickText}>Settle Due</Text>
+                                  </TouchableOpacity>
                                 </View>
-                              ) : !isMember ? (
+                              ) : (
                                 <TouchableOpacity
                                   style={styles.daySettleQuickBtn}
                                   onPress={() => openSettleModalForDay(g.day)}
@@ -1293,7 +1294,7 @@ export default function KharchaTrackerScreen({ onBack }) {
                                   <Ionicons name="checkmark" size={11} color="#022C22" />
                                   <Text style={styles.daySettleQuickText}>Settle</Text>
                                 </TouchableOpacity>
-                              ) : null}
+                              )}
                             </View>
                           </View>
 
@@ -1317,11 +1318,9 @@ export default function KharchaTrackerScreen({ onBack }) {
                               style={[
                                 styles.itemCheckCircle,
                                 e.paid && styles.itemCheckCircleActive,
-                                isMember && { opacity: 0.85 },
                               ]}
-                              onPress={isMember ? undefined : () => handleToggleEntryPaid(e.id)}
-                              activeOpacity={isMember ? 1 : 0.7}
-                              disabled={isMember}
+                              onPress={() => handleToggleEntryPaid(e.id)}
+                              activeOpacity={0.7}
                             >
                               {e.paid ? (
                                 <Ionicons name="checkmark" size={11} color="#022C22" />
@@ -1343,9 +1342,8 @@ export default function KharchaTrackerScreen({ onBack }) {
                                   <View style={styles.itemPaidMetaRow}>
                                     <TouchableOpacity
                                       style={styles.itemPaidMetaInline}
-                                      onPress={isMember ? undefined : () => openSettleModalForEntry(e)}
-                                      activeOpacity={isMember ? 1 : 0.7}
-                                      disabled={isMember}
+                                      onPress={() => openSettleModalForEntry(e)}
+                                      activeOpacity={0.7}
                                     >
                                       <Text style={styles.itemPaidMeta}>Paid</Text>
                                     </TouchableOpacity>
@@ -1353,46 +1351,47 @@ export default function KharchaTrackerScreen({ onBack }) {
                                       onPress={() =>
                                         e.paymentNote
                                           ? toggleTooltip(e.id)
-                                          : isMember
-                                            ? undefined
-                                            : openSettleModalForEntry(e)
+                                          : openSettleModalForEntry(e)
                                       }
-                                      activeOpacity={isMember && !e.paymentNote ? 1 : 0.7}
-                                      disabled={isMember && !e.paymentNote}
+                                      activeOpacity={0.7}
                                     >
                                       {renderPaymentModeIcon(e.paymentMode || 'UPI')}
                                     </TouchableOpacity>
                                     {e.paymentNote ? (
-                                      <TouchableOpacity
-                                        onPress={() => toggleTooltip(e.id)}
-                                        hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
-                                        activeOpacity={0.7}
-                                      >
-                                        <Ionicons
-                                          name={
-                                            activeTooltipId === e.id
-                                              ? 'chatbubble-ellipses'
-                                              : 'chatbubble-ellipses-outline'
-                                          }
-                                          size={11}
-                                          color="#FBBF24"
-                                          style={styles.noteIndicatorIcon}
-                                        />
-                                      </TouchableOpacity>
+                                      <View style={styles.noteAnchorWrap}>
+                                        <TouchableOpacity
+                                          onPress={() => toggleTooltip(e.id)}
+                                          hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                                          activeOpacity={0.7}
+                                        >
+                                          <Ionicons
+                                            name={
+                                              activeTooltipId === e.id
+                                                ? 'chatbubble-ellipses'
+                                                : 'chatbubble-ellipses-outline'
+                                            }
+                                            size={11}
+                                            color="#FBBF24"
+                                            style={styles.noteIndicatorIcon}
+                                          />
+                                        </TouchableOpacity>
+                                        {activeTooltipId === e.id ? (
+                                          <TouchableOpacity
+                                            activeOpacity={0.9}
+                                            onPress={() => setActiveTooltipId(null)}
+                                            style={styles.noteTooltipWrap}
+                                          >
+                                            <View style={styles.noteTooltipArrow} />
+                                            <View style={styles.noteTooltipBubble}>
+                                              <Text style={styles.noteTooltipText} numberOfLines={4} ellipsizeMode="tail">
+                                                {e.paymentNote}
+                                              </Text>
+                                            </View>
+                                          </TouchableOpacity>
+                                        ) : null}
+                                      </View>
                                     ) : null}
                                   </View>
-                                  {activeTooltipId === e.id && e.paymentNote ? (
-                                    <TouchableOpacity
-                                      activeOpacity={0.9}
-                                      onPress={() => setActiveTooltipId(null)}
-                                      style={styles.noteTooltipWrap}
-                                    >
-                                      <View style={styles.noteTooltipArrow} />
-                                      <View style={styles.noteTooltipBubble}>
-                                        <Text style={styles.noteTooltipText}>{e.paymentNote}</Text>
-                                      </View>
-                                    </TouchableOpacity>
-                                  ) : null}
                                 </View>
                               )}
                             </View>
@@ -1760,42 +1759,49 @@ export default function KharchaTrackerScreen({ onBack }) {
                 <View
                   style={[
                     styles.confirmIconWrap,
-                    (confirm?.type === 'unmarkDay' || confirm?.type === 'blockedDelete') &&
+                    (confirm?.type === 'unmarkDay' || confirm?.type === 'blockedDelete' ||
+                      confirm?.type === 'kicked') &&
                     styles.confirmIconWrapAmber,
                   ]}
                 >
                   <Ionicons
                     name={
-                      confirm?.type === 'blockedDelete'
-                        ? 'lock-closed-outline'
-                        : confirm?.type === 'unmarkDay'
-                          ? 'alert-circle-outline'
-                          : 'trash-outline'
+                      confirm?.type === 'kicked'
+                        ? 'person-remove-outline'
+                        : confirm?.type === 'blockedDelete'
+                          ? 'lock-closed-outline'
+                          : confirm?.type === 'unmarkDay'
+                            ? 'alert-circle-outline'
+                            : 'trash-outline'
                     }
                     size={26}
-                    color={confirm?.type === 'blockedDelete' ? '#FBBF24' : confirm?.type === 'unmarkDay' ? '#FBBF24' : '#F87171'}
+                    color={confirm?.type === 'kicked' || confirm?.type === 'blockedDelete' || confirm?.type === 'unmarkDay' ? '#FBBF24' : '#F87171'}
                   />
                 </View>
                 <Text style={styles.confirmTitle}>
-                  {confirm?.type === 'blockedDelete'
-                    ? 'आप delete नहीं कर सकते'
-                    : confirm?.type === 'entry'
-                      ? 'Entry डिलीट करें?'
-                      : confirm?.type === 'unmarkDay'
-                        ? 'हिसाब वापस बाकी करें?'
-                        : 'पूरे महीने का रिकॉर्ड मिटाएं?'}
+                  {confirm?.type === 'kicked'
+                    ? 'आपको Family से हटा दिया गया'
+                    : confirm?.type === 'blockedDelete'
+                      ? 'आप delete नहीं कर सकते'
+                      : confirm?.type === 'entry'
+                        ? 'Entry डिलीट करें?'
+                        : confirm?.type === 'unmarkDay'
+                          ? 'हिसाब वापस बाकी करें?'
+                          : 'पूरे महीने का रिकॉर्ड मिटाएं?'}
                 </Text>
                 <Text style={styles.confirmMsg}>
-                  {confirm?.type === 'blockedDelete'
-                    ? 'कोड से जुड़े सदस्य सिर्फ़ नई entry add कर सकते हैं। Entry delete सिर्फ़ Family owner की device से होगा।'
-                    : confirm?.type === 'entry'
-                      ? `"${confirm.name}" वाली यह entry delete हो जाएगी। यह वापस नहीं आएगी।`
-                      : confirm?.type === 'unmarkDay'
-                        ? `${confirm.day} ${MONTHS_EN[selMonth - 1]} का हिसाब चुकता से वापस बाकी (Pending) में बदल जाएगा।`
-                        : `${MONTHS_HI[selMonth - 1]} ${selYear} की सारी entries delete हो जाएँगी। यह वापस नहीं मिलेगी।`}
+                  {confirm?.type === 'kicked'
+                    ? 'Owner ने यह device Family से निकाल दिया है। सिंक बंद कर दिया गया है और Family का सारा खर्चा इस फोन से हटा दिया गया है।'
+                    : confirm?.type === 'blockedDelete'
+                      ? 'कोड से जुड़े सदस्य entry add कर सकते हैं और भुगतान भी — Entry delete सिर्फ़ Family owner की device से होगा।'
+                      : confirm?.type === 'entry'
+                        ? `"${confirm.name}" वाली यह entry delete हो जाएगी। यह वापस नहीं आएगी।`
+                        : confirm?.type === 'unmarkDay'
+                          ? `${confirm.day} ${MONTHS_EN[selMonth - 1]} का हिसाब चुकता से वापस बाकी (Pending) में बदल जाएगा।`
+                          : `${MONTHS_HI[selMonth - 1]} ${selYear} की सारी entries delete हो जाएँगी। यह वापस नहीं मिलेगी।`}
                 </Text>
                 <View style={styles.confirmBtnRow}>
-                  {confirm?.type === 'blockedDelete' ? (
+                  {(confirm?.type === 'blockedDelete' || confirm?.type === 'kicked') ? (
                     <TouchableOpacity
                       style={styles.confirmCancelBtn}
                       onPress={closeConfirm}
@@ -3000,22 +3006,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#6EE7B7',
   },
-  bannerNotePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
-    borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginLeft: 4,
-  },
-  bannerNoteText: {
-    fontSize: 9.5,
-    fontWeight: '700',
-    color: '#FDE047',
-    maxWidth: 120,
-  },
 
   // ── Paid/Pending Card & Row Styling ──
   entryRowPaid: {
@@ -3204,47 +3194,55 @@ const styles = StyleSheet.create({
   itemPaidMetaContainer: {
     marginTop: 1,
   },
+  noteAnchorWrap: {
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 100,
+  },
   noteIndicatorIcon: {
     marginLeft: 3,
   },
   noteTooltipWrap: {
-    marginTop: 3,
-    alignSelf: 'flex-start',
-    maxWidth: '96%',
-    zIndex: 10,
+    position: 'absolute',
+    left: '100%',
+    top: -5,
+    marginLeft: 5,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    zIndex: 9999,
+    elevation: 10,
   },
   noteTooltipArrow: {
     width: 0,
     height: 0,
-    marginLeft: 55,
-    borderLeftWidth: 5,
+    marginTop: 4,
+    borderTopWidth: 4,
+    borderBottomWidth: 4,
     borderRightWidth: 5,
-    borderBottomWidth: 5,
     borderStyle: 'solid',
     backgroundColor: 'transparent',
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderBottomColor: 'rgba(251, 191, 36, 0.45)',
+    borderTopColor: 'transparent',
+    borderBottomColor: 'transparent',
+    borderRightColor: '#000000',
   },
   noteTooltipBubble: {
-    backgroundColor: '#1E293B',
-    borderWidth: 1,
-    borderColor: 'rgba(251, 191, 36, 0.45)',
-    borderRadius: 7,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    shadowColor: '#000',
+    backgroundColor: '#000000',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4.5,
+    maxWidth: 200,
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowOpacity: 0.45,
+    shadowRadius: 5,
+    elevation: 10,
   },
   noteTooltipText: {
-    fontSize: 10.5,
-    lineHeight: 14,
-    color: '#FDE68A',
-    fontWeight: '500',
-    flexShrink: 1,
+    fontSize: 11.5,
+    lineHeight: 15,
+    color: '#FFFFFF',
+    fontWeight: '400',
   },
   notePill: {
     flexDirection: 'row',
