@@ -18,6 +18,7 @@ import FdCardGlow from '../components/FdCardGlow';
 import KhataCardGlow from '../components/KhataCardGlow';
 import GoldRateCardGlow from '../components/GoldRateCardGlow';
 import TyohaarCardGlow from '../components/TyohaarCardGlow';
+import MedicineCardGlow from '../components/MedicineCardGlow';
 import ProfileMenuModal from '../components/ProfileMenuModal';
 import LoginModal from '../components/LoginModal';
 import EditProfileModal from '../components/EditProfileModal';
@@ -379,6 +380,49 @@ export default function HomeScreen({ onSelectScreen }) {
                 name="chevron-forward"
                 size={26}
                 color="#FDBA74"
+                style={{ marginLeft: 8 }}
+              />
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* Medicine Guide & Scanner — medical teal / cyan glow card */}
+          <TouchableOpacity
+            style={styles.medicineCardWrapper}
+            onPress={() => onSelectScreen('medicine')}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={['#0B1220', '#072428', '#0A3F42']}
+              locations={[0, 0.55, 1]}
+              start={{ x: 0, y: 0.1 }}
+              end={{ x: 0.85, y: 1 }}
+              style={styles.medicineCardGradient}
+            >
+              <MedicineCardGlow />
+
+              <LinearGradient
+                colors={['#2DD4BF', '#0D9488']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0.2, y: 1 }}
+                style={styles.medicineIconBox}
+              >
+                <MaterialCommunityIcons name="pill" size={30} color="#FFFFFF" />
+              </LinearGradient>
+
+              <View style={styles.medicineCardBody}>
+                <Text style={styles.medicineCardTitle}>Medicine Guide</Text>
+                <Text style={styles.medicineCardDescHindi} numberOfLines={1}>
+                  दवा की सही जानकारी, उपयोग व साइड इफेक्ट्स
+                </Text>
+                <Text style={styles.medicineCardDescEng} numberOfLines={1}>
+                  AI Camera scanner &amp; verified medicine facts
+                </Text>
+              </View>
+
+              <Ionicons
+                name="chevron-forward"
+                size={26}
+                color="#2DD4BF"
                 style={{ marginLeft: 8 }}
               />
             </LinearGradient>
@@ -896,6 +940,63 @@ const styles = StyleSheet.create({
   calendarCardDescEng: {
     fontSize: 11,
     color: '#FDBA74',
+    fontWeight: '600',
+    marginTop: 3,
+  },
+  medicineCardWrapper: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 0,
+    elevation: 0,
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+  },
+  medicineCardGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    minHeight: 88,
+    maxHeight: 104,
+    position: 'relative',
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' && {
+      backgroundImage:
+        'radial-gradient(ellipse at 100% 100%, rgba(45, 212, 191, 0.35) 0%, rgba(13, 148, 136, 0) 55%), linear-gradient(115deg, #0B1220 0%, #072428 55%, #0A3F42 100%)',
+    }),
+  },
+  medicineIconBox: {
+    width: 58,
+    height: 58,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+    shadowColor: '#0D9488',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  medicineCardBody: {
+    flex: 1,
+  },
+  medicineCardTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+    marginBottom: 6,
+  },
+  medicineCardDescHindi: {
+    fontSize: 12.5,
+    color: '#F8FAFC',
+    fontWeight: '600',
+    lineHeight: 17,
+  },
+  medicineCardDescEng: {
+    fontSize: 11,
+    color: '#5EEAD4',
     fontWeight: '600',
     marginTop: 3,
   },

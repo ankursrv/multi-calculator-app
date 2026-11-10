@@ -44,6 +44,15 @@ const THEMES = {
     sparkleColor: '#FB923C',
     sideIconColor: '#FDBA74',
   },
+  // Medical teal / cyan (Medicine guide & scanner)
+  teal: {
+    barGradient: ['#0B1220', '#071F22', '#062B2F'],
+    logoGradient: ['#2DD4BF', '#0D9488'],
+    titleGradient: ['#5EEAD4', '#2DD4BF', '#14B8A6'],
+    subtitleColor: '#5EEAD4',
+    sparkleColor: '#2DD4BF',
+    sideIconColor: '#2DD4BF',
+  },
 };
 
 export default function ScreenHeader({

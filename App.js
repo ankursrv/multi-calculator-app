@@ -31,6 +31,7 @@ import KharchaTrackerScreen from './src/screens/KharchaTrackerScreen';
 import FdCalculator from './src/screens/FdCalculator';
 import GoldRateScreen from './src/screens/GoldRateScreen';
 import TyohaarCalendarScreen from './src/screens/TyohaarCalendarScreen';
+import MedicineGuideScreen from './src/screens/MedicineGuideScreen';
 
 // Global Web Style to remove focus-visible outlines from all input boxes
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -287,6 +288,10 @@ function MainApp() {
 
           {currentScreen === 'calendar' && (
           <TyohaarCalendarScreen onBack={() => goBack()} />
+          )}
+
+          {currentScreen === 'medicine' && (
+          <MedicineGuideScreen onBack={() => goBack()} />
           )}
         </Animated.View>
 
