@@ -1635,6 +1635,54 @@ export const MEDICINE_DATABASE = [
     },
     keywords: ['liv 52', 'liv52', 'liver', 'jaundice', 'peeliya', 'bhookh', 'fatty liver', 'appetite', 'tonic'],
   },
+
+  {
+    id: 'febuxostat',
+    name: 'Febuxostat / Buxo-40',
+    brandNames: ['Buxo-40', 'Buxo 40', 'Feburic 40', 'Febutaz 40', 'Febuget 40', 'Zurig 40', 'Febuxor 40', 'Febuxostat'],
+    hindiNames: ['बुक्सो 40', 'फेबुक्सोस्टैट', 'फेबुरिक', 'यूरिक एसिड', 'गाउट', 'पैर के अंगूठे का दर्द'],
+    salt: 'Febuxostat (40mg / 80mg)',
+    category_en: 'Xanthine Oxidase Inhibitor (Uric Acid & Gout Reducer)',
+    category_hi: 'यूरिक एसिड व गठिया (गाउट) कम करने वाली दवा',
+    tag: 'BP & Heart',
+    uses_en: [
+      'Lowers high uric acid (hyperuricemia) levels in blood',
+      'Prevents painful gout flare-ups and severe joint inflammation (especially in the big toe)',
+      'Prevents formation of painful urate kidney stones and joint crystal deposits',
+    ],
+    uses_hi: [
+      'खून में बढ़े हुए यूरिक एसिड (Hyperuricemia) को तेजी से सामान्य करता है',
+      'गाउट (गठिया) के असहनीय दर्द, सूजन और पैर के अंगूठे में चुभन से बचाता है',
+      'जोड़ों और किडनी में यूरिक एसिड की पथरी व क्रिस्टल बनने से रोकता है',
+    ],
+    sideEffects_en: {
+      common: ['Mild nausea, joint pain during initial weeks of starting, diarrhea, headache'],
+      serious: ['Liver enzyme elevation, cardiovascular risk in heart patients, severe skin rash'],
+    },
+    sideEffects_hi: {
+      common: ['हल्की मतली, शुरुआत के दिनों में हल्का जोड़ों का दर्द, दस्त, सिरदर्द'],
+      serious: ['लिवर एंजाइम बढ़ना, दिल के रोगियों में सावधानी, त्वचा पर लाल दाने'],
+    },
+    howToUse_en: 'Take ONE tablet once daily at the same time, with or without food. Drink 2.5 to 3 liters of water daily.',
+    howToUse_hi: 'रोजाना एक ही समय पर 1 गोली लें (खाने के साथ या बिना)। यूरिक एसिड निकालने के लिए दिनभर में खूब पानी पिएं।',
+    precautions_en: [
+      'Do not start during a sudden acute gout attack without doctor recommendation.',
+      'Drink plenty of water to help flush uric acid.',
+      'Check uric acid levels and liver function periodically.',
+    ],
+    precautions_hi: [
+      'गाउट के अचानक हुए तेज दर्द के दौरे के समय डॉक्टर से पूछकर ही शुरू करें।',
+      'यूरिक एसिड को पेशाब से बाहर निकालने के लिए दिन में खूब पानी पिएं।',
+      'समय-समय पर यूरिक एसिड और लिवर की जांच कराएं।',
+    ],
+    safetyAdvice: {
+      pregnancy: { text_en: 'Avoid without specialist prescription', text_hi: 'बिना डॉक्टर की सलाह न लें', status: 'caution' },
+      alcohol: { text_en: 'Strictly avoid: Beer and alcohol drastically raise uric acid', text_hi: 'सख्त परहेज: बीयर और शराब यूरिक एसिड को बहुत बढ़ा देती है', status: 'unsafe' },
+      driving: { text_en: 'Safe unless experiencing dizziness', text_hi: 'सुरक्षित', status: 'safe' },
+      kidneyLiver: { text_en: 'Monitor liver enzymes periodically', text_hi: 'लिवर की जांच कराते रहें', status: 'caution' },
+    },
+    keywords: ['buxo', 'buxo40', 'buxo 40', 'febuxostat', 'feburic', 'febutaz', 'uric acid', 'gout', 'gathiya', 'joint pain'],
+  },
 ];
 
 /**
@@ -1649,6 +1697,8 @@ export function searchMedicineOffline(query) {
   // Remove English punctuation but keep alphanumeric and Hindi Unicode (\u0900-\u097F)
   const normalized = raw.replace(/[^\w\s\u0900-\u097F]/g, ' ').replace(/\s+/g, ' ').trim();
   const searchTokens = normalized.split(' ').filter(Boolean);
+  const alphaTokens = searchTokens.filter((t) => !/^\d+$/.test(t));
+  const numTokens = searchTokens.filter((t) => /^\d+$/.test(t));
 
   const results = [];
 
@@ -1662,67 +1712,47 @@ export function searchMedicineOffline(query) {
     const hindis = (med.hindiNames || []).map((h) => h.toLowerCase());
     const keywords = (med.keywords || []).map((k) => k.toLowerCase());
 
-    // 1. Direct match on full query
+    const allMedText = [medName, medId, medSalt, ...brands, ...hindis, ...keywords].join(' ');
+
+    // 1. Direct match on full query (e.g. "buxo 40", "dolo 650", "crocin")
     if (medName.includes(normalized) || medId.includes(normalized)) {
-      score += 120;
+      score += 150;
     }
 
     for (const b of brands) {
-      if (b === normalized) score += 100;
-      else if (b.includes(normalized)) score += 60;
+      if (b === normalized) score += 140;
+      else if (b.includes(normalized)) score += 80;
     }
 
     for (const h of hindis) {
-      if (h === normalized) score += 100;
-      else if (h.includes(normalized)) score += 60;
+      if (h === normalized) score += 140;
+      else if (h.includes(normalized)) score += 80;
     }
 
     if (medSalt.includes(normalized)) {
-      score += 50;
+      score += 70;
     }
 
-    // 2. Tokenized search (e.g. "dolo 650", "pet dard", "headache fever", "gas tablet")
-    let tokenMatches = 0;
-    for (const token of searchTokens) {
-      if (token.length < 2) continue;
-
-      let matchedThisToken = false;
-
-      if (medName.includes(token) || medId.includes(token)) {
+    // 2. Tokenized search: if query has words (like "buxo"), medicine MUST match the words
+    let alphaMatched = 0;
+    for (const at of alphaTokens) {
+      if (at.length < 2) continue;
+      if (allMedText.includes(at)) {
+        alphaMatched++;
         score += 40;
-        matchedThisToken = true;
       }
-      for (const b of brands) {
-        if (b.includes(token)) {
-          score += 35;
-          matchedThisToken = true;
-          break;
-        }
-      }
-      for (const h of hindis) {
-        if (h.includes(token)) {
-          score += 35;
-          matchedThisToken = true;
-          break;
-        }
-      }
-      if (medSalt.includes(token)) {
-        score += 30;
-        matchedThisToken = true;
-      }
-      for (const kw of keywords) {
-        if (kw.includes(token)) {
-          score += 25;
-          matchedThisToken = true;
-          break;
-        }
-      }
-
-      if (matchedThisToken) tokenMatches++;
     }
 
-    if (tokenMatches === searchTokens.length && searchTokens.length > 1) {
-      score += 50; // Bonus for matching all search tokens
+    // If query has alphabetic words, but this medicine matched NONE of them, ignore it
+    if (alphaTokens.length > 0 && alphaMatched === 0) {
+      continue;
+    }
+
+    // If medicine matched the words, reward matching the dosage number (e.g. "40", "650")
+    for (const nt of numTokens) {
+      if (allMedText.includes(nt)) {
+        score += 45;
+      }
     }
 
     if (score > 0) {
