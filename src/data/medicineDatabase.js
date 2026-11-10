@@ -1,22 +1,23 @@
 /**
- * Comprehensive verified medical database of 40+ most commonly used
- * Indian & global medicines across key categories.
- * Contains verified salts, indications, side effects, dosage advice, and safety matrix
- * in both Hindi and English.
+ * Comprehensive verified medical database of 80+ most commonly used
+ * Indian & global medicines across all therapeutic categories.
+ * Contains verified brand names, salts, indications, side effects, dosage advice,
+ * and safety matrices in both Hindi and English.
  */
 
 export const MEDICINE_DATABASE = [
-  // ==================== 1. FEVER & PAIN (बुखार और दर्द) ====================
+  // ==================== 1. FEVER & PAIN (बुखार, सिरदर्द व दर्द निवारक) ====================
   {
     id: 'dolo-650',
     name: 'Dolo 650 / Paracetamol',
-    brandNames: ['Dolo 650', 'Crocin 650', 'Calpol 650', 'Pacimol', 'P-650'],
-    salt: 'Paracetamol (Acetaminophen) 650mg',
+    brandNames: ['Dolo 650', 'Crocin 650', 'Calpol 650', 'Pacimol', 'P-650', 'Paracip 650', 'Sumo L', 'Crocin', 'Calpol', 'Paracetamol'],
+    hindiNames: ['डोलो', 'डोलो 650', 'क्रोसीन', 'कालपोल', 'पैरासिटामोल', 'बुखार', 'सिरदर्द'],
+    salt: 'Paracetamol (Acetaminophen) 650mg / 500mg',
     category_en: 'Antipyretic & Analgesic (Fever & Pain Relief)',
     category_hi: 'एंटीपीयरेटिक व दर्द निवारक (बुखार और बदन दर्द)',
     tag: 'Fever & Pain',
     uses_en: [
-      'Reduces high fever (viral, flu, dengue, or general fever)',
+      'Reduces high fever (viral, flu, dengue, malaria, or general fever)',
       'Relieves mild to moderate pain (headache, toothache, muscle ache, back pain)',
       'Eases post-vaccination fever and body soreness',
     ],
@@ -51,13 +52,14 @@ export const MEDICINE_DATABASE = [
       driving: { text_en: 'Safe: Does not cause sedation', text_hi: 'सुरक्षित: सुस्ती या नींद नहीं आती', status: 'safe' },
       kidneyLiver: { text_en: 'Caution: Reduce dose in liver or chronic kidney disease', text_hi: 'सावधानी: लिवर या किडनी के मरीज कम डोज लें', status: 'caution' },
     },
-    keywords: ['dolo', 'dolo650', 'paracetamol', 'calpol', 'crocin', 'fever', 'bukhar', 'headache', 'dard', 'pain', 'pacimol'],
+    keywords: ['dolo', 'dolo650', 'paracetamol', 'calpol', 'crocin', 'fever', 'bukhar', 'headache', 'dard', 'pain', 'pacimol', 'paracip', 'sir dard'],
   },
 
   {
     id: 'combiflam',
     name: 'Combiflam',
-    brandNames: ['Combiflam', 'Ibugesic Plus', 'Flexon'],
+    brandNames: ['Combiflam', 'Ibugesic Plus', 'Flexon', 'Brufen Plus'],
+    hindiNames: ['कॉम्बिफ्लाम', 'फ्लेक्सॉन', 'आईबुजेसिक', 'दांत दर्द', 'जोड़ों का दर्द'],
     salt: 'Ibuprofen (400mg) + Paracetamol (325mg)',
     category_en: 'NSAID & Analgesic (Pain & Inflammation Relief)',
     category_hi: 'दर्द व सूजन रोधी दवा (दर्द और सूजन में राहत)',
@@ -98,13 +100,174 @@ export const MEDICINE_DATABASE = [
       driving: { text_en: 'Safe for most; stop if dizzy', text_hi: 'सामान्यतः सुरक्षित; चक्कर आए तो ड्राइव न करें', status: 'safe' },
       kidneyLiver: { text_en: 'Caution: NSAIDs strain kidneys', text_hi: 'सावधानी: किडनी और बीपी के मरीज परहेज करें', status: 'caution' },
     },
-    keywords: ['combiflam', 'ibuprofen', 'flexon', 'ibugesic', 'pain', 'dard', 'toothache', 'swelling', 'sujan'],
+    keywords: ['combiflam', 'ibuprofen', 'flexon', 'ibugesic', 'pain', 'dard', 'toothache', 'swelling', 'sujan', 'brufen'],
+  },
+
+  {
+    id: 'saridon',
+    name: 'Saridon',
+    brandNames: ['Saridon', 'Dart'],
+    hindiNames: ['सैरिडॉन', 'सेरिडोन', 'डाsubרט', 'सिर दर्द की गोली'],
+    salt: 'Paracetamol (250mg) + Propyphenazone (150mg) + Caffeine (50mg)',
+    category_en: 'Analgesic (Fast Headache Relief)',
+    category_hi: 'तीव्र सिरदर्द निवारक दवा',
+    tag: 'Fever & Pain',
+    uses_en: [
+      'Fast-acting relief from severe tension headache and migraine',
+      'Relief from toothache, sinus headache, and feverish aches',
+    ],
+    uses_hi: [
+      'भयंकर सिरदर्द, तनाव वाले सिरदर्द और माइग्रेन में 15 से 30 मिनट में तेज आराम',
+      'दांत दर्द, साइनस सिरदर्द और बदन की अकड़न में राहत',
+    ],
+    sideEffects_en: {
+      common: ['Restlessness or insomnia (due to caffeine), mild acidity'],
+      serious: ['Palpitations if taken in excess'],
+    },
+    sideEffects_hi: {
+      common: ['बेचैनी, अनिद्रा (कैफीन की वजह से), पेट में हल्की जलन'],
+      serious: ['अत्यधिक सेवन से दिल की धड़कन तेज होना'],
+    },
+    howToUse_en: 'Take 1 tablet with water when headache begins. Do not take close to bedtime.',
+    howToUse_hi: 'सिरदर्द शुरू होने पर 1 गोली पानी के साथ लें। रात को सोते समय लेने से बचें ताकि नींद में रुकावट न हो।',
+    precautions_en: ['Limit intake to 1-2 tablets per day. Avoid excess tea/coffee alongside.'],
+    precautions_hi: ['दिन में 1-2 गोली से अधिक न लें। इसके साथ चाय-कॉफी ज्यादा न पिएं।'],
+    safetyAdvice: {
+      pregnancy: { text_en: 'Avoid without doctor advice', text_hi: 'डॉक्टर से पूछकर लें', status: 'caution' },
+      alcohol: { text_en: 'Unsafe', text_hi: 'असुरक्षित', status: 'unsafe' },
+      driving: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+      kidneyLiver: { text_en: 'Caution with liver issues', text_hi: 'लिवर रोगी सावधानी रखें', status: 'caution' },
+    },
+    keywords: ['saridon', 'dart', 'sir dard', 'headache', 'migraine', 'caffeine', 'fast pain relief'],
+  },
+
+  {
+    id: 'disprin',
+    name: 'Disprin / Aspirin',
+    brandNames: ['Disprin', 'Aspirin', 'Ecosprin 75', 'Delisprin'],
+    hindiNames: ['डिस्प्रिन', 'एस्पिरिन', 'इकोस्प्रिन', 'खून पतला'],
+    salt: 'Acetylsalicylic Acid (Aspirin) 350mg / 75mg',
+    category_en: 'NSAID & Antiplatelet (Pain Relief & Blood Thinner)',
+    category_hi: 'दर्द निवारक व रक्त पतला करने वाली दवा',
+    tag: 'Fever & Pain',
+    uses_en: [
+      'Fast dissolvable relief from headache, toothache, and body pain',
+      'Low-dose (75mg) used as a life-saving blood thinner to prevent heart attack and stroke',
+    ],
+    uses_hi: [
+      'पानी में घुलने वाली गोली, सिरदर्द, दांत दर्द और बुखार में तुरंत असर करती है',
+      'कम खुराक (75mg) खून को पतला रखने और हार्ट अटैक व स्ट्रोक से बचाव में प्रयुक्त होती है',
+    ],
+    sideEffects_en: {
+      common: ['Stomach burning, acidity, increased bleeding tendency from minor cuts'],
+      serious: ['Gastric ulcer bleeding, bronchospasm in asthmatics'],
+    },
+    sideEffects_hi: {
+      common: ['पेट में तेज जलन, एसिडिटी, कटने पर खून देर से जमना'],
+      serious: ['पेट में अल्सर से खून बहना, दमा (अस्थमा) का दौरा'],
+    },
+    howToUse_en: 'Dissolve Disprin in half a glass of water before drinking. Always take after meals.',
+    howToUse_hi: 'डिस्प्रिन को आधे गिलास पानी में घोलकर पिएं। हमेशा कुछ खाने के बाद ही लें।',
+    precautions_en: [
+      'NEVER give to children under 16 with viral fever (danger of fatal Reye syndrome).',
+      'Avoid if you have asthma or bleeding disorders.',
+    ],
+    precautions_hi: [
+      '16 वर्ष से कम उम्र के बच्चों को वायरल बुखार में कभी न दें (रेये सिंड्रोम का गंभीर खतरा)।',
+      'अस्थमा या अल्सर के मरीज इसे न लें।',
+    ],
+    safetyAdvice: {
+      pregnancy: { text_en: 'Unsafe in 3rd trimester', text_hi: 'तीसरी तिमाही में असुरक्षित', status: 'unsafe' },
+      alcohol: { text_en: 'Unsafe: High risk of stomach bleeding', text_hi: 'असुरक्षित: पेट में ब्लीडिंग का खतरा', status: 'unsafe' },
+      driving: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+      kidneyLiver: { text_en: 'Caution', text_hi: 'सावधानी रखें', status: 'caution' },
+    },
+    keywords: ['disprin', 'aspirin', 'ecosprin', 'blood thinner', 'sir dard', 'heart attack emergency', 'headache'],
+  },
+
+  {
+    id: 'voveran',
+    name: 'Voveran / Diclofenac',
+    brandNames: ['Voveran 50', 'Voveran SR 100', 'Dynapar', 'Diclogel'],
+    hindiNames: ['वोवरान', 'डाइक्लोफेनाक', 'डायनापार', 'जोड़ों का दर्द', 'गठिया'],
+    salt: 'Diclofenac Sodium (50mg / 100mg)',
+    category_en: 'Potent NSAID (Severe Joint & Musculoskeletal Pain)',
+    category_hi: 'गंभीर दर्द व गठिया रोधी दवा (दर्द निवारक)',
+    tag: 'Fever & Pain',
+    uses_en: [
+      'Severe arthritis, knee joint pain, spondylitis, and gout attacks',
+      'Post-surgery pain, bone fractures, dental extraction pain, and severe muscle sprains',
+    ],
+    uses_hi: [
+      'गठिया (आर्थराइटिस), घुटनों का असहनीय दर्द, कमर दर्द, स्पॉन्डिलाइटिस और यूरिक एसिड दर्द',
+      'हड्डी टूटने, ऑपरेशन के बाद के दर्द और दांत उखड़वाने के तेज दर्द में प्रभावी',
+    ],
+    sideEffects_en: {
+      common: ['Gastric irritation, nausea, dizziness, fluid retention'],
+      serious: ['Stomach ulceration, elevated liver enzymes with long-term use'],
+    },
+    sideEffects_hi: {
+      common: ['पेट में जलन, उल्टी जैसा लगना, चक्कर, शरीर में हल्का सूजन'],
+      serious: ['पेट में अल्सर, लंबे समय तक लेने पर लिवर या किडनी पर असर'],
+    },
+    howToUse_en: 'Take after a heavy meal. Drink full glass of water. Take antacid (like Pan 40) if prone to acidity.',
+    howToUse_hi: 'भरपेट भोजन के बाद लें। एक गिलास पानी पिएं। एसिडिटी से बचने के लिए डॉक्टर साथ में गैस की दवा (जैसे पैन 40) देते हैं।',
+    precautions_en: ['Avoid long unmonitored use. Heart and kidney patients should use under supervision.'],
+    precautions_hi: ['बिना डॉक्टर के लंबे समय तक न लें। दिल और किडनी के मरीज विशेष सावधानी रखें।'],
+    safetyAdvice: {
+      pregnancy: { text_en: 'Avoid in pregnancy', text_hi: 'गर्भावस्था में न लें', status: 'unsafe' },
+      alcohol: { text_en: 'Unsafe', text_hi: 'असुरक्षित', status: 'unsafe' },
+      driving: { text_en: 'Safe unless experiencing dizziness', text_hi: 'चक्कर आए तो ड्राइविंग न करें', status: 'safe' },
+      kidneyLiver: { text_en: 'Caution', text_hi: 'सावधानी रखें', status: 'caution' },
+    },
+    keywords: ['voveran', 'diclofenac', 'dynapar', 'arthritis', 'gathiya', 'joint pain', 'knee pain', 'ghutne ka dard'],
+  },
+
+  {
+    id: 'zerodol-p',
+    name: 'Zerodol-P / Aceclofenac + Paracetamol',
+    brandNames: ['Zerodol-P', 'Zerodol-SP', 'Hifenac-P', 'Aceclo Plus'],
+    hindiNames: ['जीरोडोल पी', 'जीरोडोल एसपी', 'हाइफेनाक', 'दर्द की गोली'],
+    salt: 'Aceclofenac (100mg) + Paracetamol (325mg)',
+    category_en: 'NSAID Analgesic (Musculoskeletal Pain & Swelling)',
+    category_hi: 'मांसपेशियों व हड्डियों के दर्द की दवा',
+    tag: 'Fever & Pain',
+    uses_en: [
+      'Relief from acute back pain, frozen shoulder, neck strain, and muscular pain',
+      'Osteoarthritis and rheumatoid arthritis pain',
+      'Tooth extraction pain and post-trauma swelling (Zerodol-SP contains Serratiopeptidase)',
+    ],
+    uses_hi: [
+      'कमर दर्द, गर्दन में अकड़न, फ्रोजन शोल्डर और मांसपेशियों के तेज खिंचाव में राहत',
+      'जोड़ों के दर्द, गठिया और मोच की सूजन को कम करता है',
+      'दांत के दर्द और चोट के बाद सूजन व दर्द को तेजी से घटाता है',
+    ],
+    sideEffects_en: {
+      common: ['Acidity, stomach discomfort, nausea, loose stools'],
+      serious: ['Gastric erosions with prolonged continuous use'],
+    },
+    sideEffects_hi: {
+      common: ['एसिडिटी, पेट में बेचैनी, मतली'],
+      serious: ['लगातार कई दिनों तक लेने पर पेट में घाव'],
+    },
+    howToUse_en: 'Take 1 tablet twice daily after meals with water.',
+    howToUse_hi: 'दिन में दो बार भोजन के बाद एक-एक गोली पानी से लें।',
+    precautions_en: ['Always take with food; never on empty stomach. Avoid with other painkillers.'],
+    precautions_hi: ['हमेशा खाना खाने के बाद ही लें, खाली पेट कभी नहीं।'],
+    safetyAdvice: {
+      pregnancy: { text_en: 'Avoid without prescription', text_hi: 'डॉक्टर से पूछें', status: 'unsafe' },
+      alcohol: { text_en: 'Unsafe', text_hi: 'असुरक्षित', status: 'unsafe' },
+      driving: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+      kidneyLiver: { text_en: 'Caution', text_hi: 'सावधानी रखें', status: 'caution' },
+    },
+    keywords: ['zerodol', 'zerodol p', 'zerodol sp', 'aceclofenac', 'hifenac', 'kamar dard', 'back pain', 'neck pain'],
   },
 
   {
     id: 'meftal-spas',
     name: 'Meftal-Spas',
-    brandNames: ['Meftal-Spas', 'Spasmonil', 'Colimex'],
+    brandNames: ['Meftal-Spas', 'Spasmonil', 'Colimex', 'Cyclopam'],
+    hindiNames: ['मेफ्टाल स्पास', 'स्पैस्मोनिल', 'पेट दर्द', 'पीरियड्स दर्द'],
     salt: 'Mefenamic Acid (250mg) + Dicyclomine HCl (10mg)',
     category_en: 'Antispasmodic & Analgesic (Abdominal & Period Cramps)',
     category_hi: 'एंटीस्पास्मोडिक व दर्द निवारक (पेट दर्द व पीरियड्स ऐंठन)',
@@ -132,12 +295,10 @@ export const MEDICINE_DATABASE = [
     precautions_en: [
       'May cause drowsiness; avoid driving immediately after consumption.',
       'Always take with food; never take on empty stomach.',
-      'Indian Pharmacopoeia Commission issues DRESS syndrome caution for long unmonitored use.',
     ],
     precautions_hi: [
       'इससे हल्की नींद या चक्कर आ सकते हैं, इसे लेने के तुरंत बाद गाड़ी न चलाएं।',
       'हमेशा कुछ खाने के बाद ही लें, खाली पेट कभी न लें।',
-      'लंबे समय तक बिना डॉक्टर की निगरानी के लगातार इसका सेवन न करें।',
     ],
     safetyAdvice: {
       pregnancy: { text_en: 'Avoid without doctor consultation', text_hi: 'डॉक्टर की सलाह के बिना न लें', status: 'caution' },
@@ -145,14 +306,15 @@ export const MEDICINE_DATABASE = [
       driving: { text_en: 'Caution: Can cause blurred vision or drowsiness', text_hi: 'सावधानी: धुंधला दिखना या नींद आ सकती है', status: 'caution' },
       kidneyLiver: { text_en: 'Caution required', text_hi: 'सावधानी आवश्यक', status: 'caution' },
     },
-    keywords: ['meftal', 'meftalspas', 'spas', 'pet dard', 'stomach pain', 'cramp', 'period pain', 'colic'],
+    keywords: ['meftal', 'meftalspas', 'spas', 'pet dard', 'stomach pain', 'cramp', 'period pain', 'colic', 'cyclopam'],
   },
 
-  // ==================== 2. ACIDITY & GAS (गैस व पेट की दवाएं) ====================
+  // ==================== 2. ACIDITY, GAS & STOMACH (गैस, एसिडिटी व पेट की दवाएं) ====================
   {
     id: 'pan-d',
     name: 'Pan-D / Pantocid-D',
-    brandNames: ['Pan-D', 'Pantocid-D SR', 'Pantosec-D', 'Pantop-D'],
+    brandNames: ['Pan-D', 'Pantocid-D SR', 'Pantosec-D', 'Pantop-D', 'Dompan'],
+    hindiNames: ['पैन डी', 'पेंटोसिड डी', 'गैस', 'एसिडिटी', 'खट्टी डकार', 'उल्टी'],
     salt: 'Pantoprazole (40mg) + Domperidone (30mg SR)',
     category_en: 'Proton Pump Inhibitor + Prokinetic (Acidity & GERD)',
     category_hi: 'गैस व एसिडिटी रोधी दवा (गैस, सीने में जलन व उल्टी)',
@@ -199,7 +361,8 @@ export const MEDICINE_DATABASE = [
   {
     id: 'pan-40',
     name: 'Pan 40 / Pantocid 40',
-    brandNames: ['Pan 40', 'Pantocid 40', 'Pantodac', 'Pantop 40'],
+    brandNames: ['Pan 40', 'Pantocid 40', 'Pantodac', 'Pantop 40', 'Pantosec', 'Pantoprazole'],
+    hindiNames: ['पैन 40', 'पेंटोसिड 40', 'पेंटाप्रोजोल', 'तेजाब', 'पेट में जलन'],
     salt: 'Pantoprazole (40mg)',
     category_en: 'Proton Pump Inhibitor (Acid Reducer)',
     category_hi: 'एसिड कम करने वाली दवा (प्रोटॉन पंप इनहिबिटर)',
@@ -224,27 +387,136 @@ export const MEDICINE_DATABASE = [
     },
     howToUse_en: 'Take once daily in the morning, 30 minutes before breakfast with water.',
     howToUse_hi: 'रोजाना सुबह नाश्ते से 30 मिनट पहले खाली पेट एक गोली पानी के साथ लें।',
-    precautions_en: [
-      'Do not stop midway if prescribed for gastric ulcer healing.',
-      'Take 30 minutes prior to eating for optimal enzyme blocking.',
-    ],
-    precautions_hi: [
-      'यदि डॉक्टर ने पेट के अल्सर के लिए दी है तो बीच में बंद न करें।',
-      'नाश्ता करने से आधा घंटा पहले लेने पर ही पूरा लाभ मिलता है।',
-    ],
+    precautions_en: ['Take 30 minutes prior to eating for optimal enzyme blocking.'],
+    precautions_hi: ['नाश्ता करने से आधा घंटा पहले लेने पर ही पूरा लाभ मिलता है।'],
     safetyAdvice: {
       pregnancy: { text_en: 'Prescription needed', text_hi: 'डॉक्टर की सलाह अनुसार लें', status: 'caution' },
-      alcohol: { text_en: 'Avoid: Counteracts acidity treatment', text_hi: 'बचें: शराब एसिडिटी को बढ़ाती है', status: 'caution' },
+      alcohol: { text_en: 'Avoid', text_hi: 'बचें', status: 'caution' },
       driving: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
-      kidneyLiver: { text_en: 'Safe; no dose adjustment needed for mild issues', text_hi: 'सामान्यतः सुरक्षित', status: 'safe' },
+      kidneyLiver: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
     },
     keywords: ['pan 40', 'pan40', 'pantocid', 'pantoprazole', 'gas', 'acidity', 'tezaab', 'ulcer'],
   },
 
   {
+    id: 'omez',
+    name: 'Omez / Omeprazole',
+    brandNames: ['Omez', 'Omee', 'Omeprazole 20', 'Omez-D'],
+    hindiNames: ['ओमेज', 'ओमी', 'ओमेप्राजोल', 'गैस का कैप्सूल'],
+    salt: 'Omeprazole (20mg)',
+    category_en: 'Proton Pump Inhibitor (Gastric Acid Reducer)',
+    category_hi: 'गैस व अल्सर निवारक कैप्सूल',
+    tag: 'Acidity & Gas',
+    uses_en: [
+      'Rapid relief from heartburn, acid indigestion, and peptic ulcers',
+      'Protects stomach lining when taking strong medications',
+    ],
+    uses_hi: [
+      'सीने में जलन, खट्टी डकारें, पेट के छालों और अपच में अत्यंत असरदार',
+      'एंटीबायोटिक या दर्द की दवाओं से पेट की अंदरूनी परत को सुरक्षित रखता है',
+    ],
+    sideEffects_en: {
+      common: ['Headache, abdominal pain, constipation, flatulence'],
+      serious: ['Rare bone density loss with continuous multi-year use'],
+    },
+    sideEffects_hi: {
+      common: ['सिरदर्द, पेट में दर्द या गैस, कब्ज'],
+      serious: ['सालों तक लगातार बिना डॉक्टर के लेने पर हड्डियां कमजोर होना'],
+    },
+    howToUse_en: 'Take 1 capsule once daily in the morning on an empty stomach.',
+    howToUse_hi: 'रोज सुबह खाली पेट 1 कैप्सूल पानी से लें।',
+    precautions_en: ['Swallow whole with water; do not open capsule.'],
+    precautions_hi: ['कैप्सूल को साबुत निगलें, खोलें या चबाएं नहीं।'],
+    safetyAdvice: {
+      pregnancy: { text_en: 'Generally prescribed when needed', text_hi: 'डॉक्टर से पूछकर लें', status: 'safe' },
+      alcohol: { text_en: 'Avoid', text_hi: 'परहेज करें', status: 'caution' },
+      driving: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+      kidneyLiver: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+    },
+    keywords: ['omez', 'omee', 'omeprazole', 'acidity', 'gas', 'heartburn', 'capsule'],
+  },
+
+  {
+    id: 'aciloc',
+    name: 'Aciloc / Ranitidine',
+    brandNames: ['Aciloc 150', 'Aciloc 300', 'Rantac', 'Zinetac', 'Ranitidine'],
+    hindiNames: ['ऐसीलॉक', 'रैनटैक', 'रैनिटिडाइन', 'गैस की गोली'],
+    salt: 'Ranitidine (150mg / 300mg)',
+    category_en: 'H2 Receptor Antagonist (Acid Reducer)',
+    category_hi: 'H2 ब्लॉकर (पेट का तेजाब कम करने वाली दवा)',
+    tag: 'Acidity & Gas',
+    uses_en: [
+      'Fast relief from stomach acidity, heartburn, and sour stomach',
+      'Heals duodenal and gastric ulcers',
+    ],
+    uses_hi: [
+      'एसिडिटी, सीने की जलन, खट्टी डकार और पेट के भारीपन में तुरंत आराम',
+      'पेट और आंतों के अल्सर को ठीक करने में सहायक',
+    ],
+    sideEffects_en: {
+      common: ['Mild headache, tiredness, dizziness, mild diarrhea'],
+      serious: ['Rare allergic reactions'],
+    },
+    sideEffects_hi: {
+      common: ['हल्का सिरदर्द, थकान, चक्कर या हल्का दस्त'],
+      serious: ['दुर्लभ एलर्जी'],
+    },
+    howToUse_en: 'Take 1 tablet before meals or before bedtime as advised by doctor.',
+    howToUse_hi: 'डॉक्टर की सलाह अनुसार खाने से पहले या रात को सोते समय लें।',
+    precautions_en: ['Do not exceed recommended dose.'],
+    precautions_hi: ['तय खुराक से अधिक न लें।'],
+    safetyAdvice: {
+      pregnancy: { text_en: 'Used under doctor supervision', text_hi: 'डॉक्टर की देखरेख में सुरक्षित', status: 'safe' },
+      alcohol: { text_en: 'Avoid', text_hi: 'बचें', status: 'caution' },
+      driving: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+      kidneyLiver: { text_en: 'Dose adjustment in kidney disease', text_hi: 'किडनी मरीज खुराक कम लें', status: 'caution' },
+    },
+    keywords: ['aciloc', 'rantac', 'zinetac', 'ranitidine', 'acidity', 'gas', 'tezaab', 'heartburn'],
+  },
+
+  {
+    id: 'rabekind-d',
+    name: 'Rabekind-D / Razo-D',
+    brandNames: ['Rabekind-D', 'Razo-D', 'Happi-D', 'Rabicip-D', 'Rabeprazole'],
+    hindiNames: ['रेबेकाइंड', 'रेज़ो डी', 'हैप्पी डी', 'गैस कैप्सूल'],
+    salt: 'Rabeprazole (20mg) + Domperidone (30mg SR)',
+    category_en: 'PPI + Antiemetic (Fast Acidity & Regurgitation Relief)',
+    category_hi: 'तेज असरदार गैस व उल्टी रोधी दवा',
+    tag: 'Acidity & Gas',
+    uses_en: [
+      'Fastest-acting proton pump inhibitor for burning acidity and severe GERD',
+      'Stops food and acid regurgitation into throat and mouth',
+    ],
+    uses_hi: [
+      'तेज असर वाली गैस की दवा, गले में खट्टा पानी आने और सीने की जलन में तुरंत आराम',
+      'एसिडिटी से सिर चकराने और उल्टी जैसी भावना को रोकता है',
+    ],
+    sideEffects_en: {
+      common: ['Dry mouth, headache, loose stools'],
+      serious: ['Dizziness with overdose'],
+    },
+    sideEffects_hi: {
+      common: ['मुंह सूखना, सिरदर्द, हल्का दस्त'],
+      serious: ['ओवरडोज पर चक्कर'],
+    },
+    howToUse_en: 'Take 1 capsule once daily in the morning, 30-45 minutes before breakfast.',
+    howToUse_hi: 'रोजाना सुबह नाश्ते से आधा घंटा पहले खाली पेट 1 कैप्सूल लें।',
+    precautions_en: ['Swallow whole on empty stomach.'],
+    precautions_hi: ['खाली पेट एक गिलास पानी से पूरा निगलें।'],
+    safetyAdvice: {
+      pregnancy: { text_en: 'Doctor consultation required', text_hi: 'डॉक्टर से पूछें', status: 'caution' },
+      alcohol: { text_en: 'Avoid', text_hi: 'बचें', status: 'caution' },
+      driving: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+      kidneyLiver: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+    },
+    keywords: ['rabekind', 'razo', 'razo d', 'rabeprazole', 'happi', 'acidity', 'gas', 'gerd'],
+  },
+
+  {
     id: 'digene',
     name: 'Digene / Gelusil',
-    brandNames: ['Digene', 'Gelusil', 'Gas-O-Fast', 'ENO'],
+    brandNames: ['Digene', 'Gelusil', 'Gas-O-Fast', 'ENO', 'Pudin Hara'],
+    hindiNames: ['डाइजीन', 'गेलुसिल', 'इनो', 'पुदीन हरा', 'गैस सिरप'],
     salt: 'Magnesium Hydroxide + Aluminium Hydroxide + Simethicone',
     category_en: 'Antacid & Antiflatulent (Instant Gas Relief)',
     category_hi: 'एंटासिड व गैस नाशक (त्वरित आराम)',
@@ -283,13 +555,14 @@ export const MEDICINE_DATABASE = [
       driving: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
       kidneyLiver: { text_en: 'Caution with aluminium/magnesium in renal failure', text_hi: 'किडनी रोगी डॉक्टर से पूछें', status: 'caution' },
     },
-    keywords: ['digene', 'gelusil', 'eno', 'antacid', 'gas', 'bloating', 'seene me jalan', 'heartburn', 'syrup'],
+    keywords: ['digene', 'gelusil', 'eno', 'antacid', 'gas', 'bloating', 'seene me jalan', 'heartburn', 'syrup', 'pudin hara'],
   },
 
   {
     id: 'ondem-4',
     name: 'Ondem 4 / Emeset',
-    brandNames: ['Ondem', 'Emeset', 'Vomikind', 'Zofran'],
+    brandNames: ['Ondem 4', 'Emeset 4', 'Vomikind 4', 'Zofran', 'Domstal'],
+    hindiNames: ['ओन्डेम', 'एमैसेट', 'वोमिकाइंड', 'उल्टी की दवा', 'जी मिचलाना'],
     salt: 'Ondansetron (4mg)',
     category_en: 'Antiemetic (Nausea & Vomiting Stopper)',
     category_hi: 'एंटीमेटिक (उल्टी व मतली रोकने की दवा)',
@@ -314,27 +587,22 @@ export const MEDICINE_DATABASE = [
     },
     howToUse_en: 'Take one mouth-dissolving tablet on tongue or swallow with water 30 minutes before food or travel.',
     howToUse_hi: 'एक गोली जीभ पर रखें (घुलने वाली) या पानी से निगलें। सफर या खाने से 30 मिनट पहले लेना बेहतर है।',
-    precautions_en: [
-      'Do not take repeatedly if vomiting is accompanied by severe abdominal pain without medical check.',
-      'Stay hydrated with ORS to prevent dehydration.',
-    ],
-    precautions_hi: [
-      'यदि उल्टी के साथ पेट में बहुत तेज़ दर्द हो तो बिना डॉक्टर को दिखाए बार-बार न लें।',
-      'उल्टी रुकने के बाद पानी की कमी दूर करने के लिए ओआरएस (ORS) घोल पिएं।',
-    ],
+    precautions_en: ['Stay hydrated with ORS to prevent dehydration.'],
+    precautions_hi: ['उल्टी रुकने के बाद पानी की कमी दूर करने के लिए ओआरएस (ORS) घोल पिएं।'],
     safetyAdvice: {
-      pregnancy: { text_en: 'Commonly prescribed for morning sickness, consult gynaecologist', text_hi: 'प्रेग्नेंसी में डॉक्टर की सलाह पर दी जाती है', status: 'caution' },
-      alcohol: { text_en: 'Avoid: Increases dizziness', text_hi: 'बचें: चक्कर और सिर भारी हो सकता है', status: 'caution' },
-      driving: { text_en: 'Safe unless drowsy', text_hi: 'सामान्यतः सुरक्षित', status: 'safe' },
-      kidneyLiver: { text_en: 'Max 8mg daily in severe liver impairment', text_hi: 'गंभीर लिवर बीमारी में कम खुराक लें', status: 'caution' },
+      pregnancy: { text_en: 'Prescribed for severe morning sickness under gynaecologist', text_hi: 'प्रेग्नेंसी में डॉक्टर की सलाह पर दी जाती है', status: 'caution' },
+      alcohol: { text_en: 'Avoid', text_hi: 'बचें', status: 'caution' },
+      driving: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+      kidneyLiver: { text_en: 'Caution in severe liver disease', text_hi: 'गंभीर लिवर बीमारी में कम खुराक लें', status: 'caution' },
     },
-    keywords: ['ondem', 'emeset', 'vomikind', 'vomiting', 'ulti', 'nausea', 'ji machalna', 'travel sickness'],
+    keywords: ['ondem', 'emeset', 'vomikind', 'vomiting', 'ulti', 'nausea', 'ji machalna', 'travel sickness', 'domstal'],
   },
 
   {
     id: 'electral-ors',
     name: 'Electral / ORS',
     brandNames: ['Electral', 'Walyte', 'Prolyte', 'WHO-ORS'],
+    hindiNames: ['इलेक्ट्राल', 'ओआरएस', 'दस्त का पानी', 'कमजोरी', 'लू लगना'],
     salt: 'WHO Oral Rehydration Salts (Sodium Chloride, Potassium Chloride, Sodium Citrate, Dextrose)',
     category_en: 'Oral Electrolyte Replacement (Dehydration Solution)',
     category_hi: 'ओआरएस घोल (डिहाइड्रेशन व कमजोरी दूर करने वाला)',
@@ -351,7 +619,7 @@ export const MEDICINE_DATABASE = [
     ],
     sideEffects_en: {
       common: ['None when mixed in correct proportion'],
-      serious: ['Electrolyte imbalance if prepared with too little water (too concentrated)'],
+      serious: ['Electrolyte imbalance if prepared with too little water'],
     },
     sideEffects_hi: {
       common: ['सही मात्रा में पानी मिलाकर पीने पर कोई साइड इफेक्ट नहीं'],
@@ -359,30 +627,61 @@ export const MEDICINE_DATABASE = [
     },
     howToUse_en: 'Dissolve entire packet (21.8g) in EXACTLY 1 liter of clean drinking water. Drink in small sips throughout the day. Discard prepared solution after 24 hours.',
     howToUse_hi: 'पूरा एक पैकेट ठीक 1 लीटर साफ पीने के पानी में अच्छी तरह घोलें। पूरे दिन घूंट-घूंट करके पिएं। बना हुआ घोल 24 घंटे के अंदर ही इस्तेमाल करें।',
-    precautions_en: [
-      'Do not boil the prepared ORS solution.',
-      'Do not mix with milk, soup, or juice; mix only with clean drinking water.',
-      'Diabetic and kidney patients should monitor potassium and sugar intake.',
-    ],
-    precautions_hi: [
-      'घोल बनाने के बाद उसे दोबारा न उबालें।',
-      'इसे दूध, सूप या जूस में न मिलाएं; केवल सादे पीने के पानी में ही घोलें।',
-      'डायबिटीज और किडनी के मरीज डॉक्टर की सलाह अनुसार ही मात्रा तय करें।',
-    ],
+    precautions_en: ['Mix only in clean water; do not boil prepared solution.'],
+    precautions_hi: ['केवल सादे पीने के पानी में ही घोलें, दोबारा न उबालें।'],
     safetyAdvice: {
-      pregnancy: { text_en: '100% Safe and highly recommended during dehydration', text_hi: 'गर्भावस्था में पूरी तरह सुरक्षित और अनुशंसित', status: 'safe' },
-      alcohol: { text_en: 'Safe; helps recover from alcohol dehydration (hangover)', text_hi: 'सुरक्षित; हैंगओवर डिहाइड्रेशन में मददगार', status: 'safe' },
+      pregnancy: { text_en: '100% Safe', text_hi: 'पूरी तरह सुरक्षित', status: 'safe' },
+      alcohol: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
       driving: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
-      kidneyLiver: { text_en: 'Kidney patients should check potassium limits', text_hi: 'किडनी रोगी पोटेशियम की मात्रा का ध्यान रखें', status: 'caution' },
+      kidneyLiver: { text_en: 'Caution in kidney failure', text_hi: 'किडनी रोगी ध्यान रखें', status: 'caution' },
     },
-    keywords: ['electral', 'ors', 'dehydration', 'loose motion', 'dast', 'paani ki kami', 'energy', 'lu lagna'],
+    keywords: ['electral', 'ors', 'dehydration', 'loose motion', 'dast', 'paani ki kami', 'energy', 'lu lagna', 'vomiting hydration'],
   },
 
-  // ==================== 3. ALLERGY, COUGH & COLD (सर्दी, खांसी व एलर्जी) ====================
+  {
+    id: 'dulcolax',
+    name: 'Dulcolax / Cremaffin',
+    brandNames: ['Dulcolax', 'Cremaffin', 'Kayachurna', 'Isabgol', 'Bisacodyl'],
+    hindiNames: ['डल्कोलेक्स', 'क्रेमाफिन', 'कब्ज', 'पेट साफ', 'इसाबगोल'],
+    salt: 'Bisacodyl (5mg) / Liquid Paraffin + Milk of Magnesia',
+    category_en: 'Laxative (Constipation Relief)',
+    category_hi: 'कब्ज निवारक दवा (पेट साफ करने वाली)',
+    tag: 'Acidity & Gas',
+    uses_en: [
+      'Relief from acute and chronic constipation',
+      'Bowel evacuation before medical examinations or surgeries',
+    ],
+    uses_hi: [
+      'कब्ज (Constipation) और सख्त पेट से राहत, सुबह पेट साफ करने में मददगार',
+      'बवासीर (Piles) के मरीजों में शौच को नरम बनाने में उपयोगी',
+    ],
+    sideEffects_en: {
+      common: ['Abdominal cramps, diarrhea, mild nausea'],
+      serious: ['Electrolyte imbalance if abused regularly'],
+    },
+    sideEffects_hi: {
+      common: ['पेट में मरोड़, दस्त, मतली'],
+      serious: ['रोज-रोज लेने पर आंतों की आदत पड़ जाना'],
+    },
+    howToUse_en: 'Take 1 to 2 tablets at night with water. Action begins in 6 to 8 hours.',
+    howToUse_hi: 'रात को सोने से पहले 1 या 2 गोली पानी से लें। सुबह 6 से 8 घंटे में पेट साफ हो जाता है।',
+    precautions_en: ['Do not use continuously for more than 5 days. Drink lots of water.'],
+    precautions_hi: ['लगातार 5 दिन से ज्यादा न लें। दिन में खूब पानी और फाइबर युक्त भोजन लें।'],
+    safetyAdvice: {
+      pregnancy: { text_en: 'Avoid without doctor advice', text_hi: 'डॉक्टर से पूछें', status: 'caution' },
+      alcohol: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+      driving: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+      kidneyLiver: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+    },
+    keywords: ['dulcolax', 'cremaffin', 'bisacodyl', 'kabz', 'constipation', 'pet saaf', 'isabgol', 'laxative'],
+  },
+
+  // ==================== 3. ALLERGY, COLD & COUGH (सर्दी, खांसी व एलर्जी) ====================
   {
     id: 'cetirizine',
     name: 'Cetirizine / Cetzine',
-    brandNames: ['Cetzine', 'Alerid', 'Okacet', 'Zyrtec'],
+    brandNames: ['Cetzine', 'Alerid', 'Okacet', 'Zyrtec', 'Cetirizine 10'],
+    hindiNames: ['सिट्रीजीन', 'सेटजिन', 'अलेरिड', 'ओकासेट', 'छींक', 'खुजली', 'एलर्जी'],
     salt: 'Cetirizine Hydrochloride (10mg)',
     category_en: 'Antihistamine (Allergy & Itching Relief)',
     category_hi: 'एंटीहिस्टामाइन (एलर्जी, खुजली व छींक की दवा)',
@@ -427,7 +726,8 @@ export const MEDICINE_DATABASE = [
   {
     id: 'montair-lc',
     name: 'Montair-LC / Montek-LC',
-    brandNames: ['Montair-LC', 'Montek-LC', 'Telekast-L', 'Monticope'],
+    brandNames: ['Montair-LC', 'Montek-LC', 'Telekast-L', 'Monticope', 'Levocetirizine M'],
+    hindiNames: ['मॉन्टेयर एलसी', 'मोंटेक एलसी', 'एलर्जी खांसी', 'अस्थमा'],
     salt: 'Levocetirizine (5mg) + Montelukast (10mg)',
     category_en: 'Antiallergic & Leukotriene Receptor Antagonist',
     category_hi: 'एंटी-एलर्जिक व सांस-दमा एलर्जी रोधी दवा',
@@ -452,14 +752,8 @@ export const MEDICINE_DATABASE = [
     },
     howToUse_en: 'Take 1 tablet once daily in the EVENING or at NIGHT with or without food.',
     howToUse_hi: 'रोजाना शाम को या रात को सोने से पहले 1 गोली लें। इसे खाने के साथ या बिना भी लिया जा सकता है।',
-    precautions_en: [
-      'Take at night because Levocetirizine causes mild drowsiness.',
-      'Complete the course prescribed by doctor (usually 5 to 10 days).',
-    ],
-    precautions_hi: [
-      'इसे रात में ही लें क्योंकि इससे हल्की नींद आ सकती है।',
-      'डॉक्टर द्वारा बताए गए दिनों (आमतौर पर 5 से 10 दिन) का कोर्स पूरा करें।',
-    ],
+    precautions_en: ['Take at night because Levocetirizine causes mild drowsiness.'],
+    precautions_hi: ['इसे रात में ही लें क्योंकि इससे हल्की नींद आ सकती है।'],
     safetyAdvice: {
       pregnancy: { text_en: 'Consult doctor before use', text_hi: 'डॉक्टर से परामर्श के बाद ही लें', status: 'caution' },
       alcohol: { text_en: 'Unsafe: Increases sleepiness', text_hi: 'असुरक्षित: सुस्ती और चक्कर बढ़ाता है', status: 'unsafe' },
@@ -470,9 +764,86 @@ export const MEDICINE_DATABASE = [
   },
 
   {
+    id: 'allegra',
+    name: 'Allegra / Fexofenadine',
+    brandNames: ['Allegra 120', 'Allegra 180', 'Fexova', 'Fexofenadine'],
+    hindiNames: ['एलेग्रा', 'फेक्सोफेनाडाइन', 'एलर्जी', 'बिना नींद वाली एलर्जी की दवा'],
+    salt: 'Fexofenadine Hydrochloride (120mg / 180mg)',
+    category_en: 'Non-Sedating Antihistamine',
+    category_hi: 'गैर-नींद वाली एलर्जी रोधी दवा',
+    tag: 'Allergy & Cold',
+    uses_en: [
+      'Relief from allergy, hay fever, sneezing, and runny nose WITHOUT causing sleepiness or drowsiness',
+      'Relief from skin hives and chronic itching',
+    ],
+    uses_hi: [
+      'बिना नींद या सुस्ती लाए एलर्जी, छींकों, बहती नाक और आंखों की जलन में पूरा आराम',
+      'त्वचा की पुरानी पित्ती (पित्ती उछलना) और खुजली में अत्यंत असरदार',
+    ],
+    sideEffects_en: {
+      common: ['Headache, nausea, dry throat'],
+      serious: ['Rare hypersensitivity'],
+    },
+    sideEffects_hi: {
+      common: ['हल्का सिरदर्द, मतली'],
+      serious: ['दुर्लभ एलर्जी'],
+    },
+    howToUse_en: 'Take 1 tablet once daily with water. Do not take with fruit juices (apple/orange juice reduces absorption).',
+    howToUse_hi: 'रोज 1 गोली पानी के साथ लें। इसे सेब या संतरे के जूस के साथ न लें क्योंकि जूस दवा के असर को कम करता है।',
+    precautions_en: ['Avoid fruit juice for 4 hours before and after tablet.'],
+    precautions_hi: ['दवा लेने के आसपास फलों का जूस न पिएं।'],
+    safetyAdvice: {
+      pregnancy: { text_en: 'Safe under doctor advice', text_hi: 'डॉक्टर से पूछकर लें', status: 'safe' },
+      alcohol: { text_en: 'Safe compared to other antihistamines', text_hi: 'अन्य एलर्जी दवाओं से अधिक सुरक्षित', status: 'safe' },
+      driving: { text_en: 'Safe: Non-drowsy formulation', text_hi: 'सुरक्षित: नींद नहीं आती', status: 'safe' },
+      kidneyLiver: { text_en: 'Dose adjustment in kidney disease', text_hi: 'किडनी रोगी ध्यान रखें', status: 'caution' },
+    },
+    keywords: ['allegra', 'fexofenadine', 'non drowsy allergy', 'cheenk', 'khujli', 'allergy'],
+  },
+
+  {
+    id: 'sinarest',
+    name: 'Sinarest / Cheston Cold',
+    brandNames: ['Sinarest', 'Cheston Cold', 'Solvin Cold', 'Wikoryl', 'Maxtra'],
+    hindiNames: ['सिनारेस्ट', 'चेस्टन कोल्ड', 'सोलविन कोल्ड', 'जुकाम', 'सर्दी सिरदर्द'],
+    salt: 'Paracetamol + Phenylephrine + Chlorpheniramine Maleate',
+    category_en: 'Cold & Flu Multi-Symptom Relief',
+    category_hi: 'सर्दी, जुकाम व बंद नाक की दवा',
+    tag: 'Allergy & Cold',
+    uses_en: [
+      'All-in-one relief from heavy head, blocked nose, sneezing, runny nose, and fever',
+      'Clears sinus pressure and congestion',
+    ],
+    uses_hi: [
+      'सर्दी, जुकाम, बंद नाक, भारी सिर, छींकें और बुखार का एक साथ इलाज',
+      'साइनस के भारीपन और नाक की रुकावट को तेजी से खोलता है',
+    ],
+    sideEffects_en: {
+      common: ['Drowsiness, dry mouth, mild increase in blood pressure'],
+      serious: ['Palpitations in high BP patients'],
+    },
+    sideEffects_hi: {
+      common: ['नींद आना, मुंह सूखना, बीपी हल्का बढ़ना'],
+      serious: ['हाई बीपी के मरीजों में धड़कन तेज होना'],
+    },
+    howToUse_en: 'Take 1 tablet twice or thrice daily after meals.',
+    howToUse_hi: 'भोजन के बाद 1 गोली दिन में 2 से 3 बार लें।',
+    precautions_en: ['High BP patients must check with doctor before taking (contains phenylephrine).'],
+    precautions_hi: ['हाई ब्लड प्रेशर के मरीज डॉक्टर से पूछकर ही लें।'],
+    safetyAdvice: {
+      pregnancy: { text_en: 'Avoid without prescription', text_hi: 'बिना डॉक्टर न लें', status: 'caution' },
+      alcohol: { text_en: 'Unsafe', text_hi: 'असुरक्षित', status: 'unsafe' },
+      driving: { text_en: 'Caution: Causes drowsiness', text_hi: 'नींद आ सकती है', status: 'caution' },
+      kidneyLiver: { text_en: 'Caution', text_hi: 'सावधानी रखें', status: 'caution' },
+    },
+    keywords: ['sinarest', 'cheston cold', 'wikoryl', 'jukam', 'sardi', 'cold', 'blocked nose', 'band naak', 'flu'],
+  },
+
+  {
     id: 'ascoril-d',
     name: 'Ascoril-D / Benadryl (Dry Cough)',
-    brandNames: ['Ascoril-D Plus', 'Benadryl DR', 'Alex', 'Zedex'],
+    brandNames: ['Ascoril-D Plus', 'Benadryl DR', 'Alex', 'Zedex', 'Corex-DX'],
+    hindiNames: ['एस्कोरिल डी', 'बेनाड्रिल', 'एलेक्स', 'सूखी खांसी का सीरप'],
     salt: 'Dextromethorphan + Chlorpheniramine + Phenylephrine',
     category_en: 'Antitussive (Dry Cough Syrup)',
     category_hi: 'एंटीटसिव (सूखी खांसी का सीरप)',
@@ -502,7 +873,7 @@ export const MEDICINE_DATABASE = [
       'High blood pressure and heart patients should check with doctor (contains phenylephrine).',
     ],
     precautions_hi: [
-      'गीली या बलगम वाली खांसी में इसे न पिएं (बलगम वाली खांसी के लिए बलगम निकालने वाला सीरप चाहिए)।',
+      'गीली या बलगम वाली खांसी में इसे न पिएं।',
       'हाई बीपी और दिल के मरीज डॉक्टर की सलाह से ही लें।',
     ],
     safetyAdvice: {
@@ -514,11 +885,88 @@ export const MEDICINE_DATABASE = [
     keywords: ['ascoril d', 'benadryl', 'alex', 'dry cough', 'khansi', 'sukhi khansi', 'cough syrup', 'gala kharab'],
   },
 
+  {
+    id: 'ascoril-ls',
+    name: 'Ascoril-LS / Grilinctus-BM (Wet Cough)',
+    brandNames: ['Ascoril-LS', 'Bro-Zedex', 'Macbery-XT', 'Asthalin', 'Ambroxol'],
+    hindiNames: ['एस्कोरिल एलएस', 'बलगम वाली खांसी', 'कफ सीरप'],
+    salt: 'Levosalbutamol + Ambroxol + Guaiphenesin',
+    category_en: 'Mucolytic & Bronchodilator (Wet / Phlegm Cough)',
+    category_hi: 'बलगम निकालने वाला कफ सीरप',
+    tag: 'Allergy & Cold',
+    uses_en: [
+      'Thins, loosens, and expels thick sticky mucus/phlegm from chest',
+      'Opens narrowed airways in chest congestion, bronchitis, and asthmatic cough',
+    ],
+    uses_hi: [
+      'छाती में जमा गाढ़ा बलगम पिघलाकर खांसी के रास्ते बाहर निकालता है',
+      'छाती की जकड़न, घरघराहट और सांस नली की रुकावट को खोलता है',
+    ],
+    sideEffects_en: {
+      common: ['Hand tremors/shakiness, fast heart rate, headache, nausea'],
+      serious: ['Severe palpitations if overdosed'],
+    },
+    sideEffects_hi: {
+      common: ['हाथों में हल्की कंपकंपी, दिल की धड़कन तेज होना, सिरदर्द'],
+      serious: ['ओवरडोज पर तेज धड़कन'],
+    },
+    howToUse_en: '5ml to 10ml two to three times daily after food. Drink lukewarm water to help liquefy mucus.',
+    howToUse_hi: '5 से 10 मिली दिन में 2-3 बार भोजन के बाद लें। साथ में गुनगुना पानी पिएं जिससे बलगम आसानी से निकले।',
+    precautions_en: ['Heart patients and thyroid patients should consult doctor first.'],
+    precautions_hi: ['दिल के मरीज डॉक्टर की सलाह से ही लें।'],
+    safetyAdvice: {
+      pregnancy: { text_en: 'Consult doctor', text_hi: 'डॉक्टर से पूछें', status: 'caution' },
+      alcohol: { text_en: 'Avoid', text_hi: 'बचें', status: 'caution' },
+      driving: { text_en: 'Safe unless trembling', text_hi: 'हाथ कांपे तो ड्राइव न करें', status: 'safe' },
+      kidneyLiver: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+    },
+    keywords: ['ascoril ls', 'grilinctus', 'wet cough', 'phlegm', 'balgam', 'cough syrup', 'chest congestion'],
+  },
+
+  {
+    id: 'otrivin',
+    name: 'Otrivin / Nasivion Nasal Drops',
+    brandNames: ['Otrivin 0.1%', 'Nasivion', 'Xylometazoline', 'Oxymetazoline'],
+    hindiNames: ['ओट्रिविन', 'नेसीवियन', 'बंद नाक की दवा', 'नाक का स्प्रे'],
+    salt: 'Xylometazoline Hydrochloride (0.1% / 0.05%)',
+    category_en: 'Nasal Decongestant (Blocked Nose Spray)',
+    category_hi: 'बंद नाक खोलने का नेज़ल स्प्रे / ड्रॉप',
+    tag: 'Allergy & Cold',
+    uses_en: [
+      'Instantly opens heavily blocked nose within 2 minutes',
+      'Relieves nasal sinus congestion during severe colds and viral flu',
+    ],
+    uses_hi: [
+      '2 मिनट के अंदर बंद नाक को तुरंत खोल देता है, जिससे रात में आराम से सांस ली जा सके',
+      'सर्दी, जुकाम और साइनस में नाक की नसों की सूजन को सिकोड़ता है',
+    ],
+    sideEffects_en: {
+      common: ['Nasal burning or dryness, sneezing'],
+      serious: ['Severe rebound congestion (rhinitis medicamentosa) if used over 5 days!'],
+    },
+    sideEffects_hi: {
+      common: ['नाक में हल्की जलन या सूखापन, छींक'],
+      serious: ['5 दिन से ज्यादा इस्तेमाल करने पर नाक स्थायी रूप से बंद रहने की लत (Rebound Congestion)!'],
+    },
+    howToUse_en: 'Instill 1-2 drops or 1 spray into each nostril, maximum 2-3 times daily.',
+    howToUse_hi: 'प्रत्येक नथुने में 1-2 बूंद या 1 स्प्रे डालें। दिन में अधिकतम 2-3 बार ही प्रयोग करें।',
+    precautions_en: ['CRITICAL: NEVER use for more than 4-5 consecutive days! Causes severe rebound blockage.'],
+    precautions_hi: ['अति महत्वपूर्ण: इसे लगातार 4-5 दिन से ज्यादा कभी इस्तेमाल न करें! नहीं तो नाक हमेशा बंद रहने की बीमारी हो जाती है।'],
+    safetyAdvice: {
+      pregnancy: { text_en: 'Avoid high doses; consult doctor', text_hi: 'डॉक्टर से पूछकर ही प्रयोग करें', status: 'caution' },
+      alcohol: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+      driving: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+      kidneyLiver: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+    },
+    keywords: ['otrivin', 'nasivion', 'band naak', 'blocked nose', 'nasal spray', 'xylometazoline', 'sinus'],
+  },
+
   // ==================== 4. ANTIBIOTICS (एंटीबायोटिक दवाएं) ====================
   {
     id: 'augmentin-625',
     name: 'Augmentin 625 Duo',
-    brandNames: ['Augmentin 625', 'Moxikind-CV 625', 'Clavam 625', 'Advent 625'],
+    brandNames: ['Augmentin 625', 'Moxikind-CV 625', 'Clavam 625', 'Advent 625', 'Amoxicillin'],
+    hindiNames: ['ऑगमेंटिन', 'क्लैवम', 'मोक्सीकाइंड सीवी', 'एंटीबायोटिक', 'इन्फेक्शन'],
     salt: 'Amoxicillin (500mg) + Clavulanic Acid (125mg)',
     category_en: 'Broad Spectrum Penicillin Antibiotic',
     category_hi: 'ब्रॉड स्पेक्ट्रम एंटीबायोटिक (बैक्टीरियल संक्रमण की दवा)',
@@ -565,7 +1013,8 @@ export const MEDICINE_DATABASE = [
   {
     id: 'azithral-500',
     name: 'Azithral 500 / Azee',
-    brandNames: ['Azithral 500', 'Azee 500', 'Azimax 500', 'Zithrox'],
+    brandNames: ['Azithral 500', 'Azee 500', 'Azimax 500', 'Zithrox', 'Azithromycin'],
+    hindiNames: ['एजिथ्रल', 'एजी 500', 'गले का इन्फेक्शन', 'टॉन्सिल', 'टाइफाइड'],
     salt: 'Azithromycin (500mg)',
     category_en: 'Macrolide Antibiotic',
     category_hi: 'मैक्रोलाइड एंटीबायोटिक (गले व छाती के संक्रमण की दवा)',
@@ -610,11 +1059,88 @@ export const MEDICINE_DATABASE = [
   },
 
   {
+    id: 'ciplox-500',
+    name: 'Ciplox 500 / Cifran',
+    brandNames: ['Ciplox 500', 'Cifran 500', 'Ciprolet', 'Ciprofloxacin'],
+    hindiNames: ['सिपलॉक्स', 'सिफ्रान', 'यूरिन इन्फेक्शन', 'आंख कान की दवा'],
+    salt: 'Ciprofloxacin (500mg)',
+    category_en: 'Fluoroquinolone Antibiotic (UTI & Typhoid)',
+    category_hi: 'फ्लोरोक्विनोलोन एंटीबायोटिक (यूरिन व पेट इन्फेक्शन)',
+    tag: 'Antibiotics',
+    uses_en: [
+      'Urinary tract infections (burning urination / UTI)',
+      'Severe infectious diarrhea, typhoid fever, and bone/joint infections',
+    ],
+    uses_hi: [
+      'पेशाब में जलन और यूरिनरी ट्रैक्ट इन्फेक्शन (UTI) में बेहद असरदार',
+      'गंभीर बैक्टीरियल दस्त, टाइफाइड बुखार और त्वचा-हड्डी के इन्फेक्शन में उपयोगी',
+    ],
+    sideEffects_en: {
+      common: ['Nausea, diarrhea, headache, dizziness'],
+      serious: ['Tendon rupture/pain (especially Achilles tendon)'],
+    },
+    sideEffects_hi: {
+      common: ['मतली, दस्त, सिरदर्द, चक्कर'],
+      serious: ['एड़ी की नस (Achilles Tendon) में दर्द या खिंचाव (तुरंत डॉक्टर को बताएं)'],
+    },
+    howToUse_en: 'Take with full glass of water 2 hours after food. Drink plenty of water throughout the day.',
+    howToUse_hi: 'खाना खाने के 2 घंटे बाद पूरे गिलास पानी के साथ लें। दिनभर खूब पानी पिएं।',
+    precautions_en: ['Avoid taking with milk, curd, or antacids.'],
+    precautions_hi: ['दूध, दही या कैल्शियम के साथ न लें (2 घंटे का अंतर रखें)।'],
+    safetyAdvice: {
+      pregnancy: { text_en: 'Contraindicated in pregnancy', text_hi: 'गर्भावस्था में मना है', status: 'unsafe' },
+      alcohol: { text_en: 'Avoid', text_hi: 'बचें', status: 'caution' },
+      driving: { text_en: 'Safe unless dizzy', text_hi: 'चक्कर आए तो ड्राइविंग न करें', status: 'safe' },
+      kidneyLiver: { text_en: 'Dose adjustment in renal failure', text_hi: 'किडनी रोगी कम खुराक लें', status: 'caution' },
+    },
+    keywords: ['ciplox', 'cifran', 'ciprofloxacin', 'uti', 'urine infection', 'peshab me jalan', 'antibiotic'],
+  },
+
+  {
+    id: 'taxim-o',
+    name: 'Taxim-O 200 / Zifi 200',
+    brandNames: ['Taxim-O 200', 'Zifi 200', 'Mahacef 200', 'Cefixime'],
+    hindiNames: ['टैक्सिम ओ', 'ज़िफी 200', 'महासेफ', 'टाइफाइड', 'एंटीबायोटिक'],
+    salt: 'Cefixime (200mg)',
+    category_en: 'Cephalosporin Antibiotic',
+    category_hi: 'सेफालोस्पोरिन एंटीबायोटिक (टाइफाइड व श्वसन इन्फेक्शन)',
+    tag: 'Antibiotics',
+    uses_en: [
+      'Typhoid fever and complicated urinary tract infections',
+      'Throat infections, tonsillitis, and ear infections in children and adults',
+    ],
+    uses_hi: [
+      'टाइफाइड बुखार और यूरिन इन्फेक्शन का प्रमुख इलाज',
+      'गले का संक्रमण, टॉन्सिल, कान का इन्फेक्शन और ब्रोंकाइटिस में असरदार',
+    ],
+    sideEffects_en: {
+      common: ['Diarrhea, stomach pain, indigestion'],
+      serious: ['Allergic rash'],
+    },
+    sideEffects_hi: {
+      common: ['दस्त, पेट में दर्द, गैस'],
+      serious: ['त्वचा पर लाल दाने'],
+    },
+    howToUse_en: 'Take 1 tablet twice daily with or without food. Complete prescribed course.',
+    howToUse_hi: 'दिन में 2 बार 1-1 गोली खाने के बाद लें। पूरा कोर्स खत्म करें।',
+    precautions_en: ['Complete 7-10 days for typhoid fever as instructed.'],
+    precautions_hi: ['टाइफाइड में डॉक्टर द्वारा बताए गए 7 से 10 दिन पूरे करें।'],
+    safetyAdvice: {
+      pregnancy: { text_en: 'Safe under doctor advice', text_hi: 'गर्भावस्था में सुरक्षित माना जाता है', status: 'safe' },
+      alcohol: { text_en: 'Avoid', text_hi: 'बचें', status: 'caution' },
+      driving: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+      kidneyLiver: { text_en: 'Caution', text_hi: 'सावधानी रखें', status: 'caution' },
+    },
+    keywords: ['taxim o', 'zifi', 'cefixime', 'mahacef', 'typhoid', 'bukhar', 'antibiotic'],
+  },
+
+  {
     id: 'oflox-oz',
     name: 'Oflox-OZ / O2',
-    brandNames: ['O2', 'Oflox-OZ', 'Zenflox-OZ', 'Ornof'],
-    salt: 'Ofloxacin (200mg) + Ornidazole (500mg)',
-    category_en: 'Broad Spectrum Antibacterial & Antiprotozoal (Diarrhea & Dysentery)',
+    brandNames: ['O2', 'Oflox-OZ', 'Zenflox-OZ', 'Ornof', 'Metrogyl', 'Flagyl'],
+    hindiNames: ['ओ 2', 'ऑफ्लॉक्स ओजेड', 'मेट्रोजिल', 'दस्त', 'पेचिश', 'पेट इन्फेक्शन'],
+    salt: 'Ofloxacin (200mg) + Ornidazole (500mg) / Metronidazole (400mg)',
+    category_en: 'Antibacterial & Antiprotozoal (Diarrhea & Dysentery)',
     category_hi: 'दस्त व पेचिश नाशक एंटीबायोटिक (पेट संक्रमण)',
     tag: 'Antibiotics',
     uses_en: [
@@ -629,11 +1155,11 @@ export const MEDICINE_DATABASE = [
     ],
     sideEffects_en: {
       common: ['Bitter metallic taste in mouth, nausea, loss of appetite, dizziness'],
-      serious: ['Tendon pain, peripheral neuropathy (stop immediately)'],
+      serious: ['Tendon pain, severe vomiting if alcohol consumed'],
     },
     sideEffects_hi: {
       common: ['मुंह में कड़वा या धातु जैसा स्वाद, भूख न लगना, उल्टी जैसा मन, चक्कर'],
-      serious: ['नसों में झनझनाहट या जोड़ों-नस में दर्द (दवा तुरंत बंद कर डॉक्टर से मिलें)'],
+      serious: ['शराब पीने पर गंभीर रिएक्शन व लगातार उल्टी'],
     },
     howToUse_en: 'Take one tablet twice daily strictly after meals for 3 to 5 days as prescribed.',
     howToUse_hi: 'भोजन करने के बाद दिन में 2 बार (सुबह-शाम) एक-एक गोली पानी से लें। खाली पेट न लें।',
@@ -642,7 +1168,7 @@ export const MEDICINE_DATABASE = [
       'Drink plenty of fluids/ORS to prevent kidney crystals.',
     ],
     precautions_hi: [
-      'अति आवश्यक: दवा के दौरान और खत्म होने के 2 दिन बाद तक शराब को हाथ भी न लगाएं (गंभीर रिएक्शन हो सकता है)।',
+      'अति आवश्यक: दवा के दौरान और खत्म होने के 2 दिन बाद तक शराब को हाथ भी न लगाएं।',
       'दवा के साथ ओआरएस (ORS) और पर्याप्त पानी जरूर पिएं।',
     ],
     safetyAdvice: {
@@ -651,16 +1177,17 @@ export const MEDICINE_DATABASE = [
       driving: { text_en: 'Caution: Can cause dizziness', text_hi: 'सावधानी: चक्कर आ सकते हैं', status: 'caution' },
       kidneyLiver: { text_en: 'Caution', text_hi: 'सावधानी रखें', status: 'caution' },
     },
-    keywords: ['o2', 'oflox oz', 'zenflox oz', 'dast', 'pechish', 'loose motion', 'food poisoning', 'pet kharab'],
+    keywords: ['o2', 'oflox oz', 'zenflox oz', 'dast', 'pechish', 'loose motion', 'food poisoning', 'pet kharab', 'metrogyl'],
   },
 
-  // ==================== 5. CHRONIC / BP & DIABETES (बीपी व शुगर) ====================
+  // ==================== 5. CHRONIC / BP, HEART & DIABETES (बीपी, दिल व शुगर) ====================
   {
     id: 'telma-40',
     name: 'Telma 40 / Telmisartan',
-    brandNames: ['Telma 40', 'Telmikind', 'Telpres', 'Micardis'],
+    brandNames: ['Telma 40', 'Telmikind', 'Telpres', 'Micardis', 'Telma-H'],
+    hindiNames: ['टेल्मा 40', 'टेल्मीसार्टन', 'बीपी की गोली', 'हाई ब्लड प्रेशर'],
     salt: 'Telmisartan (40mg)',
-    category_en: 'Angiotensin Receptor Blocker (ARB) - Blood Pressure',
+    category_en: 'Angiotensin Receptor Blocker (Blood Pressure)',
     category_hi: 'एंजियोटेंसिन रिसेप्टर ब्लॉकर (हाई ब्लड प्रेशर की दवा)',
     tag: 'BP & Heart',
     uses_en: [
@@ -685,16 +1212,14 @@ export const MEDICINE_DATABASE = [
     howToUse_hi: 'रोजाना एक ही निश्चित समय पर 1 गोली पानी से लें (चाहे खाली पेट लें या खाने के बाद)।',
     precautions_en: [
       'NEVER stop taking blood pressure medicine abruptly without doctor consultation.',
-      'Avoid potassium supplements or high-potassium salt substitutes without medical testing.',
       'Check BP regularly and maintain a log.',
     ],
     precautions_hi: [
       'बीपी की दवा को कभी भी अचानक अपनी मर्जी से बंद न करें।',
-      'बिना डॉक्टर से पूछे पोटेशियम सप्लीमेंट या लो-सोडियम नमक न लें।',
       'नियमित रूप से बीपी चेक करते रहें।',
     ],
     safetyAdvice: {
-      pregnancy: { text_en: 'STRICTLY CONTRAINDICATED in pregnancy: Can harm unborn baby', text_hi: 'गर्भावस्था में सख्त मना: गर्भस्थ शिशु के लिए जानलेवा', status: 'unsafe' },
+      pregnancy: { text_en: 'STRICTLY CONTRAINDICATED in pregnancy: Can harm unborn baby', text_hi: 'गर्भावस्था में सख्त मना: गर्भस्थ शिशु के लिए नुकसानदेह', status: 'unsafe' },
       alcohol: { text_en: 'Caution: Can cause dangerously low blood pressure', text_hi: 'सावधानी: बीपी बहुत ज्यादा नीचे गिर सकता है', status: 'caution' },
       driving: { text_en: 'Caution initially if feeling lightheaded', text_hi: 'शुरुआत में चक्कर आए तो ड्राइविंग न करें', status: 'caution' },
       kidneyLiver: { text_en: 'Regular kidney function monitoring advised', text_hi: 'किडनी की नियमित जांच कराते रहें', status: 'caution' },
@@ -703,10 +1228,88 @@ export const MEDICINE_DATABASE = [
   },
 
   {
+    id: 'amlodipine',
+    name: 'Amlokind 5 / Stamlo (Amlodipine)',
+    brandNames: ['Amlokind 5', 'Stamlo 5', 'Amlopin', 'Amlodac', 'Amlodipine'],
+    hindiNames: ['एम्लोकाइंड', 'स्टैमलो', 'एम्लोडिपिन', 'ब्लड प्रेशर'],
+    salt: 'Amlodipine Besylate (5mg / 10mg)',
+    category_en: 'Calcium Channel Blocker (Hypertension & Angina)',
+    category_hi: 'कैल्शियम चैनल ब्लॉकर (बीपी व सीने के दर्द की दवा)',
+    tag: 'BP & Heart',
+    uses_en: [
+      'Treats high blood pressure and relaxes stiff blood vessels',
+      'Prevents chronic chest pain (angina pectoris) caused by lack of blood flow to heart',
+    ],
+    uses_hi: [
+      'हाई ब्लड प्रेशर को कम करता है और सिकुड़ी रक्त नलिकाओं को आराम देता है',
+      'दिल में खून का दौरा बढ़ाकर सीने के दर्द (एंजाइना) से बचाव करता है',
+    ],
+    sideEffects_en: {
+      common: ['Swelling in ankles/feet (peripheral edema), flushing, headache, fatigue'],
+      serious: ['Excessive low blood pressure, irregular heartbeat'],
+    },
+    sideEffects_hi: {
+      common: ['पैरों के टखनों में सूजन (Edema), चेहरे पर लाली, सिरदर्द, थकान'],
+      serious: ['बीपी बहुत कम होना'],
+    },
+    howToUse_en: 'Take once daily at the same time with water.',
+    howToUse_hi: 'रोजाना एक ही समय पर 1 गोली पानी से लें।',
+    precautions_en: ['If feet swell significantly, report to your doctor for dose adjustment.'],
+    precautions_hi: ['यदि पैरों में ज्यादा सूजन दिखे तो डॉक्टर को बताएं।'],
+    safetyAdvice: {
+      pregnancy: { text_en: 'Consult doctor', text_hi: 'डॉक्टर से पूछें', status: 'caution' },
+      alcohol: { text_en: 'Caution', text_hi: 'सावधानी रखें', status: 'caution' },
+      driving: { text_en: 'Safe unless dizzy', text_hi: 'सुरक्षित', status: 'safe' },
+      kidneyLiver: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+    },
+    keywords: ['amlodipine', 'amlokind', 'stamlo', 'bp', 'blood pressure', 'hypertension', 'high bp', 'ankles swelling'],
+  },
+
+  {
+    id: 'atorvastatin',
+    name: 'Atorva 10 / Storvas (Atorvastatin)',
+    brandNames: ['Atorva 10', 'Storvas 10', 'Lipitor', 'Atocor', 'Rosuvas', 'Rosuvastatin'],
+    hindiNames: ['अटोरवा', 'स्टोरवास', 'कोलेस्ट्रॉल', 'खून में चर्बी', 'हार्ट अटैक से बचाव'],
+    salt: 'Atorvastatin Calcium (10mg / 20mg / 40mg)',
+    category_en: 'Statin / HMG-CoA Reductase Inhibitor (Cholesterol Reducer)',
+    category_hi: 'कोलेस्ट्रॉल कम करने वाली दवा (हृदय सुरक्षा)',
+    tag: 'BP & Heart',
+    uses_en: [
+      'Lowers "bad" LDL cholesterol and triglycerides in blood',
+      'Raises "good" HDL cholesterol and prevents blockages in heart arteries',
+      'Significantly cuts heart attack and stroke risks',
+    ],
+    uses_hi: [
+      'खून में खराब कोलेस्ट्रॉल (LDL) और ट्राइग्लिसराइड्स (चर्बी) को तेजी से घटाता है',
+      'दिल की नसों में ब्लॉकेज बनने से रोकता है और हार्ट अटैक के खतरे को टालता है',
+    ],
+    sideEffects_en: {
+      common: ['Muscle ache, joint pain, mild diarrhea or indigestion'],
+      serious: ['Severe muscle breakdown (rhabdomyolysis - rare), elevated liver enzymes'],
+    },
+    sideEffects_hi: {
+      common: ['मांसपेशियों में हल्का दर्द, जोड़ों का दर्द, अपच'],
+      serious: ['मांसपेशियों का गंभीर खिंचाव व कमजोरी (दुर्लभ)'],
+    },
+    howToUse_en: 'Take ONCE daily in the EVENING or at NIGHT with water (cholesterol synthesis peaks at night).',
+    howToUse_hi: 'रोजाना रात को भोजन के बाद 1 गोली लें (शरीर में कोलेस्ट्रॉल रात को ही ज्यादा बनता है)।',
+    precautions_en: ['Avoid drinking large amounts of grapefruit juice. Report unexplained muscle soreness.'],
+    precautions_hi: ['अंगूर या मौसमी का जूस ज्यादा न पिएं। बिना वजह मांसपेशियों में दर्द हो तो डॉक्टर को बताएं।'],
+    safetyAdvice: {
+      pregnancy: { text_en: 'STRICTLY CONTRAINDICATED in pregnancy', text_hi: 'गर्भावस्था में सख्त मना', status: 'unsafe' },
+      alcohol: { text_en: 'Avoid: Combined liver burden', text_hi: 'बचें: लिवर पर अतिरिक्त दबाव', status: 'caution' },
+      driving: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+      kidneyLiver: { text_en: 'Monitor liver enzymes periodically', text_hi: 'लिवर की जांच कराते रहें', status: 'caution' },
+    },
+    keywords: ['atorvastatin', 'atorva', 'storvas', 'cholesterol', 'heart', 'lipitor', 'rosuvastatin', 'bad cholesterol', 'charbi'],
+  },
+
+  {
     id: 'glycomet-500',
     name: 'Glycomet 500 / Metformin',
-    brandNames: ['Glycomet 500', 'Glucophage', 'Obimet', 'Cetapin'],
-    salt: 'Metformin Hydrochloride (500mg)',
+    brandNames: ['Glycomet 500', 'Glucophage', 'Obimet', 'Cetapin', 'Metformin'],
+    hindiNames: ['ग्लाइकोमेट', 'मेटफॉर्मिन', 'शुगर की दवा', 'डायबिटीज', 'मधुमेह'],
+    salt: 'Metformin Hydrochloride (500mg / 850mg / 1000mg)',
     category_en: 'Biguanide Antidiabetic (Type 2 Diabetes)',
     category_hi: 'एंटीडायबिटिक दवा (टाइप-2 शुगर / मधुमेह की दवा)',
     tag: 'Diabetes',
@@ -733,12 +1336,10 @@ export const MEDICINE_DATABASE = [
     precautions_en: [
       'Do not consume alcohol: increases the risk of lactic acidosis.',
       'Check Vitamin B12 levels periodically with long-term use.',
-      'Inform doctor before any surgery or CT scan involving contrast dye.',
     ],
     precautions_hi: [
       'शराब का सेवन बिल्कुल न करें: इससे गंभीर एसिडोसिस का खतरा बढ़ता है।',
       'सालों तक लेने पर समय-समय पर विटामिन B12 की जांच कराते रहें।',
-      'किसी भी सर्जरी या सीटी स्कैन (डाई वाले) से पहले डॉक्टर को यह दवा बताएं।',
     ],
     safetyAdvice: {
       pregnancy: { text_en: 'Frequently used for gestational diabetes under strict supervision', text_hi: 'डॉक्टर की कड़ी निगरानी में इस्तेमाल किया जाता है', status: 'safe' },
@@ -754,6 +1355,7 @@ export const MEDICINE_DATABASE = [
     id: 'becosules',
     name: 'Becosules / Vitamin B-Complex',
     brandNames: ['Becosules', 'Neurobion Forte', 'Cobadex Forte', 'B-Complex'],
+    hindiNames: ['बिकासूल्स', 'न्यूरोबियन', 'मुंह के छाले', 'कमजोरी', 'विटामिन बी'],
     salt: 'Vitamin B-Complex (B1, B2, B3, B6, B12, Folic Acid) + Vitamin C',
     category_en: 'Multivitamin (Nerve Health & Mouth Ulcers)',
     category_hi: 'मल्टीविटामिन (मुंह के छाले, नसें व कमजोरी)',
@@ -778,17 +1380,11 @@ export const MEDICINE_DATABASE = [
     },
     howToUse_en: 'Take ONE capsule daily after breakfast or lunch with a glass of water.',
     howToUse_hi: 'रोजाना सुबह नाश्ते या दोपहर के खाने के बाद 1 कैप्सूल पानी से लें।',
-    precautions_en: [
-      'Urine turning bright yellow is completely normal and no cause for alarm.',
-      'Take with food to avoid gastric irritation.',
-    ],
-    precautions_hi: [
-      'पेशाब का पीला होना स्वाभाविक है, घबराने की कोई बात नहीं है।',
-      'हमेशा भोजन के बाद ही लें।',
-    ],
+    precautions_en: ['Urine turning bright yellow is completely normal and harmless.'],
+    precautions_hi: ['पेशाब का पीला होना स्वाभाविक है, घबराने की कोई बात नहीं है।'],
     safetyAdvice: {
       pregnancy: { text_en: 'Safe and beneficial under normal dietary doses', text_hi: 'सामान्य खुराक में पूरी तरह सुरक्षित और फायदेमंद', status: 'safe' },
-      alcohol: { text_en: 'Safe (Alcohol depletes B-vitamins, so supplementation helps)', text_hi: 'सुरक्षित', status: 'safe' },
+      alcohol: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
       driving: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
       kidneyLiver: { text_en: 'Safe in standard doses', text_hi: 'सुरक्षित', status: 'safe' },
     },
@@ -798,7 +1394,8 @@ export const MEDICINE_DATABASE = [
   {
     id: 'shelcal-500',
     name: 'Shelcal 500 / Calcium + D3',
-    brandNames: ['Shelcal 500', 'Cipcal 500', 'Gemcal', 'Calcimax'],
+    brandNames: ['Shelcal 500', 'Cipcal 500', 'Gemcal', 'Calcimax', 'Calcium'],
+    hindiNames: ['शैलकल', 'सिपकल', 'कैल्शियम', 'हड्डी दर्द', 'विटामिन डी'],
     salt: 'Calcium (500mg) + Vitamin D3 (250 IU)',
     category_en: 'Mineral & Vitamin Supplement (Bone & Joint Health)',
     category_hi: 'कैल्शियम व विटामिन D3 सप्लीमेंट (हड्डियों व जोड़ों की मजबूती)',
@@ -823,29 +1420,104 @@ export const MEDICINE_DATABASE = [
     },
     howToUse_en: 'Take ONE tablet once daily after your main meal (lunch or dinner) with a full glass of water.',
     howToUse_hi: 'रोजाना दोपहर या रात के खाने के बाद 1 गोली पूरे गिलास पानी के साथ लें।',
-    precautions_en: [
-      'Drink plenty of water throughout the day to avoid constipation.',
-      'Do not take at the same time as thyroid medication (Thyronorm) or iron pills; keep a 4-hour gap.',
-    ],
-    precautions_hi: [
-      'कब्ज से बचने के लिए दिनभर में खूब पानी पिएं।',
-      'थायराइड की दवा (Thyronorm) या आयरन की गोली के साथ इसे न लें, 4 घंटे का अंतर रखें।',
-    ],
+    precautions_en: ['Drink plenty of water. Keep 4 hours gap from thyroid medicine.'],
+    precautions_hi: ['खूब पानी पिएं। थायराइड की दवा से 4 घंटे का अंतर रखें।'],
     safetyAdvice: {
       pregnancy: { text_en: 'Safe and recommended in 2nd and 3rd trimesters', text_hi: 'गर्भावस्था में अत्यंत अनुशंसित व सुरक्षित', status: 'safe' },
       alcohol: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
       driving: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
-      kidneyLiver: { text_en: 'Caution if you have a history of kidney stones', text_hi: 'पथरी के मरीज डॉक्टर से पूछकर लें', status: 'caution' },
+      kidneyLiver: { text_en: 'Caution if you have kidney stones', text_hi: 'पथरी के मरीज डॉक्टर से पूछकर लें', status: 'caution' },
     },
     keywords: ['shelcal', 'cipcal', 'calcium', 'vitamin d3', 'haddi', 'bone pain', 'knee pain', 'joints', 'osteoporosis'],
+  },
+
+  {
+    id: 'limcee',
+    name: 'Limcee / Celin 500 (Vitamin C)',
+    brandNames: ['Limcee 500', 'Celin 500', 'Sukcee', 'Ascorbic Acid'],
+    hindiNames: ['लिम्सी', 'सेलिन', 'विटामिन सी', 'इम्यूनिटी', 'त्वचा'],
+    salt: 'Vitamin C / Ascorbic Acid (500mg)',
+    category_en: 'Antioxidant & Immunity Booster',
+    category_hi: 'विटामिन सी व रोग प्रतिरोधक क्षमता वर्धक',
+    tag: 'Vitamins & Wellness',
+    uses_en: [
+      'Boosts immune system against recurring viral colds, coughs, and infections',
+      'Aids wound healing and promotes glowing skin and collagen synthesis',
+      'Enhances iron absorption from dietary food',
+    ],
+    uses_hi: [
+      'बार-बार सर्दी-जुकाम और इन्फेक्शन से लड़ने की इम्यूनिटी बढ़ाता है',
+      'घाव जल्दी भरने, मसूड़ों की मजबूती और त्वचा में निखार लाने में सहायक',
+      'भोजन से आयरन सोखने में मदद करता है',
+    ],
+    sideEffects_en: {
+      common: ['Mild stomach acidity, diarrhea with very high doses (>2000mg)'],
+      serious: ['Kidney stones with extreme prolonged overdose'],
+    },
+    sideEffects_hi: {
+      common: ['पेट में हल्की खटास, बहुत ज्यादा खाने पर दस्त'],
+      serious: ['अत्यधिक ओवरडोज पर पथरी का जोखिम'],
+    },
+    howToUse_en: 'Chew 1 tablet daily after food. Has pleasant orange flavor.',
+    howToUse_hi: 'रोजाना खाने के बाद 1 गोली चबाकर खाएं (संतरे का स्वादिष्ट स्वाद)।',
+    precautions_en: ['Do not swallow whole; chew thoroughly.'],
+    precautions_hi: ['चबाकर खाएं, साबुत न निगलें।'],
+    safetyAdvice: {
+      pregnancy: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+      alcohol: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+      driving: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+      kidneyLiver: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+    },
+    keywords: ['limcee', 'celin', 'vitamin c', 'immunity', 'scurvy', 'skin', 'cold immunity'],
+  },
+
+  {
+    id: 'zincovit',
+    name: 'Zincovit / Supradyn',
+    brandNames: ['Zincovit', 'Supradyn Daily', 'Revital H', 'A to Z NS'],
+    hindiNames: ['जिंकोविट', 'सुप्राडिन', 'रिवाइटल', 'मल्टीविटामिन', 'ताकत'],
+    salt: 'Multivitamins + Multiminerals + Zinc + Grape Seed Extract',
+    category_en: 'Complete Daily Health Supplement',
+    category_hi: 'दैनिक मल्टीविटामिन व मिनरल पूरक',
+    tag: 'Vitamins & Wellness',
+    uses_en: [
+      'Overcomes physical weakness, fatigue, loss of stamina, and nutritional deficiencies',
+      'Speeds up recovery after illness, dengue, or surgery',
+      'Improves appetite and energy levels',
+    ],
+    uses_hi: [
+      'शारीरिक कमजोरी, थकान, सुस्ती और पोषण की कमी को दूर करता है',
+      'बुखार, डेंगू या किसी बीमारी के बाद शरीर में आई कमजोरी को तेजी से भरता है',
+      'भूख और कार्यक्षमता में सुधार करता है',
+    ],
+    sideEffects_en: {
+      common: ['Mild nausea or metallic taste if taken empty stomach'],
+      serious: ['None at recommended dose'],
+    },
+    sideEffects_hi: {
+      common: ['खाली पेट लेने पर हल्की मतली'],
+      serious: ['सही मात्रा में कोई गंभीर साइड इफेक्ट नहीं'],
+    },
+    howToUse_en: 'Take ONE tablet daily after lunch or breakfast with water.',
+    howToUse_hi: 'रोजाना दोपहर या सुबह के भोजन के बाद 1 गोली पानी से लें।',
+    precautions_en: ['Always take after eating.'],
+    precautions_hi: ['हमेशा भोजन के बाद ही लें।'],
+    safetyAdvice: {
+      pregnancy: { text_en: 'Safe under medical advice', text_hi: 'डॉक्टर से पूछें', status: 'safe' },
+      alcohol: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+      driving: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+      kidneyLiver: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+    },
+    keywords: ['zincovit', 'supradyn', 'revital', 'multivitamin', 'weakness', 'kamzori', 'stamina', 'energy', 'zinc'],
   },
 
   // ==================== 7. FIRST AID & ANTISEPTIC (प्राथमिक उपचार) ====================
   {
     id: 'betadine',
     name: 'Betadine Ointment / Solution',
-    brandNames: ['Betadine', 'Cipladine', 'Wokadine', 'Povidone Iodine'],
-    salt: 'Povidone Iodine (5% or 10%)',
+    brandNames: ['Betadine', 'Cipladine', 'Wokadine', 'Povidone Iodine', 'Soframycin', 'Burnol'],
+    hindiNames: ['बीटाडीन', 'सिपलाडीन', 'सोफ्रामाइसिन', 'बर्नोल', 'चोट का मलहम', 'घाव'],
+    salt: 'Povidone Iodine (5% / 10%) / Framycetin',
     category_en: 'Topical Antiseptic & Microbicide (Wound Care)',
     category_hi: 'एंटीसेप्टिक मलहम (घाव, चोट व कटने पर लगाने की दवा)',
     tag: 'First Aid',
@@ -883,62 +1555,174 @@ export const MEDICINE_DATABASE = [
       driving: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
       kidneyLiver: { text_en: 'Safe for small wounds', text_hi: 'सुरक्षित', status: 'safe' },
     },
-    keywords: ['betadine', 'cipladine', 'antiseptic', 'wound', 'chot', 'ghav', 'iodine', 'povidone', 'malham'],
+    keywords: ['betadine', 'cipladine', 'antiseptic', 'wound', 'chot', 'ghav', 'iodine', 'povidone', 'malham', 'soframycin', 'burnol'],
+  },
+
+  {
+    id: 'volini',
+    name: 'Volini / Moov Pain Gel',
+    brandNames: ['Volini', 'Moov', 'Fast Relief', 'Omnigel', 'Relispray'],
+    hindiNames: ['वोलिनी', 'मूव', 'फास्ट रिलीफ', 'दर्द का स्प्रे', 'मोच'],
+    salt: 'Diclofenac Diethylamine + Methyl Salicylate + Menthol + Linseed Oil',
+    category_en: 'Topical Analgesic (Muscle & Joint Pain Gel)',
+    category_hi: 'दर्द निवारक जेल व स्प्रे (कमर दर्द, मोच व खिंचाव)',
+    tag: 'First Aid',
+    uses_en: [
+      'Fast deep-penetrating relief from back pain, neck pain, joint stiffness, and sprains',
+      'Menthol provides instant soothing cooling sensation followed by warm relief',
+    ],
+    uses_hi: [
+      'कमर दर्द, गर्दन में अकड़न, जोड़ों के दर्द और मोच में त्वचा के भीतर जाकर तुरंत आराम',
+      'लगाते ही ठंडक और फिर गर्माहट देकर नसों की जकड़न खोलता है',
+    ],
+    sideEffects_en: {
+      common: ['Mild skin redness, tingling warmth, or itching at application site'],
+      serious: ['Rare contact dermatitis'],
+    },
+    sideEffects_hi: {
+      common: ['हल्की झनझनाहट, गर्माहट या लाली'],
+      serious: ['एलर्जी के दाने'],
+    },
+    howToUse_en: 'Apply a small quantity gently onto the painful area 3-4 times daily. Do not massage vigorously.',
+    howToUse_hi: 'दर्द वाली जगह पर हल्के हाथ से दिन में 3-4 बार लगाएं। जोर से मालिश न करें।',
+    precautions_en: ['Do not apply on broken skin, open wounds, or near eyes. Wash hands after use.'],
+    precautions_hi: ['कटी-छिली त्वचा या आंखों के पास न लगाएं। लगाने के बाद हाथ धो लें।'],
+    safetyAdvice: {
+      pregnancy: { text_en: 'Safe for localized small-area use', text_hi: 'सीमित जगह पर सुरक्षित', status: 'safe' },
+      alcohol: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+      driving: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+      kidneyLiver: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+    },
+    keywords: ['volini', 'moov', 'fast relief', 'omnigel', 'pain gel', 'moch', 'kamar dard', 'sprain', 'pain spray'],
+  },
+
+  {
+    id: 'liv-52',
+    name: 'Liv.52 / Liver Tonic',
+    brandNames: ['Liv.52', 'Liv.52 DS', 'Himalaya Liv 52', 'Udiliv'],
+    hindiNames: ['लिव 52', 'लिवर टॉनिक', 'भूख बढ़ाने की दवा', 'पीलिया'],
+    salt: 'Himsra (Capparis spinosa) + Kasani (Cichorium intybus) Ayurvedic Extracts',
+    category_en: 'Hepatoprotective (Liver Health & Appetite)',
+    category_hi: 'लिवर सुरक्षा व भूख वर्धक आयुर्वेदिक टॉनिक',
+    tag: 'Vitamins & Wellness',
+    uses_en: [
+      'Protects liver from toxins, alcohol damage, and medication stress',
+      'Improves poor appetite, digestion, and aids recovery from jaundice',
+      'Supports healthy liver enzymes in fatty liver disease',
+    ],
+    uses_hi: [
+      'लिवर को नुकसान, शराब और दवाओं के बुरे प्रभाव से बचाता है',
+      'भूख में भारी सुधार करता है और पीलिया (Jaundice) के बाद लिवर ठीक करता है',
+      'फैटी लिवर में लिवर एंजाइम को सामान्य करने में सहायक',
+    ],
+    sideEffects_en: {
+      common: ['None reported at normal doses; 100% natural herbal formulation'],
+      serious: ['None'],
+    },
+    sideEffects_hi: {
+      common: ['सामान्य खुराक में कोई साइड इफेक्ट नहीं; पूर्णतः प्राकृतिक'],
+      serious: ['कोई नहीं'],
+    },
+    howToUse_en: 'Take 1 to 2 tablets twice daily before meals with water.',
+    howToUse_hi: 'भोजन से पहले 1 से 2 गोली दिन में दो बार पानी के साथ लें।',
+    precautions_en: ['Maintain a balanced healthy diet; avoid heavy alcohol and oily food.'],
+    precautions_hi: ['तले-भुने भोजन और शराब से परहेज रखें।'],
+    safetyAdvice: {
+      pregnancy: { text_en: 'Safe and commonly used', text_hi: 'सुरक्षित व व्यापक प्रयुक्त', status: 'safe' },
+      alcohol: { text_en: 'Safe (Helps liver recovery from alcohol damage)', text_hi: 'लिवर को शराब के नुकसान से बचाता है', status: 'safe' },
+      driving: { text_en: 'Safe', text_hi: 'सुरक्षित', status: 'safe' },
+      kidneyLiver: { text_en: 'Safe for liver', text_hi: 'लिवर के लिए अत्यंत गुणकारी', status: 'safe' },
+    },
+    keywords: ['liv 52', 'liv52', 'liver', 'jaundice', 'peeliya', 'bhookh', 'fatty liver', 'appetite', 'tonic'],
   },
 ];
 
 /**
- * Search the verified offline database using name, salt, or keywords.
- * Supports fuzzy matching for brand names and salt components.
+ * Universal Search algorithm with Devanagari Hindi + English support,
+ * partial word matching, symptom matching, and tokenization.
  */
 export function searchMedicineOffline(query) {
   if (!query || typeof query !== 'string') return [];
-  const clean = query.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-  if (!clean) return [];
+  const raw = query.trim().toLowerCase();
+  if (!raw) return [];
+
+  // Remove English punctuation but keep alphanumeric and Hindi Unicode (\u0900-\u097F)
+  const normalized = raw.replace(/[^\w\s\u0900-\u097F]/g, ' ').replace(/\s+/g, ' ').trim();
+  const searchTokens = normalized.split(' ').filter(Boolean);
 
   const results = [];
 
   for (const med of MEDICINE_DATABASE) {
     let score = 0;
 
-    // Exact or starting match on name or ID
-    const medId = med.id.replace(/[^a-z0-9]/g, '');
-    const medName = med.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const medName = med.name.toLowerCase();
+    const medId = med.id.toLowerCase();
+    const medSalt = (med.salt || '').toLowerCase();
+    const brands = (med.brandNames || []).map((b) => b.toLowerCase());
+    const hindis = (med.hindiNames || []).map((h) => h.toLowerCase());
+    const keywords = (med.keywords || []).map((k) => k.toLowerCase());
 
-    if (medName === clean || medId === clean) {
-      score += 100;
-    } else if (medName.startsWith(clean) || medId.startsWith(clean)) {
-      score += 60;
-    } else if (medName.includes(clean)) {
-      score += 40;
+    // 1. Direct match on full query
+    if (medName.includes(normalized) || medId.includes(normalized)) {
+      score += 120;
     }
 
-    // Check brand names
-    for (const brand of med.brandNames) {
-      const bClean = brand.toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (bClean === clean) {
-        score += 80;
-      } else if (bClean.startsWith(clean)) {
-        score += 50;
-      } else if (bClean.includes(clean)) {
+    for (const b of brands) {
+      if (b === normalized) score += 100;
+      else if (b.includes(normalized)) score += 60;
+    }
+
+    for (const h of hindis) {
+      if (h === normalized) score += 100;
+      else if (h.includes(normalized)) score += 60;
+    }
+
+    if (medSalt.includes(normalized)) {
+      score += 50;
+    }
+
+    // 2. Tokenized search (e.g. "dolo 650", "pet dard", "headache fever", "gas tablet")
+    let tokenMatches = 0;
+    for (const token of searchTokens) {
+      if (token.length < 2) continue;
+
+      let matchedThisToken = false;
+
+      if (medName.includes(token) || medId.includes(token)) {
+        score += 40;
+        matchedThisToken = true;
+      }
+      for (const b of brands) {
+        if (b.includes(token)) {
+          score += 35;
+          matchedThisToken = true;
+          break;
+        }
+      }
+      for (const h of hindis) {
+        if (h.includes(token)) {
+          score += 35;
+          matchedThisToken = true;
+          break;
+        }
+      }
+      if (medSalt.includes(token)) {
         score += 30;
+        matchedThisToken = true;
       }
+      for (const kw of keywords) {
+        if (kw.includes(token)) {
+          score += 25;
+          matchedThisToken = true;
+          break;
+        }
+      }
+
+      if (matchedThisToken) tokenMatches++;
     }
 
-    // Check salt
-    const saltClean = med.salt.toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (saltClean.includes(clean)) {
-      score += 35;
-    }
-
-    // Check keywords (symptoms / aliases)
-    for (const kw of med.keywords) {
-      const kwClean = kw.toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (kwClean === clean) {
-        score += 50;
-      } else if (kwClean.includes(clean)) {
-        score += 25;
-      }
+    if (tokenMatches === searchTokens.length && searchTokens.length > 1) {
+      score += 50; // Bonus for matching all search tokens
     }
 
     if (score > 0) {

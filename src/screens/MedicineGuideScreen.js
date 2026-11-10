@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -46,9 +46,13 @@ export default function MedicineGuideScreen({ onBack }) {
   const [loading, setLoading] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [showKeyModal, setShowKeyModal] = useState(false);
+  const [showMediaModal, setShowMediaModal] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [hasApiKey, setHasApiKey] = useState(false);
   const [infoNotice, setInfoNotice] = useState('');
+  const [isListening, setIsListening] = useState(false);
+
+  const recognitionRef = useRef(null);
 
   // Load existing API key status on mount
   useEffect(() => {
@@ -57,6 +61,19 @@ export default function MedicineGuideScreen({ onBack }) {
       setHasApiKey(Boolean(key));
       setApiKeyInput(key || '');
     })();
+  }, []);
+
+  // Cleanup speech recognition on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current && typeof recognitionRef.current.stop === 'function') {
+        try {
+          recognitionRef.current.stop();
+        } catch (_e) {
+          // ignore
+        }
+      }
+    };
   }, []);
 
   // Handle Search Input with debounce
@@ -75,13 +92,84 @@ export default function MedicineGuideScreen({ onBack }) {
       } finally {
         setLoading(false);
       }
-    }, 280);
+    }, 250);
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  // Voice Search Handler (Web Speech API with graceful mobile fallback)
+  const handleVoiceSearch = () => {
+    const SpeechRecognition =
+      (typeof window !== 'undefined' &&
+        (window.SpeechRecognition || window.webkitSpeechRecognition)) ||
+      null;
+
+    if (!SpeechRecognition) {
+      Alert.alert(
+        lang === 'hi' ? 'वॉयस सर्च' : 'Voice Search',
+        lang === 'hi'
+          ? 'आपके ब्राउज़र में स्पीच रिकॉग्निशन सपोर्ट नहीं है। कृपया दवा का नाम टाइप करें।'
+          : 'Voice speech recognition is not supported on this browser. Please type the medicine name.'
+      );
+      return;
+    }
+
+    if (isListening && recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (_e) {
+        // ignore
+      }
+      setIsListening(false);
+      setInfoNotice('');
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
+      recognition.lang = lang === 'hi' ? 'hi-IN' : 'en-IN';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+        setIsListening(true);
+        setInfoNotice(
+          lang === 'hi' ? '🎙️ बोलिए, सुन रहे हैं...' : '🎙️ Listening... Speak medicine name...'
+        );
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = event.results?.[0]?.[0]?.transcript || '';
+        if (transcript.trim()) {
+          setSearchQuery(transcript.trim());
+          if (selectedMedicine) setSelectedMedicine(null);
+          setInfoNotice(
+            lang === 'hi' ? `बोला गया: "${transcript.trim()}"` : `Heard: "${transcript.trim()}"`
+          );
+        }
+        setIsListening(false);
+      };
+
+      recognition.onerror = () => {
+        setIsListening(false);
+        setInfoNotice('');
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } catch (_err) {
+      setIsListening(false);
+      setInfoNotice('');
+    }
+  };
+
   // Open Camera to Capture Medicine Image
   const handleCaptureImage = async () => {
+    setShowMediaModal(false);
     try {
       if (Platform.OS !== 'web') {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -116,6 +204,7 @@ export default function MedicineGuideScreen({ onBack }) {
 
   // Open Gallery to Pick Medicine Image
   const handleUploadImage = async () => {
+    setShowMediaModal(false);
     try {
       if (Platform.OS !== 'web') {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -169,7 +258,6 @@ export default function MedicineGuideScreen({ onBack }) {
         });
         setInfoNotice('');
       } else if (res.requiresApiKey) {
-        // Offer API key modal or search suggestion
         setInfoNotice(
           lang === 'hi'
             ? 'लाइव फोटो स्कैन के लिए Gemini API Key दर्ज करें, या नीचे नाम सर्च करें।'
@@ -179,7 +267,10 @@ export default function MedicineGuideScreen({ onBack }) {
       } else {
         Alert.alert(
           lang === 'hi' ? 'स्कैन पूरा नहीं हुआ' : 'Scan Incomplete',
-          res.error || (lang === 'hi' ? 'दवा की जानकारी नहीं मिल सकी। कृपया साफ फोटो लें या नाम टाइप करें।' : 'Could not recognize medicine.')
+          res.error ||
+            (lang === 'hi'
+              ? 'दवा की जानकारी नहीं मिल सकी। कृपया साफ फोटो लें या नाम टाइप करें।'
+              : 'Could not recognize medicine.')
         );
         setInfoNotice('');
       }
@@ -202,8 +293,12 @@ export default function MedicineGuideScreen({ onBack }) {
     Alert.alert(
       lang === 'hi' ? 'सहेजा गया' : 'Saved',
       apiKeyInput.trim()
-        ? (lang === 'hi' ? 'Gemini API Key सुरक्षित रूप से सेव हो गई है!' : 'Gemini API Key saved successfully!')
-        : (lang === 'hi' ? 'API Key हटा दी गई है।' : 'API Key removed.')
+        ? lang === 'hi'
+          ? 'Gemini API Key सुरक्षित रूप से सेव हो गई है!'
+          : 'Gemini API Key saved successfully!'
+        : lang === 'hi'
+        ? 'API Key हटा दी गई है।'
+        : 'API Key removed.'
     );
   };
 
@@ -287,76 +382,80 @@ export default function MedicineGuideScreen({ onBack }) {
           </TouchableOpacity>
         </View>
 
-        {/* 3-in-1 Quick Action Cards: Camera, Gallery & Search */}
-        <View style={styles.actionCardsRow}>
-          {/* 1. Camera Capture */}
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={handleCaptureImage}
-            activeOpacity={0.85}
-          >
-            <LinearGradient
-              colors={['#0F766E', '#115E59', '#134E4A']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.actionCardGradient}
+        {/* Unified All-in-One Search Bar: Type, Clear, Voice Mic, and Camera Upload */}
+        <View style={[styles.searchBarWrapper, isListening && styles.searchBarListening]}>
+          <Ionicons name="search" size={20} color="#2DD4BF" style={styles.searchIcon} />
+
+          <TextInput
+            style={styles.searchInput}
+            placeholder={
+              isHindi
+                ? 'दवा का नाम, सॉल्ट या बीमारी लिखें...'
+                : 'Type medicine name, salt or symptom...'
+            }
+            placeholderTextColor="#64748B"
+            value={searchQuery}
+            onChangeText={(txt) => {
+              setSearchQuery(txt);
+              if (!txt.trim()) setSearchResults([]);
+              if (selectedMedicine) setSelectedMedicine(null);
+            }}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+
+          {loading && (
+            <ActivityIndicator size="small" color="#2DD4BF" style={{ marginRight: 6 }} />
+          )}
+
+          {/* Clear text button */}
+          {Boolean(searchQuery) && (
+            <TouchableOpacity
+              onPress={() => {
+                setSearchQuery('');
+                setSearchResults([]);
+              }}
+              style={styles.searchActionBtn}
             >
-              <View style={styles.actionIconCircle}>
-                <Ionicons name="camera" size={24} color="#5EEAD4" />
-              </View>
-              <Text style={styles.actionCardTitle}>
-                {isHindi ? 'कैमरा स्कैन' : 'Camera Scan'}
-              </Text>
-              <Text style={styles.actionCardSub}>
-                {isHindi ? 'फोटो खींचें' : 'Take Photo'}
-              </Text>
-            </LinearGradient>
+              <Ionicons name="close" size={18} color="#94A3B8" />
+            </TouchableOpacity>
+          )}
+
+          {/* Voice Search (Mic) Button */}
+          <TouchableOpacity
+            onPress={handleVoiceSearch}
+            style={[styles.searchActionBtn, isListening && styles.micBtnActive]}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={isListening ? 'mic' : 'mic-outline'}
+              size={20}
+              color={isListening ? '#EF4444' : '#2DD4BF'}
+            />
           </TouchableOpacity>
 
-          {/* 2. Upload Image */}
+          {/* Camera / Photo Upload Button */}
           <TouchableOpacity
-            style={styles.actionCard}
-            onPress={handleUploadImage}
-            activeOpacity={0.85}
+            onPress={() => setShowMediaModal(true)}
+            style={styles.searchActionBtn}
+            activeOpacity={0.7}
           >
-            <LinearGradient
-              colors={['#0369A1', '#075985', '#0C4A6E']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.actionCardGradient}
-            >
-              <View style={styles.actionIconCircleBlue}>
-                <Ionicons name="images" size={24} color="#7DD3FC" />
-              </View>
-              <Text style={styles.actionCardTitle}>
-                {isHindi ? 'गैलरी अपलोड' : 'Upload Image'}
-              </Text>
-              <Text style={styles.actionCardSub}>
-                {isHindi ? 'फोटो चुनें' : 'From Gallery'}
-              </Text>
-            </LinearGradient>
+            <Ionicons name="camera-outline" size={20} color="#2DD4BF" />
           </TouchableOpacity>
-
-          {/* 3. Search Info Badge */}
-          <View style={styles.actionCardInfo}>
-            <LinearGradient
-              colors={['#1E293B', '#0F172A']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.actionCardGradient}
-            >
-              <View style={styles.actionIconCircleGray}>
-                <MaterialCommunityIcons name="shield-check" size={24} color="#34D399" />
-              </View>
-              <Text style={styles.actionCardTitle}>
-                {isHindi ? '100% सही' : '100% Verified'}
-              </Text>
-              <Text style={styles.actionCardSub}>
-                {isHindi ? 'क्लीनिकल डेटा' : 'Clinical Facts'}
-              </Text>
-            </LinearGradient>
-          </View>
         </View>
+
+        {/* Live Speech Recognition / Scanner Status Notice */}
+        {Boolean(infoNotice) && (
+          <View style={styles.voiceStatusPill}>
+            <Ionicons
+              name={isListening ? 'radio-button-on' : 'information-circle'}
+              size={14}
+              color={isListening ? '#EF4444' : '#2DD4BF'}
+              style={{ marginRight: 6 }}
+            />
+            <Text style={styles.voiceStatusText}>{infoNotice}</Text>
+          </View>
+        )}
 
         {/* Image Preview & Scanning Status */}
         {capturedImage && (
@@ -385,40 +484,6 @@ export default function MedicineGuideScreen({ onBack }) {
             )}
           </View>
         )}
-
-        {/* Search Input Bar */}
-        <View style={styles.searchBarWrapper}>
-          <Ionicons name="search" size={20} color="#2DD4BF" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder={
-              isHindi
-                ? 'दवा या सॉल्ट का नाम लिखें (जैसे Dolo, Pan-D, Combiflam)...'
-                : 'Type medicine name or salt (e.g. Dolo, Pan-D, Augmentin)...'
-            }
-            placeholderTextColor="#64748B"
-            value={searchQuery}
-            onChangeText={(txt) => {
-              setSearchQuery(txt);
-              if (!txt.trim()) setSearchResults([]);
-              if (selectedMedicine) setSelectedMedicine(null);
-            }}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          {loading && <ActivityIndicator size="small" color="#2DD4BF" style={{ marginRight: 8 }} />}
-          {Boolean(searchQuery) && (
-            <TouchableOpacity
-              onPress={() => {
-                setSearchQuery('');
-                setSearchResults([]);
-              }}
-              style={styles.clearSearchBtn}
-            >
-              <Ionicons name="close" size={18} color="#94A3B8" />
-            </TouchableOpacity>
-          )}
-        </View>
 
         {/* SELECTED MEDICINE DETAIL VIEW */}
         {selectedMedicine ? (
@@ -455,7 +520,8 @@ export default function MedicineGuideScreen({ onBack }) {
                   <View style={styles.verifiedBadge}>
                     <Ionicons name="checkmark-circle" size={13} color="#34D399" />
                     <Text style={styles.verifiedBadgeText}>
-                      {selectedMedicine.source === 'gemini-vision' || selectedMedicine.source === 'gemini-ai'
+                      {selectedMedicine.source === 'gemini-vision' ||
+                      selectedMedicine.source === 'gemini-ai'
                         ? 'AI Verified'
                         : isHindi
                         ? 'सत्यापित'
@@ -489,7 +555,12 @@ export default function MedicineGuideScreen({ onBack }) {
             {/* Section 1: Primary Uses (किस काम आती है) */}
             <View style={styles.sectionCard}>
               <View style={styles.sectionTitleRow}>
-                <View style={[styles.sectionIconBox, { backgroundColor: 'rgba(45, 212, 191, 0.15)' }]}>
+                <View
+                  style={[
+                    styles.sectionIconBox,
+                    { backgroundColor: 'rgba(45, 212, 191, 0.15)' },
+                  ]}
+                >
                   <Ionicons name="medical" size={18} color="#2DD4BF" />
                 </View>
                 <Text style={styles.sectionTitle}>
@@ -498,21 +569,32 @@ export default function MedicineGuideScreen({ onBack }) {
               </View>
 
               <View style={styles.bulletsWrap}>
-                {(isHindi ? selectedMedicine.uses_hi : selectedMedicine.uses_en || selectedMedicine.uses_hi)?.map(
-                  (useItem, idx) => (
-                    <View key={idx} style={styles.bulletRow}>
-                      <Ionicons name="checkmark-done" size={16} color="#2DD4BF" style={styles.bulletIcon} />
-                      <Text style={styles.bulletText}>{useItem}</Text>
-                    </View>
-                  )
-                )}
+                {(isHindi
+                  ? selectedMedicine.uses_hi
+                  : selectedMedicine.uses_en || selectedMedicine.uses_hi
+                )?.map((useItem, idx) => (
+                  <View key={idx} style={styles.bulletRow}>
+                    <Ionicons
+                      name="checkmark-done"
+                      size={16}
+                      color="#2DD4BF"
+                      style={styles.bulletIcon}
+                    />
+                    <Text style={styles.bulletText}>{useItem}</Text>
+                  </View>
+                ))}
               </View>
             </View>
 
             {/* Section 2: Side Effects (संभावित दुष्प्रभाव) */}
             <View style={styles.sectionCard}>
               <View style={styles.sectionTitleRow}>
-                <View style={[styles.sectionIconBox, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
+                <View
+                  style={[
+                    styles.sectionIconBox,
+                    { backgroundColor: 'rgba(245, 158, 11, 0.15)' },
+                  ]}
+                >
                   <Ionicons name="alert-circle" size={18} color="#F59E0B" />
                 </View>
                 <Text style={styles.sectionTitle}>
@@ -527,10 +609,16 @@ export default function MedicineGuideScreen({ onBack }) {
               <View style={styles.bulletsWrap}>
                 {(isHindi
                   ? selectedMedicine.sideEffects_hi?.common
-                  : selectedMedicine.sideEffects_en?.common || selectedMedicine.sideEffects_hi?.common
+                  : selectedMedicine.sideEffects_en?.common ||
+                    selectedMedicine.sideEffects_hi?.common
                 )?.map((sideItem, idx) => (
                   <View key={idx} style={styles.bulletRow}>
-                    <Ionicons name="ellipse" size={8} color="#F59E0B" style={styles.smallDotIcon} />
+                    <Ionicons
+                      name="ellipse"
+                      size={8}
+                      color="#F59E0B"
+                      style={styles.smallDotIcon}
+                    />
                     <Text style={styles.bulletText}>{sideItem}</Text>
                   </View>
                 ))}
@@ -539,17 +627,26 @@ export default function MedicineGuideScreen({ onBack }) {
               {/* Serious / Warning Side Effects */}
               {((isHindi
                 ? selectedMedicine.sideEffects_hi?.serious
-                : selectedMedicine.sideEffects_en?.serious || selectedMedicine.sideEffects_hi?.serious
+                : selectedMedicine.sideEffects_en?.serious ||
+                  selectedMedicine.sideEffects_hi?.serious
               )?.length || 0) > 0 && (
                 <View style={styles.seriousAlertBox}>
-                  <Ionicons name="warning" size={16} color="#EF4444" style={{ marginRight: 6, marginTop: 1 }} />
+                  <Ionicons
+                    name="warning"
+                    size={16}
+                    color="#EF4444"
+                    style={{ marginRight: 6, marginTop: 1 }}
+                  />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.seriousAlertTitle}>
-                      {isHindi ? 'सावधानी / गंभीर लक्षण (Warning):' : 'Caution / Serious Symptoms:'}
+                      {isHindi
+                        ? 'सावधानी / गंभीर लक्षण (Warning):'
+                        : 'Caution / Serious Symptoms:'}
                     </Text>
                     {(isHindi
                       ? selectedMedicine.sideEffects_hi?.serious
-                      : selectedMedicine.sideEffects_en?.serious || selectedMedicine.sideEffects_hi?.serious
+                      : selectedMedicine.sideEffects_en?.serious ||
+                        selectedMedicine.sideEffects_hi?.serious
                     )?.map((warnItem, wIdx) => (
                       <Text key={wIdx} style={styles.seriousAlertText}>
                         • {warnItem}
@@ -563,7 +660,12 @@ export default function MedicineGuideScreen({ onBack }) {
             {/* Section 3: How to Use (कब और कैसे लें) */}
             <View style={styles.sectionCard}>
               <View style={styles.sectionTitleRow}>
-                <View style={[styles.sectionIconBox, { backgroundColor: 'rgba(56, 189, 248, 0.15)' }]}>
+                <View
+                  style={[
+                    styles.sectionIconBox,
+                    { backgroundColor: 'rgba(56, 189, 248, 0.15)' },
+                  ]}
+                >
                   <Ionicons name="time" size={18} color="#38BDF8" />
                 </View>
                 <Text style={styles.sectionTitle}>
@@ -580,7 +682,12 @@ export default function MedicineGuideScreen({ onBack }) {
             {/* Section 4: Key Precautions (ज़रूरी सावधानियां) */}
             <View style={styles.sectionCard}>
               <View style={styles.sectionTitleRow}>
-                <View style={[styles.sectionIconBox, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+                <View
+                  style={[
+                    styles.sectionIconBox,
+                    { backgroundColor: 'rgba(239, 68, 68, 0.15)' },
+                  ]}
+                >
                   <Ionicons name="shield-outline" size={18} color="#EF4444" />
                 </View>
                 <Text style={styles.sectionTitle}>
@@ -594,7 +701,12 @@ export default function MedicineGuideScreen({ onBack }) {
                   : selectedMedicine.precautions_en || selectedMedicine.precautions_hi
                 )?.map((pItem, idx) => (
                   <View key={idx} style={styles.bulletRow}>
-                    <Ionicons name="shield-checkmark" size={16} color="#F87171" style={styles.bulletIcon} />
+                    <Ionicons
+                      name="shield-checkmark"
+                      size={16}
+                      color="#F87171"
+                      style={styles.bulletIcon}
+                    />
                     <Text style={styles.bulletText}>{pItem}</Text>
                   </View>
                 ))}
@@ -605,7 +717,12 @@ export default function MedicineGuideScreen({ onBack }) {
             {selectedMedicine.safetyAdvice && (
               <View style={styles.sectionCard}>
                 <View style={styles.sectionTitleRow}>
-                  <View style={[styles.sectionIconBox, { backgroundColor: 'rgba(168, 85, 247, 0.15)' }]}>
+                  <View
+                    style={[
+                      styles.sectionIconBox,
+                      { backgroundColor: 'rgba(168, 85, 247, 0.15)' },
+                    ]}
+                  >
                     <MaterialCommunityIcons name="shield-account" size={18} color="#A855F7" />
                   </View>
                   <Text style={styles.sectionTitle}>
@@ -618,7 +735,9 @@ export default function MedicineGuideScreen({ onBack }) {
                   <View style={styles.safetyCard}>
                     <View style={styles.safetyHeader}>
                       <MaterialCommunityIcons name="human-pregnant" size={18} color="#F472B6" />
-                      <Text style={styles.safetyTitle}>{isHindi ? 'गर्भावस्था' : 'Pregnancy'}</Text>
+                      <Text style={styles.safetyTitle}>
+                        {isHindi ? 'गर्भावस्था' : 'Pregnancy'}
+                      </Text>
                     </View>
                     <Text style={styles.safetyDesc}>
                       {isHindi
@@ -631,7 +750,9 @@ export default function MedicineGuideScreen({ onBack }) {
                   <View style={styles.safetyCard}>
                     <View style={styles.safetyHeader}>
                       <Ionicons name="wine" size={17} color="#FB923C" />
-                      <Text style={styles.safetyTitle}>{isHindi ? 'शराब / अल्कोहल' : 'Alcohol'}</Text>
+                      <Text style={styles.safetyTitle}>
+                        {isHindi ? 'शराब / अल्कोहल' : 'Alcohol'}
+                      </Text>
                     </View>
                     <Text style={styles.safetyDesc}>
                       {isHindi
@@ -657,7 +778,9 @@ export default function MedicineGuideScreen({ onBack }) {
                   <View style={styles.safetyCard}>
                     <View style={styles.safetyHeader}>
                       <MaterialCommunityIcons name="hospital-box" size={17} color="#34D399" />
-                      <Text style={styles.safetyTitle}>{isHindi ? 'किडनी / लिवर' : 'Kidney/Liver'}</Text>
+                      <Text style={styles.safetyTitle}>
+                        {isHindi ? 'किडनी / लिवर' : 'Kidney/Liver'}
+                      </Text>
                     </View>
                     <Text style={styles.safetyDesc}>
                       {isHindi
@@ -671,7 +794,12 @@ export default function MedicineGuideScreen({ onBack }) {
 
             {/* Mandatory Medical Safety Disclaimer */}
             <View style={styles.disclaimerBox}>
-              <Ionicons name="information-circle" size={20} color="#FBBF24" style={{ marginRight: 8, marginTop: 2 }} />
+              <Ionicons
+                name="information-circle"
+                size={20}
+                color="#FBBF24"
+                style={{ marginRight: 8, marginTop: 2 }}
+              />
               <Text style={styles.disclaimerText}>
                 {isHindi
                   ? 'अस्वीकरण (Disclaimer): यह जानकारी केवल सामान्य जागरूकता और शैक्षिक उद्देश्य के लिए है। किसी भी दवा का सेवन या खुराक बदलने से पहले हमेशा योग्य डॉक्टर या फार्मासिस्ट से परामर्श अवश्य लें।'
@@ -737,12 +865,12 @@ export default function MedicineGuideScreen({ onBack }) {
               <View style={styles.emptyWrap}>
                 <MaterialCommunityIcons name="pill-off" size={48} color="#475569" />
                 <Text style={styles.emptyTitle}>
-                  {isHindi ? 'कोई दवा नहीं मिली' : 'No medicine found'}
+                  {isHindi ? 'खोज जारी है...' : 'Searching...'}
                 </Text>
                 <Text style={styles.emptySub}>
                   {isHindi
-                    ? 'कृपया स्पेलिंग चेक करें, या ऊपर कैमरा से फोटो खींचकर स्कैन करें।'
-                    : 'Check the spelling or use the camera scan option above.'}
+                    ? 'कृपया दवा या सॉल्ट का नाम चेक करें, या ऊपर कैमरा से फोटो खींचकर स्कैन करें।'
+                    : 'Please check the spelling or use the camera scan icon.'}
                 </Text>
               </View>
             ) : (
@@ -769,7 +897,8 @@ export default function MedicineGuideScreen({ onBack }) {
                           {item.salt}
                         </Text>
                         <Text style={styles.medItemUse} numberOfLines={1}>
-                          • {isHindi ? item.uses_hi?.[0] : item.uses_en?.[0] || item.uses_hi?.[0]}
+                          •{' '}
+                          {isHindi ? item.uses_hi?.[0] : item.uses_en?.[0] || item.uses_hi?.[0]}
                         </Text>
                       </View>
                     </View>
@@ -782,6 +911,79 @@ export default function MedicineGuideScreen({ onBack }) {
           </View>
         )}
       </ScrollView>
+
+      {/* MEDIA PICKER MODAL (Camera vs Gallery) */}
+      <Modal
+        visible={showMediaModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowMediaModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowMediaModal(false)}
+        >
+          <View style={styles.mediaPickerCard}>
+            <View style={styles.mediaPickerHeader}>
+              <Text style={styles.mediaPickerTitle}>
+                {isHindi ? 'दवा की फोटो चुनें' : 'Scan Medicine Image'}
+              </Text>
+              <TouchableOpacity onPress={() => setShowMediaModal(false)}>
+                <Ionicons name="close" size={22} color="#94A3B8" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.mediaPickerSub}>
+              {isHindi
+                ? 'दवा के पत्ते या रैपर की साफ फोटो लेकर AI से तुरंत नाम व उपयोग जानें।'
+                : 'Take or choose a clear photo of the medicine strip to identify.'}
+            </Text>
+
+            <View style={styles.mediaPickerOptionsRow}>
+              {/* Option 1: Camera */}
+              <TouchableOpacity
+                style={styles.mediaOptionBtn}
+                onPress={handleCaptureImage}
+                activeOpacity={0.85}
+              >
+                <LinearGradient
+                  colors={['#0F766E', '#115E59', '#134E4A']}
+                  style={styles.mediaOptionGradient}
+                >
+                  <Ionicons name="camera" size={32} color="#5EEAD4" />
+                  <Text style={styles.mediaOptionTitle}>
+                    {isHindi ? 'कैमरा से खींचें' : 'Take Photo'}
+                  </Text>
+                  <Text style={styles.mediaOptionDesc}>
+                    {isHindi ? 'लाइव फोटो लें' : 'Open Camera'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* Option 2: Gallery */}
+              <TouchableOpacity
+                style={styles.mediaOptionBtn}
+                onPress={handleUploadImage}
+                activeOpacity={0.85}
+              >
+                <LinearGradient
+                  colors={['#0369A1', '#075985', '#0C4A6E']}
+                  style={styles.mediaOptionGradient}
+                >
+                  <Ionicons name="images" size={32} color="#7DD3FC" />
+                  <Text style={styles.mediaOptionTitle}>
+                    {isHindi ? 'गैलरी से चुनें' : 'Choose Gallery'}
+                  </Text>
+                  <Text style={styles.mediaOptionDesc}>
+                    {isHindi ? 'फोटो अपलोड करें' : 'From Storage'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* GEMINI API KEY MODAL */}
       <Modal
@@ -919,72 +1121,64 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
   },
 
-  /* Action Cards */
-  actionCardsRow: {
+  /* All-in-One Search Bar */
+  searchBarWrapper: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 14,
-  },
-  actionCard: {
-    flex: 1,
+    alignItems: 'center',
+    backgroundColor: '#0B171C',
     borderRadius: 16,
-    overflow: 'hidden',
+    paddingHorizontal: 12,
+    height: 52,
+    borderWidth: 1.5,
+    borderColor: 'rgba(45, 212, 191, 0.4)',
+    marginBottom: 10,
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
   },
-  actionCardInfo: {
+  searchBarListening: {
+    borderColor: '#EF4444',
+    backgroundColor: 'rgba(239, 68, 68, 0.06)',
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
     flex: 1,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  actionCardGradient: {
-    paddingVertical: 12,
-    paddingHorizontal: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(94, 234, 212, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-  },
-  actionIconCircleBlue: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(125, 211, 252, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-  },
-  actionIconCircleGray: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(52, 211, 153, 0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-  },
-  actionCardTitle: {
-    fontSize: 12,
-    fontWeight: '800',
     color: '#F8FAFC',
-    textAlign: 'center',
+    fontSize: 14,
+    paddingVertical: 8,
   },
-  actionCardSub: {
-    fontSize: 10,
+  searchActionBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 4,
+    backgroundColor: 'rgba(45, 212, 191, 0.08)',
+  },
+  micBtnActive: {
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+  },
+  voiceStatusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(45, 212, 191, 0.1)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginBottom: 10,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'rgba(45, 212, 191, 0.25)',
+  },
+  voiceStatusText: {
+    fontSize: 12,
     fontWeight: '600',
-    color: 'rgba(248, 250, 252, 0.65)',
-    marginTop: 2,
-    textAlign: 'center',
+    color: '#5EEAD4',
   },
 
   /* Image Preview */
@@ -1019,31 +1213,6 @@ const styles = StyleSheet.create({
   },
   closeThumbBtn: {
     padding: 6,
-  },
-
-  /* Search Bar */
-  searchBarWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#0B171C',
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    height: 48,
-    borderWidth: 1.2,
-    borderColor: 'rgba(45, 212, 191, 0.35)',
-    marginBottom: 14,
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    color: '#F8FAFC',
-    fontSize: 13,
-    paddingVertical: 6,
-  },
-  clearSearchBtn: {
-    padding: 4,
   },
 
   /* Category Scroll */
@@ -1385,6 +1554,60 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     lineHeight: 17,
     color: '#FDE68A',
+  },
+
+  /* Media Picker Modal */
+  mediaPickerCard: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: '#0F1E24',
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1.5,
+    borderColor: 'rgba(45, 212, 191, 0.4)',
+  },
+  mediaPickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  mediaPickerTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#F8FAFC',
+  },
+  mediaPickerSub: {
+    fontSize: 12,
+    color: '#94A3B8',
+    lineHeight: 17,
+    marginBottom: 16,
+  },
+  mediaPickerOptionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  mediaOptionBtn: {
+    flex: 1,
+    borderRadius: 18,
+    overflow: 'hidden',
+  },
+  mediaOptionGradient: {
+    paddingVertical: 18,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mediaOptionTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#F8FAFC',
+    marginTop: 8,
+  },
+  mediaOptionDesc: {
+    fontSize: 11,
+    color: 'rgba(248, 250, 252, 0.7)',
+    marginTop: 2,
   },
 
   /* Modal */
