@@ -321,7 +321,7 @@ async function fetchPharmEasyLive(searchTerm, displayName, oneMgUrl) {
     const searchUrl = `https://r.jina.ai/https://pharmeasy.in/api/search/search?q=${encodeURIComponent(
       searchTerm
     )}`;
-    const searchRes = await fetchWithTimeout(searchUrl, {}, 9000);
+    const searchRes = await fetchWithTimeout(searchUrl, {}, 12000);
     if (!searchRes.ok) return null;
 
     const rawText = await searchRes.text();
@@ -342,8 +342,12 @@ async function fetchPharmEasyLive(searchTerm, displayName, oneMgUrl) {
     if (!best?.slug) return null;
 
     const pageUrl = `https://r.jina.ai/https://pharmeasy.in/online-medicine-order/${best.slug}`;
-    const pageRes = await fetchWithTimeout(pageUrl, {}, 10000);
-    if (!pageRes.ok) return null;
+    const pageRes = await fetchWithTimeout(pageUrl, {}, 15000);
+    if (!pageRes.ok) {
+      return best.moleculeName
+        ? await fetchOpenFdaOrWikipediaLive(best.moleculeName, displayName, oneMgUrl)
+        : null;
+    }
 
     const md = await pageRes.text();
     const descSection = extractMarkdownSection(md, 'Medical Description', '##');
@@ -480,7 +484,7 @@ async function fetchOpenFdaOrWikipediaLive(searchTerm, displayName, oneMgUrl) {
     const fdaQueries = [
       `openfda.brand_name:"${searchTerm}"`,
       `openfda.generic_name:"${searchTerm}"`,
-      encodeURIComponent(searchTerm),
+      `openfda.substance_name:"${searchTerm}"`,
     ];
     for (const q of fdaQueries) {
       const url = `https://api.fda.gov/drug/label.json?search=${q}&limit=1`;
