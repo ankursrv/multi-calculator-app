@@ -367,7 +367,7 @@ async function fetchPharmEasyLive(searchTerm, displayName, oneMgUrl) {
     }
     if (!introEn) return null;
 
-    // Parse Uses bullets
+    // Parse Uses bullets (or fallback to plain paragraph inside Uses section)
     const usesRaw = [];
     const useLines = usesSection.split('\n').map((l) => l.trim()).filter((l) => l.startsWith('*'));
     for (const line of useLines.slice(0, 5)) {
@@ -380,6 +380,15 @@ async function fetchPharmEasyLive(searchTerm, displayName, oneMgUrl) {
         });
       } else if (text) {
         usesRaw.push({ label: 'मुख्य उपयोग', desc: text });
+      }
+    }
+    if (usesRaw.length === 0) {
+      const usesFallbackText = stripHtmlAndMarkdown(usesSection) || descClean;
+      if (usesFallbackText) {
+        usesRaw.push({
+          label: 'मुख्य उपयोग',
+          desc: usesFallbackText.split(/(?<=[.!?])\s+/).slice(0, 3).join(' ').trim(),
+        });
       }
     }
 
