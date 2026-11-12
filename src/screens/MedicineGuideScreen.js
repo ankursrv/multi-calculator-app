@@ -383,6 +383,8 @@ export default function MedicineGuideScreen({ onBack }) {
                           <Text style={styles.bulletLabel}>{useItem.label}: </Text>
                           {useItem.desc}
                         </>
+                      ) : typeof useItem === 'object' ? (
+                        useItem.desc
                       ) : (
                         String(useItem)
                       )}

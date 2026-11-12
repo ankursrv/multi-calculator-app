@@ -159,10 +159,12 @@ function pickBestSearchMatch(items, query, nameGetter) {
 async function searchOneMgLive(searchTerm) {
   const targetUrl = `https://www.1mg.com/pwa-api/api/v4/search/all?q=${encodeURIComponent(
     searchTerm
-  )}&per_page=5&types=sku`;
+  )}&per_page=10&types=sku`;
 
-  // Try direct fetch first (works on Native Android/iOS)
-  const urlsToTry = [targetUrl, `https://r.jina.ai/${targetUrl}`];
+  const isWebBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
+  const urlsToTry = isWebBrowser
+    ? [`https://r.jina.ai/${targetUrl}`]
+    : [targetUrl, `https://r.jina.ai/${targetUrl}`];
   for (const url of urlsToTry) {
     try {
       const res = await fetchWithTimeout(url, {}, 7000);
@@ -379,14 +381,14 @@ async function fetchPharmEasyLive(searchTerm, displayName, oneMgUrl) {
           desc: text.slice(colonIdx + 1).trim(),
         });
       } else if (text) {
-        usesRaw.push({ label: 'मुख्य उपयोग', desc: text });
+        usesRaw.push({ label: '', desc: text });
       }
     }
     if (usesRaw.length === 0) {
       const usesFallbackText = stripHtmlAndMarkdown(usesSection) || descClean;
       if (usesFallbackText) {
         usesRaw.push({
-          label: 'मुख्य उपयोग',
+          label: '',
           desc: usesFallbackText.split(/(?<=[.!?])\s+/).slice(0, 3).join(' ').trim(),
         });
       }
@@ -420,9 +422,10 @@ async function fetchPharmEasyLive(searchTerm, displayName, oneMgUrl) {
     const alcoholText = extractSubWarn('Alcohol');
 
     // Batch translate live English fields into Hindi
+    const nonEmptyLabels = usesRaw.map((u) => u.label).filter(Boolean);
     const stringsToTranslate = [
       introEn,
-      ...usesRaw.map((u) => u.label),
+      ...nonEmptyLabels,
       ...usesRaw.map((u) => u.desc),
       ...sideEffectsEn,
       pregText || 'Consult a doctor before using this medicine during pregnancy and breastfeeding.',
@@ -442,14 +445,15 @@ async function fetchPharmEasyLive(searchTerm, displayName, oneMgUrl) {
       }
     }
 
-    const usesLabelsHi = translated.slice(cursor, cursor + usesRaw.length);
-    cursor += usesRaw.length;
+    const usesLabelsHi = translated.slice(cursor, cursor + nonEmptyLabels.length);
+    cursor += nonEmptyLabels.length;
     const usesDescsHi = translated.slice(cursor, cursor + usesRaw.length);
     cursor += usesRaw.length;
 
-    const usesHi = usesRaw.map((_, i) => ({
-      label: usesLabelsHi[i] || usesRaw[i].label,
-      desc: usesDescsHi[i] || usesRaw[i].desc,
+    let labelIdx = 0;
+    const usesHi = usesRaw.map((u, i) => ({
+      label: u.label ? usesLabelsHi[labelIdx++] || u.label : '',
+      desc: usesDescsHi[i] || u.desc,
     }));
 
     const sideEffectsHi = translated.slice(cursor, cursor + sideEffectsEn.length);
@@ -624,8 +628,9 @@ export async function resolveMedicine(rawQuery) {
   const oneMgMatch = await searchOneMgLive(searchTerm);
   const oneMgUrl = oneMgMatch?.oneMgUrl || `https://www.1mg.com/search/all?name=${encodeURIComponent(displayName)}`;
 
-  // 1. On native devices (or when direct 1mg HTML is reachable), prefer native Hindi 1mg clinical state
-  if (oneMgMatch?.urlPath) {
+  // 1. On native devices (non-browser), prefer native Hindi 1mg clinical state directly
+  const isWebBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
+  if (!isWebBrowser && oneMgMatch?.urlPath) {
     const oneMgData = await fetchOneMgHindiDetails(oneMgMatch.urlPath, displayName, oneMgUrl);
     if (oneMgData) return oneMgData;
   }
