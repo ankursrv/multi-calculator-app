@@ -11,6 +11,7 @@ import {
   Modal,
   Platform,
   Alert,
+  Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -20,6 +21,7 @@ import ScreenHeader from '../components/ScreenHeader';
 import { resolveMedicine } from '../services/clinicalMedicineService';
 
 const SUGGESTIONS = [
+  'Ajubi Tablet',
   'Buxo-40',
   'Dolo 650',
   'Combiflam',
@@ -28,7 +30,6 @@ const SUGGESTIONS = [
   'Cetirizine',
   'Augmentin 625',
   'Telma 40',
-  'Aciloc 150',
   'Meftal-Spas',
 ];
 
@@ -391,7 +392,7 @@ export default function MedicineGuideScreen({ onBack }) {
         {/* DYNAMIC RESULT: USER-SEARCHED MEDICINE DETAILS */}
         {medicineResult ? (
           <View style={styles.detailContainer}>
-            {/* Medicine Hero Card (Displays EXACT medicine name searched by user) */}
+            {/* Intro Summary Card (Displays EXACT medicine name + 1-line summary) */}
             <LinearGradient
               colors={['#0F242A', '#0B1C22', '#07151A']}
               start={{ x: 0, y: 0 }}
@@ -400,18 +401,10 @@ export default function MedicineGuideScreen({ onBack }) {
             >
               <View style={styles.medHeroHeader}>
                 <View style={styles.medHeroBadgeRow}>
-                  <View style={styles.categoryBadge}>
-                    <Text style={styles.categoryBadgeText}>
-                      {isHindi
-                        ? medicineResult.category_hi || medicineResult.category_en
-                        : medicineResult.category_en || medicineResult.category_hi}
-                    </Text>
-                  </View>
-
                   <View style={styles.verifiedBadge}>
                     <Ionicons name="checkmark-circle" size={13} color="#34D399" />
                     <Text style={styles.verifiedBadgeText}>
-                      {isHindi ? 'सत्यापित जानकारी' : 'Verified Clinical Data'}
+                      {isHindi ? 'दवा की जानकारी' : 'Medicine Information'}
                     </Text>
                   </View>
                 </View>
@@ -419,19 +412,16 @@ export default function MedicineGuideScreen({ onBack }) {
                 {/* EXACT NAME SEARCHED BY USER */}
                 <Text style={styles.medHeroTitle}>{medicineResult.name}</Text>
 
-                {Boolean(medicineResult.salt) && (
-                  <View style={styles.saltRow}>
-                    <MaterialCommunityIcons name="molecule" size={16} color="#5EEAD4" />
-                    <Text style={styles.saltLabel}>
-                      {isHindi ? 'साल्ट (Salt):' : 'Active Salt:'}
-                    </Text>
-                    <Text style={styles.saltText}>{medicineResult.salt}</Text>
-                  </View>
-                )}
+                {/* Intro Summary Sentence */}
+                <Text style={styles.introSummaryText}>
+                  {isHindi
+                    ? medicineResult.intro_hi || medicineResult.intro_en
+                    : medicineResult.intro_en || medicineResult.intro_hi}
+                </Text>
               </View>
             </LinearGradient>
 
-            {/* Section 1: Primary Uses (किस काम आती है) */}
+            {/* Section 1: मुख्य उपयोग (Uses) */}
             <View style={styles.sectionCard}>
               <View style={styles.sectionTitleRow}>
                 <View
@@ -443,9 +433,15 @@ export default function MedicineGuideScreen({ onBack }) {
                   <Ionicons name="medical" size={18} color="#2DD4BF" />
                 </View>
                 <Text style={styles.sectionTitle}>
-                  {isHindi ? 'दवा किस काम आती है (मुख्य उपयोग)' : 'Primary Uses & Indications'}
+                  {isHindi ? 'मुख्य उपयोग (Uses)' : 'Primary Uses (Uses)'}
                 </Text>
               </View>
+
+              <Text style={styles.usesIntroText}>
+                {isHindi
+                  ? medicineResult.usesIntro_hi || medicineResult.usesIntro_en
+                  : medicineResult.usesIntro_en || medicineResult.usesIntro_hi}
+              </Text>
 
               <View style={styles.bulletsWrap}>
                 {(isHindi
@@ -454,18 +450,42 @@ export default function MedicineGuideScreen({ onBack }) {
                 )?.map((useItem, idx) => (
                   <View key={idx} style={styles.bulletRow}>
                     <Ionicons
-                      name="checkmark-done"
-                      size={16}
+                      name="ellipse"
+                      size={7}
                       color="#2DD4BF"
-                      style={styles.bulletIcon}
+                      style={styles.smallDotIcon}
                     />
-                    <Text style={styles.bulletText}>{useItem}</Text>
+                    <Text style={styles.bulletText}>
+                      {typeof useItem === 'object' && useItem.label ? (
+                        <>
+                          <Text style={styles.bulletLabel}>{useItem.label}: </Text>
+                          {useItem.desc}
+                        </>
+                      ) : (
+                        String(useItem)
+                      )}
+                    </Text>
                   </View>
                 ))}
               </View>
+
+              {Boolean(medicineResult.oneMgUrl) && (
+                <TouchableOpacity
+                  style={styles.oneMgLinkBox}
+                  onPress={() => Linking.openURL(medicineResult.oneMgUrl)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="open-outline" size={16} color="#38BDF8" />
+                  <Text style={styles.oneMgLinkText}>
+                    {isHindi
+                      ? `आप इस दवा के बारे में अधिक जानकारी Tata 1mg पर ${medicineResult.name} के माध्यम से देख सकते हैं।`
+                      : `View more details about ${medicineResult.name} on Tata 1mg.`}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
-            {/* Section 2: Side Effects (संभावित दुष्प्रभाव) */}
+            {/* Section 2: सामान्य दुष्प्रभाव (Side Effects) */}
             <View style={styles.sectionCard}>
               <View style={styles.sectionTitleRow}>
                 <View
@@ -477,24 +497,21 @@ export default function MedicineGuideScreen({ onBack }) {
                   <Ionicons name="alert-circle" size={18} color="#F59E0B" />
                 </View>
                 <Text style={styles.sectionTitle}>
-                  {isHindi ? 'साइड इफेक्ट्स (संभावित दुष्प्रभाव)' : 'Potential Side Effects'}
+                  {isHindi
+                    ? 'सामान्य दुष्प्रभाव (Side Effects)'
+                    : 'Common Side Effects'}
                 </Text>
               </View>
 
-              {/* Common Side Effects */}
-              <Text style={styles.subSectionHeader}>
-                {isHindi ? 'सामान्य लक्षण (Common):' : 'Common Side Effects:'}
-              </Text>
               <View style={styles.bulletsWrap}>
                 {(isHindi
-                  ? medicineResult.sideEffects_hi?.common
-                  : medicineResult.sideEffects_en?.common ||
-                    medicineResult.sideEffects_hi?.common
+                  ? medicineResult.sideEffects_hi
+                  : medicineResult.sideEffects_en || medicineResult.sideEffects_hi
                 )?.map((sideItem, idx) => (
                   <View key={idx} style={styles.bulletRow}>
                     <Ionicons
                       name="ellipse"
-                      size={8}
+                      size={7}
                       color="#F59E0B"
                       style={styles.smallDotIcon}
                     />
@@ -502,63 +519,9 @@ export default function MedicineGuideScreen({ onBack }) {
                   </View>
                 ))}
               </View>
-
-              {/* Serious / Warning Side Effects */}
-              {((isHindi
-                ? medicineResult.sideEffects_hi?.serious
-                : medicineResult.sideEffects_en?.serious ||
-                  medicineResult.sideEffects_hi?.serious
-              )?.length || 0) > 0 && (
-                <View style={styles.seriousAlertBox}>
-                  <Ionicons
-                    name="warning"
-                    size={16}
-                    color="#EF4444"
-                    style={{ marginRight: 6, marginTop: 1 }}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.seriousAlertTitle}>
-                      {isHindi
-                        ? 'सावधानी / गंभीर लक्षण (Warning):'
-                        : 'Caution / Serious Symptoms:'}
-                    </Text>
-                    {(isHindi
-                      ? medicineResult.sideEffects_hi?.serious
-                      : medicineResult.sideEffects_en?.serious ||
-                        medicineResult.sideEffects_hi?.serious
-                    )?.map((warnItem, wIdx) => (
-                      <Text key={wIdx} style={styles.seriousAlertText}>
-                        • {warnItem}
-                      </Text>
-                    ))}
-                  </View>
-                </View>
-              )}
             </View>
 
-            {/* Section 3: How to Use (कब और कैसे लें) */}
-            <View style={styles.sectionCard}>
-              <View style={styles.sectionTitleRow}>
-                <View
-                  style={[
-                    styles.sectionIconBox,
-                    { backgroundColor: 'rgba(56, 189, 248, 0.15)' },
-                  ]}
-                >
-                  <Ionicons name="time" size={18} color="#38BDF8" />
-                </View>
-                <Text style={styles.sectionTitle}>
-                  {isHindi ? 'कब और कैसे लें (सेवन का तरीका)' : 'How & When to Take'}
-                </Text>
-              </View>
-              <Text style={styles.howToUseText}>
-                {isHindi
-                  ? medicineResult.howToUse_hi || medicineResult.howToUse_en
-                  : medicineResult.howToUse_en || medicineResult.howToUse_hi}
-              </Text>
-            </View>
-
-            {/* Section 4: Key Precautions (ज़रूरी सावधानियां) */}
+            {/* Section 3: सावधानी और चेतावनी */}
             <View style={styles.sectionCard}>
               <View style={styles.sectionTitleRow}>
                 <View
@@ -567,109 +530,41 @@ export default function MedicineGuideScreen({ onBack }) {
                     { backgroundColor: 'rgba(239, 68, 68, 0.15)' },
                   ]}
                 >
-                  <Ionicons name="shield-outline" size={18} color="#EF4444" />
+                  <Ionicons name="warning" size={18} color="#EF4444" />
                 </View>
                 <Text style={styles.sectionTitle}>
-                  {isHindi ? 'ज़रूरी सावधानियां (Precautions)' : 'Important Precautions'}
+                  {isHindi
+                    ? 'सावधानी और चेतावनी'
+                    : 'Precautions & Warnings'}
                 </Text>
               </View>
 
               <View style={styles.bulletsWrap}>
                 {(isHindi
-                  ? medicineResult.precautions_hi
-                  : medicineResult.precautions_en || medicineResult.precautions_hi
-                )?.map((pItem, idx) => (
+                  ? medicineResult.warnings_hi
+                  : medicineResult.warnings_en || medicineResult.warnings_hi
+                )?.map((wItem, idx) => (
                   <View key={idx} style={styles.bulletRow}>
                     <Ionicons
-                      name="shield-checkmark"
-                      size={16}
-                      color="#F87171"
-                      style={styles.bulletIcon}
+                      name="ellipse"
+                      size={7}
+                      color="#EF4444"
+                      style={styles.smallDotIcon}
                     />
-                    <Text style={styles.bulletText}>{pItem}</Text>
+                    <Text style={styles.bulletText}>
+                      {typeof wItem === 'object' && wItem.label ? (
+                        <>
+                          <Text style={styles.bulletLabel}>{wItem.label}: </Text>
+                          {wItem.desc}
+                        </>
+                      ) : (
+                        String(wItem)
+                      )}
+                    </Text>
                   </View>
                 ))}
               </View>
             </View>
-
-            {/* Section 5: Safety Matrix (सुरक्षा सलाह) */}
-            {medicineResult.safetyAdvice && (
-              <View style={styles.sectionCard}>
-                <View style={styles.sectionTitleRow}>
-                  <View
-                    style={[
-                      styles.sectionIconBox,
-                      { backgroundColor: 'rgba(168, 85, 247, 0.15)' },
-                    ]}
-                  >
-                    <MaterialCommunityIcons name="shield-account" size={18} color="#A855F7" />
-                  </View>
-                  <Text style={styles.sectionTitle}>
-                    {isHindi ? 'सुरक्षा मैट्रिक्स (Safety Advice)' : 'Safety Guidance'}
-                  </Text>
-                </View>
-
-                <View style={styles.safetyGrid}>
-                  {/* Pregnancy */}
-                  <View style={styles.safetyCard}>
-                    <View style={styles.safetyHeader}>
-                      <MaterialCommunityIcons name="human-pregnant" size={18} color="#F472B6" />
-                      <Text style={styles.safetyTitle}>
-                        {isHindi ? 'गर्भावस्था' : 'Pregnancy'}
-                      </Text>
-                    </View>
-                    <Text style={styles.safetyDesc}>
-                      {isHindi
-                        ? medicineResult.safetyAdvice.pregnancy?.text_hi
-                        : medicineResult.safetyAdvice.pregnancy?.text_en}
-                    </Text>
-                  </View>
-
-                  {/* Alcohol */}
-                  <View style={styles.safetyCard}>
-                    <View style={styles.safetyHeader}>
-                      <Ionicons name="wine" size={17} color="#FB923C" />
-                      <Text style={styles.safetyTitle}>
-                        {isHindi ? 'शराब / अल्कोहल' : 'Alcohol'}
-                      </Text>
-                    </View>
-                    <Text style={styles.safetyDesc}>
-                      {isHindi
-                        ? medicineResult.safetyAdvice.alcohol?.text_hi
-                        : medicineResult.safetyAdvice.alcohol?.text_en}
-                    </Text>
-                  </View>
-
-                  {/* Driving */}
-                  <View style={styles.safetyCard}>
-                    <View style={styles.safetyHeader}>
-                      <Ionicons name="car" size={17} color="#38BDF8" />
-                      <Text style={styles.safetyTitle}>{isHindi ? 'ड्राइविंग' : 'Driving'}</Text>
-                    </View>
-                    <Text style={styles.safetyDesc}>
-                      {isHindi
-                        ? medicineResult.safetyAdvice.driving?.text_hi
-                        : medicineResult.safetyAdvice.driving?.text_en}
-                    </Text>
-                  </View>
-
-                  {/* Kidney / Liver */}
-                  <View style={styles.safetyCard}>
-                    <View style={styles.safetyHeader}>
-                      <MaterialCommunityIcons name="hospital-box" size={17} color="#34D399" />
-                      <Text style={styles.safetyTitle}>
-                        {isHindi ? 'किडनी / लिवर' : 'Kidney/Liver'}
-                      </Text>
-                    </View>
-                    <Text style={styles.safetyDesc}>
-                      {isHindi
-                        ? medicineResult.safetyAdvice.kidneyLiver?.text_hi
-                        : medicineResult.safetyAdvice.kidneyLiver?.text_en}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            )}
 
             {/* Mandatory Medical Safety Disclaimer */}
             <View style={styles.disclaimerBox}>
@@ -1035,21 +930,8 @@ const styles = StyleSheet.create({
   medHeroBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  categoryBadge: {
-    backgroundColor: 'rgba(45, 212, 191, 0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(45, 212, 191, 0.3)',
-  },
-  categoryBadgeText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#5EEAD4',
+    justifyContent: 'flex-start',
+    marginBottom: 8,
   },
   verifiedBadge: {
     flexDirection: 'row',
@@ -1066,27 +948,16 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   medHeroTitle: {
-    fontSize: 24,
+    fontSize: 23,
     fontWeight: '900',
     color: '#FFFFFF',
     letterSpacing: 0.3,
+    marginBottom: 8,
   },
-  saltRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-    flexWrap: 'wrap',
-  },
-  saltLabel: {
-    fontSize: 12,
-    color: '#94A3B8',
-    marginLeft: 6,
-    marginRight: 4,
-  },
-  saltText: {
+  introSummaryText: {
     fontSize: 13.5,
-    fontWeight: '700',
-    color: '#5EEAD4',
+    lineHeight: 20,
+    color: '#E2E8F0',
   },
 
   /* Generic Section Cards */
@@ -1117,6 +988,12 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
     flex: 1,
   },
+  usesIntroText: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: '#CBD5E1',
+    marginBottom: 10,
+  },
   bulletsWrap: {
     gap: 8,
   },
@@ -1124,82 +1001,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
-  bulletIcon: {
-    marginRight: 8,
-    marginTop: 2,
-  },
   smallDotIcon: {
-    marginRight: 8,
+    marginRight: 9,
     marginTop: 6,
   },
   bulletText: {
     flex: 1,
     fontSize: 13,
-    lineHeight: 19,
-    color: '#E2E8F0',
-  },
-  subSectionHeader: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FBBF24',
-    marginBottom: 6,
-  },
-  seriousAlertBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderRadius: 12,
-    padding: 10,
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-  },
-  seriousAlertTitle: {
-    fontSize: 11.5,
-    fontWeight: '800',
-    color: '#F87171',
-    marginBottom: 3,
-  },
-  seriousAlertText: {
-    fontSize: 12,
-    color: '#FECACA',
-    lineHeight: 17,
-  },
-  howToUseText: {
-    fontSize: 13,
     lineHeight: 20,
     color: '#E2E8F0',
   },
-
-  /* Safety Matrix */
-  safetyGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  safetyCard: {
-    width: '48%',
-    backgroundColor: '#0F2128',
-    borderRadius: 12,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.12)',
-  },
-  safetyHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  safetyTitle: {
-    fontSize: 11.5,
+  bulletLabel: {
     fontWeight: '800',
     color: '#F8FAFC',
-    marginLeft: 6,
   },
-  safetyDesc: {
-    fontSize: 11,
-    lineHeight: 15,
-    color: '#94A3B8',
+  oneMgLinkBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 12,
+    padding: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(56, 189, 248, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.25)',
+    gap: 8,
+  },
+  oneMgLinkText: {
+    flex: 1,
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: '#38BDF8',
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 
   /* Disclaimer */
