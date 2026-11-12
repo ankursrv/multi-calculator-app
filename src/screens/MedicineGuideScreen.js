@@ -20,23 +20,10 @@ import { Colors } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
 import { resolveMedicine } from '../services/clinicalMedicineService';
 
-const SUGGESTIONS = [
-  'Ajubi Tablet',
-  'Buxo-40',
-  'Dolo 650',
-  'Combiflam',
-  'Pan-D',
-  'Azithral 500',
-  'Cetirizine',
-  'Augmentin 625',
-  'Telma 40',
-  'Meftal-Spas',
-];
-
 export default function MedicineGuideScreen({ onBack }) {
-  const [lang, setLang] = useState('hi'); // 'hi' (Hindi) or 'en' (English)
   const [searchQuery, setSearchQuery] = useState('');
   const [medicineResult, setMedicineResult] = useState(null);
+  const [notFoundTerm, setNotFoundTerm] = useState('');
   const [capturedImage, setCapturedImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showMediaModal, setShowMediaModal] = useState(false);
@@ -58,25 +45,30 @@ export default function MedicineGuideScreen({ onBack }) {
     };
   }, []);
 
-  // Execute Dynamic Search for ANY medicine name
+  // Execute 100% Live Search for ANY medicine name (zero static data)
   const executeSearch = async (term) => {
     const cleanTerm = (term || searchQuery).trim();
     if (!cleanTerm) return;
 
     setLoading(true);
     setInfoNotice('');
+    setNotFoundTerm('');
 
     try {
       const result = await resolveMedicine(cleanTerm);
       if (result) {
         setMedicineResult(result);
+        setNotFoundTerm('');
+      } else {
+        setMedicineResult(null);
+        setNotFoundTerm(cleanTerm);
       }
     } catch (_err) {
+      setMedicineResult(null);
+      setNotFoundTerm(cleanTerm);
       Alert.alert(
-        lang === 'hi' ? 'त्रुटि' : 'Error',
-        lang === 'hi'
-          ? 'जानकारी प्राप्त करने में समस्या आई। कृपया पुनः प्रयास करें।'
-          : 'Could not fetch medicine information. Please try again.'
+        'त्रुटि',
+        'लाइव जानकारी प्राप्त करने में समस्या आई। कृपया इंटरनेट कनेक्शन या दवा का नाम जांचें।'
       );
     } finally {
       setLoading(false);
@@ -92,10 +84,8 @@ export default function MedicineGuideScreen({ onBack }) {
 
     if (!SpeechRecognition) {
       Alert.alert(
-        lang === 'hi' ? 'वॉयस सर्च' : 'Voice Search',
-        lang === 'hi'
-          ? 'आपके ब्राउज़र में स्पीच रिकॉग्निशन उपलब्ध नहीं है। कृपया दवा का नाम टाइप करें।'
-          : 'Voice speech recognition is not supported on this browser. Please type the medicine name.'
+        'वॉयस सर्च',
+        'आपके ब्राउज़र में स्पीच रिकॉग्निशन उपलब्ध नहीं है। कृपया दवा का नाम टाइप करें।'
       );
       return;
     }
@@ -114,15 +104,13 @@ export default function MedicineGuideScreen({ onBack }) {
     try {
       const recognition = new SpeechRecognition();
       recognitionRef.current = recognition;
-      recognition.lang = lang === 'hi' ? 'hi-IN' : 'en-IN';
+      recognition.lang = 'hi-IN';
       recognition.continuous = false;
       recognition.interimResults = false;
 
       recognition.onstart = () => {
         setIsListening(true);
-        setInfoNotice(
-          lang === 'hi' ? '🎙️ बोलिए, सुन रहे हैं...' : '🎙️ Listening... Speak medicine name...'
-        );
+        setInfoNotice('🎙️ बोलिए, सुन रहे हैं...');
       };
 
       recognition.onresult = (event) => {
@@ -130,7 +118,7 @@ export default function MedicineGuideScreen({ onBack }) {
         if (transcript.trim()) {
           const spoken = transcript.trim();
           setSearchQuery(spoken);
-          setInfoNotice(lang === 'hi' ? `बोला गया: "${spoken}"` : `Heard: "${spoken}"`);
+          setInfoNotice(`बोला गया: "${spoken}"`);
           executeSearch(spoken);
         }
         setIsListening(false);
@@ -160,10 +148,8 @@ export default function MedicineGuideScreen({ onBack }) {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
           Alert.alert(
-            lang === 'hi' ? 'कैमरा अनुमति आवश्यक है' : 'Camera Permission Required',
-            lang === 'hi'
-              ? 'दवा के पत्ते की फोटो खींचने के लिए कृपया कैमरा एक्सेस की अनुमति दें।'
-              : 'Please allow camera access to take a photo of the medicine.'
+            'कैमरा अनुमति आवश्यक है',
+            'दवा के पत्ते की फोटो खींचने के लिए कृपया कैमरा एक्सेस की अनुमति दें।'
           );
           return;
         }
@@ -177,17 +163,10 @@ export default function MedicineGuideScreen({ onBack }) {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         setCapturedImage(result.assets[0].uri);
-        setInfoNotice(
-          lang === 'hi'
-            ? 'फोटो प्राप्त हुई। नीचे दवा का नाम लिखकर खोजें।'
-            : 'Photo attached. Enter or verify name to search.'
-        );
+        setInfoNotice('फोटो प्राप्त हुई। ऊपर सर्च बॉक्स में दवा का नाम लिखकर खोजें।');
       }
     } catch (_e) {
-      Alert.alert(
-        lang === 'hi' ? 'त्रुटि' : 'Error',
-        lang === 'hi' ? 'कैमरा शुरू करने में समस्या आई।' : 'Could not open camera.'
-      );
+      Alert.alert('त्रुटि', 'कैमरा शुरू करने में समस्या आई।');
     }
   };
 
@@ -199,10 +178,8 @@ export default function MedicineGuideScreen({ onBack }) {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
           Alert.alert(
-            lang === 'hi' ? 'गैलरी अनुमति आवश्यक है' : 'Gallery Permission Required',
-            lang === 'hi'
-              ? 'दवा की फोटो चुनने के लिए कृपया फोटो गैलरी की अनुमति दें।'
-              : 'Please allow photo gallery access to pick a medicine image.'
+            'गैलरी अनुमति आवश्यक है',
+            'दवा की फोटो चुनने के लिए कृपया फोटो गैलरी की अनुमति दें।'
           );
           return;
         }
@@ -216,33 +193,25 @@ export default function MedicineGuideScreen({ onBack }) {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         setCapturedImage(result.assets[0].uri);
-        setInfoNotice(
-          lang === 'hi'
-            ? 'फोटो अपलोड हुई। नीचे दवा का नाम लिखकर खोजें।'
-            : 'Photo uploaded. Enter or verify name to search.'
-        );
+        setInfoNotice('फोटो अपलोड हुई। ऊपर सर्च बॉक्स में दवा का नाम लिखकर खोजें।');
       }
     } catch (_e) {
-      Alert.alert(
-        lang === 'hi' ? 'त्रुटि' : 'Error',
-        lang === 'hi' ? 'फोटो गैलरी खोलने में समस्या आई।' : 'Could not access photo library.'
-      );
+      Alert.alert('त्रुटि', 'फोटो गैलरी खोलने में समस्या आई।');
     }
   };
-
-  const isHindi = lang === 'hi';
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <ScreenHeader
-        title={isHindi ? 'दवाई जानकारी' : 'Medicine Guide'}
-        subtitle={isHindi ? 'उपयोग, साइड इफेक्ट्स व सुरक्षा' : 'Uses, Side Effects & Safety'}
+        title="दवाई जानकारी"
+        subtitle="उपयोग, साइड इफेक्ट्स व सुरक्षा"
         icon="pill"
         theme="teal"
         onBack={onBack}
         onReset={() => {
           setMedicineResult(null);
+          setNotFoundTerm('');
           setSearchQuery('');
           setCapturedImage(null);
           setInfoNotice('');
@@ -255,42 +224,13 @@ export default function MedicineGuideScreen({ onBack }) {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Top Language Toggle Bar (No AI Key button) */}
-        <View style={styles.topControlRow}>
-          <View style={styles.langSwitchWrapper}>
-            <TouchableOpacity
-              style={[styles.langBtn, isHindi && styles.langBtnActive]}
-              onPress={() => setLang('hi')}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.langBtnText, isHindi && styles.langBtnTextActive]}>
-                🇮🇳 हिंदी
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.langBtn, !isHindi && styles.langBtnActive]}
-              onPress={() => setLang('en')}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.langBtnText, !isHindi && styles.langBtnTextActive]}>
-                🇬🇧 English
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
         {/* Unified Search Bar */}
         <View style={[styles.searchBarWrapper, isListening && styles.searchBarListening]}>
           <Ionicons name="search" size={20} color="#2DD4BF" style={styles.searchIcon} />
 
           <TextInput
             style={styles.searchInput}
-            placeholder={
-              isHindi
-                ? 'दवा का नाम लिखें (जैसे Buxo-40, Dolo, Pan-D)...'
-                : 'Type medicine name (e.g. Buxo-40, Dolo, Pan-D)...'
-            }
+            placeholder="दवा का नाम लिखें..."
             placeholderTextColor="#64748B"
             value={searchQuery}
             onChangeText={(txt) => setSearchQuery(txt)}
@@ -310,6 +250,7 @@ export default function MedicineGuideScreen({ onBack }) {
               onPress={() => {
                 setSearchQuery('');
                 setMedicineResult(null);
+                setNotFoundTerm('');
                 setInfoNotice('');
               }}
               style={styles.searchActionBtn}
@@ -346,9 +287,7 @@ export default function MedicineGuideScreen({ onBack }) {
             style={styles.searchSubmitBtn}
             activeOpacity={0.8}
           >
-            <Text style={styles.searchSubmitBtnText}>
-              {isHindi ? 'खोजें' : 'Search'}
-            </Text>
+            <Text style={styles.searchSubmitBtnText}>खोजें</Text>
           </TouchableOpacity>
         </View>
 
@@ -370,11 +309,9 @@ export default function MedicineGuideScreen({ onBack }) {
           <View style={styles.imagePreviewBox}>
             <Image source={{ uri: capturedImage }} style={styles.thumbnailImg} />
             <View style={styles.imagePreviewTextWrap}>
-              <Text style={styles.imagePreviewTitle}>
-                {isHindi ? 'दवा की फोटो' : 'Attached Photo'}
-              </Text>
+              <Text style={styles.imagePreviewTitle}>दवा की फोटो</Text>
               <Text style={styles.imagePreviewSub} numberOfLines={1}>
-                {isHindi ? 'सर्च बॉक्स में नाम लिखकर खोजें' : 'Ready to search'}
+                सर्च बॉक्स में नाम लिखकर खोजें
               </Text>
             </View>
             <TouchableOpacity
@@ -392,7 +329,7 @@ export default function MedicineGuideScreen({ onBack }) {
         {/* DYNAMIC RESULT: USER-SEARCHED MEDICINE DETAILS */}
         {medicineResult ? (
           <View style={styles.detailContainer}>
-            {/* Intro Summary Card (Displays EXACT medicine name + 1-line summary) */}
+            {/* Intro Summary Card */}
             <LinearGradient
               colors={['#0F242A', '#0B1C22', '#07151A']}
               start={{ x: 0, y: 0 }}
@@ -403,9 +340,7 @@ export default function MedicineGuideScreen({ onBack }) {
                 <View style={styles.medHeroBadgeRow}>
                   <View style={styles.verifiedBadge}>
                     <Ionicons name="checkmark-circle" size={13} color="#34D399" />
-                    <Text style={styles.verifiedBadgeText}>
-                      {isHindi ? 'दवा की जानकारी' : 'Medicine Information'}
-                    </Text>
+                    <Text style={styles.verifiedBadgeText}>लाइव दवा जानकारी</Text>
                   </View>
                 </View>
 
@@ -413,11 +348,7 @@ export default function MedicineGuideScreen({ onBack }) {
                 <Text style={styles.medHeroTitle}>{medicineResult.name}</Text>
 
                 {/* Intro Summary Sentence */}
-                <Text style={styles.introSummaryText}>
-                  {isHindi
-                    ? medicineResult.intro_hi || medicineResult.intro_en
-                    : medicineResult.intro_en || medicineResult.intro_hi}
-                </Text>
+                <Text style={styles.introSummaryText}>{medicineResult.intro_hi}</Text>
               </View>
             </LinearGradient>
 
@@ -432,22 +363,13 @@ export default function MedicineGuideScreen({ onBack }) {
                 >
                   <Ionicons name="medical" size={18} color="#2DD4BF" />
                 </View>
-                <Text style={styles.sectionTitle}>
-                  {isHindi ? 'मुख्य उपयोग (Uses)' : 'Primary Uses (Uses)'}
-                </Text>
+                <Text style={styles.sectionTitle}>मुख्य उपयोग (Uses)</Text>
               </View>
 
-              <Text style={styles.usesIntroText}>
-                {isHindi
-                  ? medicineResult.usesIntro_hi || medicineResult.usesIntro_en
-                  : medicineResult.usesIntro_en || medicineResult.usesIntro_hi}
-              </Text>
+              <Text style={styles.usesIntroText}>{medicineResult.usesIntro_hi}</Text>
 
               <View style={styles.bulletsWrap}>
-                {(isHindi
-                  ? medicineResult.uses_hi
-                  : medicineResult.uses_en || medicineResult.uses_hi
-                )?.map((useItem, idx) => (
+                {medicineResult.uses_hi?.map((useItem, idx) => (
                   <View key={idx} style={styles.bulletRow}>
                     <Ionicons
                       name="ellipse"
@@ -477,9 +399,7 @@ export default function MedicineGuideScreen({ onBack }) {
                 >
                   <Ionicons name="open-outline" size={16} color="#38BDF8" />
                   <Text style={styles.oneMgLinkText}>
-                    {isHindi
-                      ? `आप इस दवा के बारे में अधिक जानकारी Tata 1mg पर ${medicineResult.name} के माध्यम से देख सकते हैं।`
-                      : `View more details about ${medicineResult.name} on Tata 1mg.`}
+                    {`आप इस दवा के बारे में अधिक जानकारी Tata 1mg पर ${medicineResult.name} के माध्यम से देख सकते हैं।`}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -496,18 +416,11 @@ export default function MedicineGuideScreen({ onBack }) {
                 >
                   <Ionicons name="alert-circle" size={18} color="#F59E0B" />
                 </View>
-                <Text style={styles.sectionTitle}>
-                  {isHindi
-                    ? 'सामान्य दुष्प्रभाव (Side Effects)'
-                    : 'Common Side Effects'}
-                </Text>
+                <Text style={styles.sectionTitle}>सामान्य दुष्प्रभाव (Side Effects)</Text>
               </View>
 
               <View style={styles.bulletsWrap}>
-                {(isHindi
-                  ? medicineResult.sideEffects_hi
-                  : medicineResult.sideEffects_en || medicineResult.sideEffects_hi
-                )?.map((sideItem, idx) => (
+                {medicineResult.sideEffects_hi?.map((sideItem, idx) => (
                   <View key={idx} style={styles.bulletRow}>
                     <Ionicons
                       name="ellipse"
@@ -532,18 +445,11 @@ export default function MedicineGuideScreen({ onBack }) {
                 >
                   <Ionicons name="warning" size={18} color="#EF4444" />
                 </View>
-                <Text style={styles.sectionTitle}>
-                  {isHindi
-                    ? 'सावधानी और चेतावनी'
-                    : 'Precautions & Warnings'}
-                </Text>
+                <Text style={styles.sectionTitle}>सावधानी और चेतावनी</Text>
               </View>
 
               <View style={styles.bulletsWrap}>
-                {(isHindi
-                  ? medicineResult.warnings_hi
-                  : medicineResult.warnings_en || medicineResult.warnings_hi
-                )?.map((wItem, idx) => (
+                {medicineResult.warnings_hi?.map((wItem, idx) => (
                   <View key={idx} style={styles.bulletRow}>
                     <Ionicons
                       name="ellipse"
@@ -575,50 +481,49 @@ export default function MedicineGuideScreen({ onBack }) {
                 style={{ marginRight: 8, marginTop: 2 }}
               />
               <Text style={styles.disclaimerText}>
-                {isHindi
-                  ? 'अस्वीकरण (Disclaimer): यह जानकारी केवल सामान्य जागरूकता और शैक्षिक उद्देश्य के लिए है। किसी भी दवा का सेवन या खुराक बदलने से पहले हमेशा योग्य डॉक्टर या फार्मासिस्ट से परामर्श अवश्य लें।'
-                  : 'Medical Disclaimer: This information is for general educational awareness only. Always consult a qualified doctor or licensed pharmacist before starting, changing, or discontinuing any medication.'}
+                अस्वीकरण (Disclaimer): यह जानकारी केवल सामान्य जागरूकता और शैक्षिक उद्देश्य के लिए है। किसी भी दवा का सेवन या खुराक बदलने से पहले हमेशा योग्य डॉक्टर या फार्मासिस्ट से परामर्श अवश्य लें।
               </Text>
             </View>
           </View>
+        ) : notFoundTerm ? (
+          /* LIVE SEARCH RETURNED NO MATCH */
+          <View style={styles.welcomeContainer}>
+            <View style={styles.welcomeIconCircle}>
+              <Ionicons name="search-outline" size={38} color="#F59E0B" />
+            </View>
+            <Text style={styles.welcomeTitle}>
+              {`"${notFoundTerm}" की लाइव जानकारी नहीं मिली`}
+            </Text>
+            <Text style={styles.welcomeSub}>
+              कृपया दवा का सही नाम लिखकर दोबारा खोजें या अपना इंटरनेट कनेक्शन जांचें।
+            </Text>
+            <TouchableOpacity
+              style={styles.oneMgLinkBox}
+              onPress={() =>
+                Linking.openURL(
+                  `https://www.1mg.com/search/all?name=${encodeURIComponent(notFoundTerm)}`
+                )
+              }
+              activeOpacity={0.8}
+            >
+              <Ionicons name="open-outline" size={16} color="#38BDF8" />
+              <Text style={styles.oneMgLinkText}>
+                {`Tata 1mg पर "${notFoundTerm}" खोजें`}
+              </Text>
+            </TouchableOpacity>
+          </View>
         ) : (
-          /* CLEAN WELCOME SCREEN WHEN NO SEARCH PERFORMED YET (NO STATIC CARDS LIST) */
+          /* CLEAN WELCOME SCREEN (NO STATIC DATA OR CHIPS) */
           <View style={styles.welcomeContainer}>
             <View style={styles.welcomeIconCircle}>
               <MaterialCommunityIcons name="pill" size={42} color="#2DD4BF" />
             </View>
 
-            <Text style={styles.welcomeTitle}>
-              {isHindi ? 'किसी भी दवा की सही जानकारी पाएं' : 'Find Verified Medicine Details'}
-            </Text>
+            <Text style={styles.welcomeTitle}>किसी भी दवा की सही जानकारी पाएं</Text>
 
             <Text style={styles.welcomeSub}>
-              {isHindi
-                ? 'ऊपर सर्च बार में दवा का नाम लिखें, बोलकर 🎙️ सर्च करें, या कैमरे 📷 से फोटो अपलोड करें।'
-                : 'Type any medicine name above, use voice search 🎙️, or upload a photo 📷.'}
+              ऊपर सर्च बार में दवा का नाम लिखें, बोलकर 🎙️ सर्च करें, या कैमरे 📷 से फोटो अपलोड करें।
             </Text>
-
-            {/* Quick Suggestion Pills */}
-            <View style={styles.suggestionsWrapper}>
-              <Text style={styles.suggestionsHeader}>
-                {isHindi ? 'उदाहरण (टैप करके देखें):' : 'Examples (tap to search):'}
-              </Text>
-              <View style={styles.suggestionChipsWrap}>
-                {SUGGESTIONS.map((sug, sIdx) => (
-                  <TouchableOpacity
-                    key={sIdx}
-                    style={styles.suggestionChip}
-                    onPress={() => {
-                      setSearchQuery(sug);
-                      executeSearch(sug);
-                    }}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.suggestionChipText}>{sug}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
           </View>
         )}
       </ScrollView>
@@ -637,18 +542,14 @@ export default function MedicineGuideScreen({ onBack }) {
         >
           <View style={styles.mediaPickerCard}>
             <View style={styles.mediaPickerHeader}>
-              <Text style={styles.mediaPickerTitle}>
-                {isHindi ? 'दवा की फोटो चुनें' : 'Attach Medicine Photo'}
-              </Text>
+              <Text style={styles.mediaPickerTitle}>दवा की फोटो चुनें</Text>
               <TouchableOpacity onPress={() => setShowMediaModal(false)}>
                 <Ionicons name="close" size={22} color="#94A3B8" />
               </TouchableOpacity>
             </View>
 
             <Text style={styles.mediaPickerSub}>
-              {isHindi
-                ? 'दवा के पत्ते या रैपर की फोटो लेकर साथ में अटैच करें।'
-                : 'Take or choose a clear photo of the medicine strip.'}
+              दवा के पत्ते या रैपर की फोटो लेकर साथ में अटैच करें।
             </Text>
 
             <View style={styles.mediaPickerOptionsRow}>
@@ -663,12 +564,8 @@ export default function MedicineGuideScreen({ onBack }) {
                   style={styles.mediaOptionGradient}
                 >
                   <Ionicons name="camera" size={30} color="#5EEAD4" />
-                  <Text style={styles.mediaOptionTitle}>
-                    {isHindi ? 'कैमरा से खींचें' : 'Take Photo'}
-                  </Text>
-                  <Text style={styles.mediaOptionDesc}>
-                    {isHindi ? 'लाइव फोटो लें' : 'Open Camera'}
-                  </Text>
+                  <Text style={styles.mediaOptionTitle}>कैमरा से खींचें</Text>
+                  <Text style={styles.mediaOptionDesc}>लाइव फोटो लें</Text>
                 </LinearGradient>
               </TouchableOpacity>
 
@@ -683,12 +580,8 @@ export default function MedicineGuideScreen({ onBack }) {
                   style={styles.mediaOptionGradient}
                 >
                   <Ionicons name="images" size={30} color="#7DD3FC" />
-                  <Text style={styles.mediaOptionTitle}>
-                    {isHindi ? 'गैलरी से चुनें' : 'Choose Gallery'}
-                  </Text>
-                  <Text style={styles.mediaOptionDesc}>
-                    {isHindi ? 'फोटो चुनें' : 'From Storage'}
-                  </Text>
+                  <Text style={styles.mediaOptionTitle}>गैलरी से चुनें</Text>
+                  <Text style={styles.mediaOptionDesc}>फोटो चुनें</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -711,38 +604,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingTop: 12,
     paddingBottom: 40,
-  },
-
-  /* Top Control Bar */
-  topControlRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    marginBottom: 12,
-  },
-  langSwitchWrapper: {
-    flexDirection: 'row',
-    backgroundColor: '#0F1E24',
-    borderRadius: 24,
-    padding: 3,
-    borderWidth: 1,
-    borderColor: 'rgba(45, 212, 191, 0.25)',
-  },
-  langBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  langBtnActive: {
-    backgroundColor: '#2DD4BF',
-  },
-  langBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#94A3B8',
-  },
-  langBtnTextActive: {
-    color: '#042F2E',
   },
 
   /* All-in-One Search Bar */
@@ -884,35 +745,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     maxWidth: 320,
     marginBottom: 24,
-  },
-  suggestionsWrapper: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  suggestionsHeader: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#64748B',
-    marginBottom: 10,
-  },
-  suggestionChipsWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  suggestionChip: {
-    backgroundColor: '#0F1E24',
-    paddingHorizontal: 13,
-    paddingVertical: 7,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(45, 212, 191, 0.25)',
-  },
-  suggestionChipText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#5EEAD4',
   },
 
   /* Detail Screen */
