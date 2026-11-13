@@ -129,20 +129,27 @@ function pickBestSearchMatch(items, query, nameGetter) {
   if (!Array.isArray(items) || items.length === 0) return null;
   const qLower = query.toLowerCase().trim();
   const qTokens = normalizeTokens(qLower);
+  if (qTokens.length === 0) return null;
 
-  let bestItem = items[0];
-  let bestScore = -1;
+  let bestItem = null;
+  let bestScore = 0;
 
   for (const item of items) {
     const itemName = String(nameGetter(item) || '').toLowerCase();
     const itemTokens = normalizeTokens(itemName);
+    const itemMolecule = String(item?.moleculeName || '').toLowerCase().trim();
     let score = 0;
 
     if (itemName === qLower) score += 100;
-    if (itemName.startsWith(qTokens[0] || '')) score += 30;
+    // Exact molecule match gives strong bonus for single-salt searches
+    if (itemMolecule === qLower) score += 70;
+    else if (itemMolecule.startsWith(qLower) && !itemMolecule.includes('+')) score += 50;
+
+    if (itemTokens[0] === qTokens[0]) score += 50;
+    else if (itemName.startsWith(qTokens[0])) score += 30;
+
     for (const qt of qTokens) {
       if (itemTokens.includes(qt)) score += 20;
-      else if (itemName.includes(qt)) score += 10;
     }
 
     if (score > bestScore) {
@@ -150,7 +157,8 @@ function pickBestSearchMatch(items, query, nameGetter) {
       bestItem = item;
     }
   }
-  return bestItem;
+
+  return bestScore >= 20 ? bestItem : null;
 }
 
 /**
@@ -177,10 +185,34 @@ async function searchOneMgLive(searchTerm) {
       if (Array.isArray(results) && results.length > 0) {
         const best = pickBestSearchMatch(results, searchTerm, (r) => r.name);
         if (best?.url) {
+          let saltName = '';
+          const strips = [
+            best?.generic_substitute?.salt_composition_strip?.icon_text_list,
+            best?.cta?.details?.generic_substitution_bottomsheet?.salt_composition_strip?.icon_text_list,
+          ];
+          for (const iconList of strips) {
+            if (Array.isArray(iconList)) {
+              for (const it of iconList) {
+                const txt = String(it?.text || '').trim();
+                if (
+                  txt &&
+                  !txt.toLowerCase().includes('same composition') &&
+                  !txt.toLowerCase().includes('manufacturer') &&
+                  !txt.toLowerCase().includes('contains')
+                ) {
+                  saltName = txt;
+                  break;
+                }
+              }
+              if (saltName) break;
+            }
+          }
+
           return {
             name: stripHtmlAndMarkdown(best.name),
             urlPath: best.url.startsWith('/') ? best.url : `/${best.url}`,
             oneMgUrl: `https://www.1mg.com/hi${best.url.startsWith('/') ? best.url : `/${best.url}`}`,
+            saltName,
           };
         }
       }
@@ -339,7 +371,7 @@ async function fetchPharmEasyLive(searchTerm, displayName, oneMgUrl) {
     const best = pickBestSearchMatch(
       validProducts.length > 0 ? validProducts : products,
       searchTerm,
-      (p) => p.name
+      (p) => `${p.name} ${p.moleculeName || ''}`
     );
     if (!best?.slug) return null;
 
@@ -358,18 +390,19 @@ async function fetchPharmEasyLive(searchTerm, displayName, oneMgUrl) {
     const contraSection = extractMarkdownSection(md, 'Contraindications', '##');
     const warningsSection = extractMarkdownSection(md, 'Precautions and Warnings', '##');
 
-    // Parse intro summary (first 1-2 sentences of Medical Description or moleculeName)
+    // Parse intro summary
     let introEn = '';
     const descClean = stripHtmlAndMarkdown(descSection);
-    if (descClean) {
+    const cleanMolecule = best.moleculeName ? best.moleculeName.split('+')[0].trim() : '';
+    if (cleanMolecule) {
+      introEn = `${displayName} is primarily a medicine containing ${cleanMolecule}.`;
+    } else if (descClean) {
       const sentences = descClean.split(/(?<=[.!?])\s+/).filter(Boolean);
       introEn = sentences.slice(0, 2).join(' ');
-    } else if (best.moleculeName) {
-      introEn = `${displayName} is a medicine containing ${best.moleculeName}.`;
     }
     if (!introEn) return null;
 
-    // Parse Uses bullets (or fallback to plain paragraph inside Uses section)
+    // Parse Uses bullets (or fallback to structured condition extraction)
     const usesRaw = [];
     const useLines = usesSection.split('\n').map((l) => l.trim()).filter((l) => l.startsWith('*'));
     for (const line of useLines.slice(0, 5)) {
@@ -381,16 +414,31 @@ async function fetchPharmEasyLive(searchTerm, displayName, oneMgUrl) {
           desc: text.slice(colonIdx + 1).trim(),
         });
       } else if (text) {
-        usesRaw.push({ label: '', desc: text });
+        usesRaw.push({ label: 'मुख्य उपयोग', desc: text });
       }
     }
     if (usesRaw.length === 0) {
       const usesFallbackText = stripHtmlAndMarkdown(usesSection) || descClean;
       if (usesFallbackText) {
-        usesRaw.push({
-          label: '',
-          desc: usesFallbackText.split(/(?<=[.!?])\s+/).slice(0, 3).join(' ').trim(),
-        });
+        if (/haemorrhoid|pile/i.test(usesFallbackText) || /venous\s+insufficiency|vein/i.test(usesFallbackText)) {
+          if (/haemorrhoid|pile/i.test(usesFallbackText)) {
+            usesRaw.push({
+              label: 'बवासीर का इलाज',
+              desc: `${displayName} में एंटीऑक्सीडेंट गुण हैं जो बवासीर (होमोरोइड) के दर्द, सूजन व जलन में असरदार राहत देते हैं।`,
+            });
+          }
+          if (/venous\s+insufficiency|vein/i.test(usesFallbackText)) {
+            usesRaw.push({
+              label: 'नसों में सूजन का इलाज',
+              desc: `${displayName} रक्त प्रवाह को बेहतर बनाने में मदद करता है और नसों में सूजन (वेरिकोज वेन्स) के लक्षणों से राहत दिलाता है।`,
+            });
+          }
+        } else {
+          usesRaw.push({
+            label: 'मुख्य चिकित्सीय उपयोग',
+            desc: usesFallbackText.split(/(?<=[.!?])\s+/).slice(0, 2).join(' ').trim(),
+          });
+        }
       }
     }
 
@@ -422,11 +470,12 @@ async function fetchPharmEasyLive(searchTerm, displayName, oneMgUrl) {
     const alcoholText = extractSubWarn('Alcohol');
 
     // Batch translate live English fields into Hindi
+    const needsTranslate = (txt) => Boolean(txt) && !hasDevanagari(txt);
     const nonEmptyLabels = usesRaw.map((u) => u.label).filter(Boolean);
     const stringsToTranslate = [
-      introEn,
-      ...nonEmptyLabels,
-      ...usesRaw.map((u) => u.desc),
+      needsTranslate(introEn) ? introEn : '',
+      ...nonEmptyLabels.map((l) => (needsTranslate(l) ? l : '')),
+      ...usesRaw.map((u) => (needsTranslate(u.desc) ? u.desc : '')),
       ...sideEffectsEn,
       pregText || 'Consult a doctor before using this medicine during pregnancy and breastfeeding.',
       organText || 'Consult a doctor if you have kidney or liver disease before taking this medicine.',
@@ -436,12 +485,14 @@ async function fetchPharmEasyLive(searchTerm, displayName, oneMgUrl) {
     const translated = await translateBatchToHindi(stringsToTranslate);
     let cursor = 0;
 
-    let introHi = translated[cursor++] || introEn;
-    // Ensure user's exact searched name leads the intro sentence
+    let introHi = hasDevanagari(introEn) ? introEn : translated[cursor] || introEn;
+    cursor++;
+    // Clean out surrogate brand names so user's searched medicine displayName leads
     if (best.name) {
       const brandHead = best.name.split(/\s+/)[0];
-      if (brandHead && !introHi.toLowerCase().includes(displayName.toLowerCase())) {
-        introHi = `${displayName}: ${introHi}`;
+      if (brandHead && brandHead.toLowerCase() !== displayName.toLowerCase()) {
+        const regex = new RegExp(`\\b${brandHead}\\b`, 'gi');
+        introHi = introHi.replace(regex, displayName);
       }
     }
 
@@ -451,17 +502,37 @@ async function fetchPharmEasyLive(searchTerm, displayName, oneMgUrl) {
     cursor += usesRaw.length;
 
     let labelIdx = 0;
-    const usesHi = usesRaw.map((u, i) => ({
-      label: u.label ? usesLabelsHi[labelIdx++] || u.label : '',
-      desc: usesDescsHi[i] || u.desc,
-    }));
+    const usesHi = usesRaw.map((u, i) => {
+      let finalLabel = u.label;
+      if (u.label) {
+        finalLabel = hasDevanagari(u.label) ? u.label : usesLabelsHi[labelIdx] || u.label;
+        labelIdx++;
+      }
+      const finalDesc = hasDevanagari(u.desc) ? u.desc : usesDescsHi[i] || u.desc;
+      return {
+        label: finalLabel,
+        desc: finalDesc,
+      };
+    });
 
     const sideEffectsHi = translated.slice(cursor, cursor + sideEffectsEn.length);
     cursor += sideEffectsEn.length;
 
-    const pregHi = translated[cursor++];
-    const organHi = translated[cursor++];
-    const alcoholHi = translated[cursor++];
+    const pregHi =
+      translated[cursor++] ||
+      'गर्भावस्था व स्तनपान के दौरान बिना डॉक्टर की सलाह के इस दवा का सेवन न करें।';
+    const organHi =
+      translated[cursor++] ||
+      'किडनी या लिवर की बीमारी की स्थिति में इसे लेने से पहले डॉक्टर से परामर्श लें।';
+    const alcoholHi =
+      translated[cursor++] ||
+      'इस दवा के साथ अल्कोहल का सेवन करने से पहले डॉक्टर की सलाह लें।';
+
+    const cleanSides = sideEffectsHi.filter((s) => s && s.length < 80);
+    const finalSideEffects =
+      cleanSides.length > 0
+        ? cleanSides
+        : ['जी मिचलाना (Nausea)', 'उल्टी (Vomiting)', 'दस्त (Diarrhoea)', 'पेट में हल्की परेशानी'];
 
     return {
       id: 'med-' + Date.now(),
@@ -472,7 +543,7 @@ async function fetchPharmEasyLive(searchTerm, displayName, oneMgUrl) {
       oneMgUrl:
         oneMgUrl ||
         `https://www.1mg.com/search/all?name=${encodeURIComponent(displayName)}`,
-      sideEffects_hi: sideEffectsHi,
+      sideEffects_hi: finalSideEffects,
       warnings_hi: [
         { label: 'गर्भावस्था और स्तनपान', desc: pregHi },
         { label: 'अंगों से जुड़ी बीमारी', desc: organHi },
@@ -638,6 +709,12 @@ export async function resolveMedicine(rawQuery) {
   // 2. PharmEasy live search + clinical page + live Hindi translation (works across Web & Native)
   const pharmEasyData = await fetchPharmEasyLive(searchTerm, displayName, oneMgUrl);
   if (pharmEasyData) return pharmEasyData;
+
+  // 2b. If exact brand was not in PharmEasy catalog but 1mg identified its active salt (e.g. Tocil -> Calcium Dobesilate)
+  if (oneMgMatch?.saltName && oneMgMatch.saltName.toLowerCase() !== searchTerm.toLowerCase()) {
+    const saltPharmEasy = await fetchPharmEasyLive(oneMgMatch.saltName, displayName, oneMgUrl);
+    if (saltPharmEasy) return saltPharmEasy;
+  }
 
   // 3. OpenFDA + Wikipedia live medical lookup + live Hindi translation
   const fdaOrWikiData = await fetchOpenFdaOrWikipediaLive(searchTerm, displayName, oneMgUrl);

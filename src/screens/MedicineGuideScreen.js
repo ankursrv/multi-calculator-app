@@ -12,6 +12,7 @@ import {
   Platform,
   Alert,
   Linking,
+  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -19,6 +20,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Colors } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
 import { resolveMedicine } from '../services/clinicalMedicineService';
+import { scanMedicineImage } from '../services/medicineScanService';
 
 export default function MedicineGuideScreen({ onBack }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -31,6 +33,31 @@ export default function MedicineGuideScreen({ onBack }) {
   const [isListening, setIsListening] = useState(false);
 
   const recognitionRef = useRef(null);
+  const [skeletonOpacity] = useState(() => new Animated.Value(0.35));
+
+  // Pulsing skeleton animation loop while searching
+  useEffect(() => {
+    if (loading) {
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(skeletonOpacity, {
+            toValue: 0.95,
+            duration: 750,
+            useNativeDriver: Platform.OS !== 'web',
+          }),
+          Animated.timing(skeletonOpacity, {
+            toValue: 0.35,
+            duration: 750,
+            useNativeDriver: Platform.OS !== 'web',
+          }),
+        ])
+      );
+      loop.start();
+      return () => loop.stop();
+    } else {
+      skeletonOpacity.setValue(0.35);
+    }
+  }, [loading, skeletonOpacity]);
 
   // Cleanup speech recognition on unmount
   useEffect(() => {
@@ -140,6 +167,46 @@ export default function MedicineGuideScreen({ onBack }) {
     }
   };
 
+  // Process Selected or Captured Medicine Image with AI & OCR
+  const processSelectedImage = async (asset) => {
+    if (!asset || !asset.uri) return;
+
+    setCapturedImage(asset.uri);
+    setLoading(true);
+    setMedicineResult(null);
+    setNotFoundTerm('');
+    setInfoNotice('');
+
+    try {
+      const scanResult = await scanMedicineImage(asset);
+
+      if (scanResult.success && scanResult.medicine) {
+        setMedicineResult(scanResult.medicine);
+        setSearchQuery(scanResult.searchTerm || scanResult.medicine.name);
+        setNotFoundTerm('');
+        setInfoNotice('');
+      } else if (scanResult.candidate) {
+        setMedicineResult(null);
+        setSearchQuery(scanResult.candidate);
+        setNotFoundTerm(scanResult.candidate);
+        setInfoNotice('');
+      } else {
+        setMedicineResult(null);
+        setInfoNotice('');
+        Alert.alert(
+          'दवा नहीं पहचानी जा सकी',
+          'फोटो में दवा का नाम स्पष्ट नहीं दिखा। कृपया अच्छी रोशनी में दोबारा फोटो खींचें या नाम टाइप करके खोजें।'
+        );
+      }
+    } catch (_err) {
+      setMedicineResult(null);
+      setInfoNotice('');
+      Alert.alert('त्रुटि', 'दवा स्कैन करने में समस्या आई। कृपया इंटरनेट कनेक्शन जांचें।');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Open Camera to Capture Medicine Image
   const handleCaptureImage = async () => {
     setShowMediaModal(false);
@@ -158,12 +225,12 @@ export default function MedicineGuideScreen({ onBack }) {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ['images'],
         allowsEditing: true,
-        quality: 0.7,
+        quality: 0.6,
+        base64: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        setCapturedImage(result.assets[0].uri);
-        setInfoNotice('फोटो प्राप्त हुई। ऊपर सर्च बॉक्स में दवा का नाम लिखकर खोजें।');
+        await processSelectedImage(result.assets[0]);
       }
     } catch (_e) {
       Alert.alert('त्रुटि', 'कैमरा शुरू करने में समस्या आई।');
@@ -187,13 +254,13 @@ export default function MedicineGuideScreen({ onBack }) {
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        allowsEditing: true,
-        quality: 0.7,
+        ...(Platform.OS !== 'web' && { allowsEditing: true }),
+        quality: 0.6,
+        base64: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        setCapturedImage(result.assets[0].uri);
-        setInfoNotice('फोटो अपलोड हुई। ऊपर सर्च बॉक्स में दवा का नाम लिखकर खोजें।');
+        await processSelectedImage(result.assets[0]);
       }
     } catch (_e) {
       Alert.alert('त्रुटि', 'फोटो गैलरी खोलने में समस्या आई।');
@@ -240,7 +307,7 @@ export default function MedicineGuideScreen({ onBack }) {
             autoCorrect={false}
           />
 
-          {loading && (
+          {loading && !capturedImage && (
             <ActivityIndicator size="small" color="#2DD4BF" style={{ marginRight: 6 }} />
           )}
 
@@ -291,38 +358,60 @@ export default function MedicineGuideScreen({ onBack }) {
           </TouchableOpacity>
         </View>
 
-        {/* Live Speech Recognition / Status Notice */}
-        {Boolean(infoNotice) && (
+        {/* Live Speech Recognition / Status Notice (Voice Search only) */}
+        {isListening && Boolean(infoNotice) && (
           <View style={styles.voiceStatusPill}>
             <Ionicons
-              name={isListening ? 'radio-button-on' : 'information-circle'}
+              name="radio-button-on"
               size={14}
-              color={isListening ? '#EF4444' : '#2DD4BF'}
+              color="#EF4444"
               style={{ marginRight: 6 }}
             />
             <Text style={styles.voiceStatusText}>{infoNotice}</Text>
           </View>
         )}
 
-        {/* Image Preview */}
+        {/* Captured Image Preview in Small Card Box with Skeleton Loader */}
         {capturedImage && (
-          <View style={styles.imagePreviewBox}>
-            <Image source={{ uri: capturedImage }} style={styles.thumbnailImg} />
-            <View style={styles.imagePreviewTextWrap}>
-              <Text style={styles.imagePreviewTitle}>दवा की फोटो</Text>
-              <Text style={styles.imagePreviewSub} numberOfLines={1}>
-                सर्च बॉक्स में नाम लिखकर खोजें
-              </Text>
+          <View style={styles.imageCardContainer}>
+            <View style={styles.smallImageCardBox}>
+              <Image
+                source={{ uri: capturedImage }}
+                style={styles.smallCardImage}
+                resizeMode="cover"
+              />
+              {loading && (
+                <Animated.View
+                  style={[
+                    styles.skeletonImageOverlay,
+                    { opacity: skeletonOpacity },
+                  ]}
+                >
+                  <LinearGradient
+                    colors={[
+                      'rgba(45, 212, 191, 0.1)',
+                      'rgba(45, 212, 191, 0.55)',
+                      'rgba(45, 212, 191, 0.1)',
+                    ]}
+                    style={StyleSheet.absoluteFillObject}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  />
+                  <View style={styles.scannerBeam} />
+                </Animated.View>
+              )}
+              {/* Dismiss / Remove Image Button */}
+              <TouchableOpacity
+                onPress={() => {
+                  setCapturedImage(null);
+                  setInfoNotice('');
+                }}
+                style={styles.cardCloseBtn}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close-circle" size={22} color="#FFFFFF" />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              onPress={() => {
-                setCapturedImage(null);
-                setInfoNotice('');
-              }}
-              style={styles.closeThumbBtn}
-            >
-              <Ionicons name="close-circle" size={22} color="#94A3B8" />
-            </TouchableOpacity>
           </View>
         )}
 
@@ -337,13 +426,6 @@ export default function MedicineGuideScreen({ onBack }) {
               style={styles.medHeroCard}
             >
               <View style={styles.medHeroHeader}>
-                <View style={styles.medHeroBadgeRow}>
-                  <View style={styles.verifiedBadge}>
-                    <Ionicons name="checkmark-circle" size={13} color="#34D399" />
-                    <Text style={styles.verifiedBadgeText}>लाइव दवा जानकारी</Text>
-                  </View>
-                </View>
-
                 {/* EXACT NAME SEARCHED BY USER */}
                 <Text style={styles.medHeroTitle}>{medicineResult.name}</Text>
 
@@ -487,6 +569,37 @@ export default function MedicineGuideScreen({ onBack }) {
               </Text>
             </View>
           </View>
+        ) : loading ? (
+          /* SKELETON LOADER UI WHILE SEARCHING / SCANNING */
+          <Animated.View style={[styles.skeletonContainer, { opacity: skeletonOpacity }]}>
+            {/* Skeleton Medicine Intro Card */}
+            <View style={styles.skeletonHeroCard}>
+              <View style={styles.skeletonTitleBar} />
+              <View style={styles.skeletonSubBarLong} />
+              <View style={styles.skeletonSubBarShort} />
+            </View>
+
+            {/* Skeleton Section 1 (Uses) */}
+            <View style={styles.skeletonSectionCard}>
+              <View style={styles.skeletonSectionHeader}>
+                <View style={styles.skeletonIconBox} />
+                <View style={styles.skeletonSectionTitleBar} />
+              </View>
+              <View style={styles.skeletonBulletLineFull} />
+              <View style={styles.skeletonBulletLineMedium} />
+              <View style={styles.skeletonBulletLineShort} />
+            </View>
+
+            {/* Skeleton Section 2 (Side Effects & Safety) */}
+            <View style={styles.skeletonSectionCard}>
+              <View style={styles.skeletonSectionHeader}>
+                <View style={styles.skeletonIconBox} />
+                <View style={styles.skeletonSectionTitleBar} />
+              </View>
+              <View style={styles.skeletonBulletLineFull} />
+              <View style={styles.skeletonBulletLineMedium} />
+            </View>
+          </Animated.View>
         ) : notFoundTerm ? (
           /* LIVE SEARCH RETURNED NO MATCH */
           <View style={styles.welcomeContainer}>
@@ -551,7 +664,7 @@ export default function MedicineGuideScreen({ onBack }) {
             </View>
 
             <Text style={styles.mediaPickerSub}>
-              दवा के पत्ते या रैपर की फोटो लेकर साथ में अटैच करें।
+              दवा के पत्ते या रैपर की फोटो लें, ऐप अपने आप दवा का नाम पहचानकर जानकारी दिखाएगा।
             </Text>
 
             <View style={styles.mediaPickerOptionsRow}>
@@ -567,7 +680,7 @@ export default function MedicineGuideScreen({ onBack }) {
                 >
                   <Ionicons name="camera" size={30} color="#5EEAD4" />
                   <Text style={styles.mediaOptionTitle}>कैमरा से खींचें</Text>
-                  <Text style={styles.mediaOptionDesc}>लाइव फोटो लें</Text>
+                  <Text style={styles.mediaOptionDesc}>ऑटो AI स्कैन</Text>
                 </LinearGradient>
               </TouchableOpacity>
 
@@ -583,7 +696,7 @@ export default function MedicineGuideScreen({ onBack }) {
                 >
                   <Ionicons name="images" size={30} color="#7DD3FC" />
                   <Text style={styles.mediaOptionTitle}>गैलरी से चुनें</Text>
-                  <Text style={styles.mediaOptionDesc}>फोटो चुनें</Text>
+                  <Text style={styles.mediaOptionDesc}>फोटो से स्कैन</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -606,6 +719,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingTop: 12,
     paddingBottom: 40,
+    width: '100%',
+    maxWidth: 680,
+    alignSelf: 'center',
   },
 
   /* All-in-One Search Bar */
@@ -681,38 +797,130 @@ const styles = StyleSheet.create({
     color: '#5EEAD4',
   },
 
-  /* Image Preview */
-  imagePreviewBox: {
+  /* Image Card Box with Skeleton Loader */
+  imageCardContainer: {
+    marginBottom: 16,
+    alignItems: 'flex-start',
+  },
+  smallImageCardBox: {
+    width: '100%',
+    height: '200',
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: '#0F242A',
+    shadowColor: '#2DD4BF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 4,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  smallCardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  skeletonImageOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scannerBeam: {
+    width: '100%',
+    height: 3,
+    backgroundColor: '#2DD4BF',
+    shadowColor: '#2DD4BF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  cardCloseBtn: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    borderRadius: 12,
+    zIndex: 10,
+  },
+
+  /* Skeleton Loading State */
+  skeletonContainer: {
+    paddingTop: 4,
+    gap: 14,
+    marginBottom: 20,
+  },
+  skeletonHeroCard: {
+    backgroundColor: '#0F242A',
+    borderRadius: 18,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 212, 191, 0.22)',
+    gap: 10,
+  },
+  skeletonTitleBar: {
+    width: '45%',
+    height: 22,
+    borderRadius: 6,
+    backgroundColor: 'rgba(45, 212, 191, 0.25)',
+  },
+  skeletonSubBarLong: {
+    width: '92%',
+    height: 14,
+    borderRadius: 4,
+    backgroundColor: 'rgba(148, 163, 184, 0.16)',
+    marginTop: 4,
+  },
+  skeletonSubBarShort: {
+    width: '65%',
+    height: 14,
+    borderRadius: 4,
+    backgroundColor: 'rgba(148, 163, 184, 0.16)',
+  },
+  skeletonSectionCard: {
+    backgroundColor: '#0F242A',
+    borderRadius: 18,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(45, 212, 191, 0.15)',
+    gap: 10,
+  },
+  skeletonSectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0F242A',
-    borderRadius: 14,
-    padding: 8,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(45, 212, 191, 0.3)',
+    gap: 10,
+    marginBottom: 4,
   },
-  thumbnailImg: {
-    width: 44,
-    height: 44,
+  skeletonIconBox: {
+    width: 28,
+    height: 28,
     borderRadius: 8,
+    backgroundColor: 'rgba(45, 212, 191, 0.22)',
   },
-  imagePreviewTextWrap: {
-    flex: 1,
-    marginLeft: 10,
+  skeletonSectionTitleBar: {
+    width: '38%',
+    height: 18,
+    borderRadius: 5,
+    backgroundColor: 'rgba(45, 212, 191, 0.28)',
   },
-  imagePreviewTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#F8FAFC',
+  skeletonBulletLineFull: {
+    width: '100%',
+    height: 12,
+    borderRadius: 4,
+    backgroundColor: 'rgba(148, 163, 184, 0.14)',
   },
-  imagePreviewSub: {
-    fontSize: 11,
-    color: '#2DD4BF',
-    marginTop: 1,
+  skeletonBulletLineMedium: {
+    width: '82%',
+    height: 12,
+    borderRadius: 4,
+    backgroundColor: 'rgba(148, 163, 184, 0.14)',
   },
-  closeThumbBtn: {
-    padding: 6,
+  skeletonBulletLineShort: {
+    width: '58%',
+    height: 12,
+    borderRadius: 4,
+    backgroundColor: 'rgba(148, 163, 184, 0.14)',
   },
 
   /* Welcome Screen State (No static cards clutter) */
@@ -761,26 +969,6 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(45, 212, 191, 0.35)',
   },
   medHeroHeader: {},
-  medHeroBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    marginBottom: 8,
-  },
-  verifiedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(52, 211, 153, 0.12)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  verifiedBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#34D399',
-    marginLeft: 4,
-  },
   medHeroTitle: {
     fontSize: 23,
     fontWeight: '900',
