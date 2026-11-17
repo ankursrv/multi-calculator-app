@@ -224,8 +224,8 @@ export default function MedicineGuideScreen({ onBack }) {
 
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ['images'],
-        allowsEditing: true,
-        quality: 0.6,
+        allowsEditing: false,
+        quality: 0.85,
         base64: true,
       });
 
@@ -254,8 +254,8 @@ export default function MedicineGuideScreen({ onBack }) {
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        ...(Platform.OS !== 'web' && { allowsEditing: true }),
-        quality: 0.6,
+        allowsEditing: false,
+        quality: 0.85,
         base64: true,
       });
 
@@ -319,6 +319,7 @@ export default function MedicineGuideScreen({ onBack }) {
                 setMedicineResult(null);
                 setNotFoundTerm('');
                 setInfoNotice('');
+                setCapturedImage(null);
               }}
               style={styles.searchActionBtn}
             >
@@ -804,7 +805,7 @@ const styles = StyleSheet.create({
   },
   smallImageCardBox: {
     width: '100%',
-    height: '200',
+    height: 240,
     borderRadius: 14,
     overflow: 'hidden',
     backgroundColor: '#0F242A',

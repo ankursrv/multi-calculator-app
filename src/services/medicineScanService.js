@@ -23,38 +23,48 @@ const REQUEST_TIMEOUT_MS = 15000;
 const OCR_FALLBACK_KEYS = [
   process.env.EXPO_PUBLIC_OCR_SPACE_API_KEY,
   'K88854238788957',
-  'helloworld',
   'K84564287888957',
+  'K81546747288957',
+  'helloworld',
 ].filter(Boolean);
 
 const PACKAGING_STOPWORDS = new Set([
   'marketed', 'manufactured', 'mfg', 'mkt', 'mktg', 'biotech', 'ltd', 'pvt', 'pharma', 'pharmaceuticals',
-  'laboratories', 'lab', 'road', 'mouza', 'ogli', 'khan', 'vill', 'majra', 'kala', 'amb', 'distt',
+  'laboratories', 'lab', 'labs', 'limited', 'road', 'mouza', 'ogli', 'khan', 'vill', 'majra', 'kala', 'amb', 'distt',
   'sirmour', 'bazar', 'kachiguda', 'hyderabad', 'mumbai', 'delhi', 'baddi', 'solan', 'pin', 'batch',
   'exp', 'mrp', 'rs', 'incl', 'taxes', 'store', 'cool', 'dry', 'dark', 'place', 'keep', 'reach',
   'children', 'dosage', 'physician', 'directed', 'prescription', 'schedule', 'caution', 'warning',
   'registered', 'trade', 'mark', 'contains', 'hard', 'gelatin', 'soft', 'capsute', 'capsule',
-  'capsules', 'tablet', 'tablets', 'syrup', 'injection', 'excipients', 'colours', 'color', 'colour',
-  'brillant', 'brilliant', 'swallowed', 'crushed', 'opened', 'sealed', 'protect', 'light', 'moisture',
-  'each', 'blue', 'yellow', 'supra', 'arla', 'walde', 'direck', 'phys', 'nedicine', 'medicine',
+  'capsules', 'tablet', 'tablets', 'syrup', 'injection', 'suspension', 'ointment', 'cream', 'drops', 'solution',
+  'excipients', 'colours', 'color', 'colour', 'brillant', 'brilliant', 'swallowed', 'crushed', 'opened', 'sealed',
+  'protect', 'light', 'moisture', 'each', 'blue', 'yellow', 'supra', 'arla', 'walde', 'direck', 'phys', 'nedicine', 'medicine',
   'swallcwed', 'whilg', 'trusheda', 'dot', 'preseripti', 'witnout', 'retail', 'medical', 'practitioner',
   'composition', 'coated', 'uncoated', 'enteric', 'sustained', 'release', 'prolonged', 'dispersible',
-  'suspension', 'ointment', 'cream', 'drops', 'solution', 'sh', 'hai', 'for', 'the', 'and', 'not',
-  'use', 'only', 'external', 'internal', 'oral', 'titanium', 'dioxide', 'tartrazine', 'lake',
-  'below', 'temperature', 'freeze', 'warning', 'packaging', 'healthcare',
-  'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'
+  'sh', 'hai', 'for', 'the', 'and', 'not', 'use', 'only', 'external', 'internal', 'oral',
+  'titanium', 'dioxide', 'tartrazine', 'lake', 'below', 'temperature', 'freeze', 'warning', 'packaging', 'healthcare', 'film-coated',
+  'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec',
+  'siincl', 'ofalltaxes', 'taxes', 'sh preseripti', 'crusheda', 'opened', 'conta', 'bengaluru', 'bangalore', 'chennai', 'kolkata', 'pune', 'ahmedabad',
+  'b.no', 'bno', 'batch no', 'mfg date', 'exp date'
 ]);
 
-function cleanToken(str) {
-  return (str || '').replace(/[*•®™©#:,]/g, '').trim();
+function cleanMedicineToken(str) {
+  return (str || '')
+    .replace(/[*•®™©#:,]/g, ' ')
+    .replace(/\b(IP|BP|USP|I\.P\.|B\.P\.|U\.S\.P\.)\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function isStopWordOrNoise(word) {
-  if (!word || word.length < 3) return true;
-  const lower = word.toLowerCase();
+  if (!word || word.length < 2) return true;
+  const lower = word.toLowerCase().trim();
   if (PACKAGING_STOPWORDS.has(lower)) return true;
-  if (/^(mfg|exp|batch|mrp|tax|siincl|taxes)/i.test(lower)) return true;
+  const root = lower.split(/[-/]/)[0];
+  if (PACKAGING_STOPWORDS.has(root)) return true;
+  if (/^(mfg|exp|batch|mrp|tax|siincl|ofalltaxes|lic|b\.?no|lot)/i.test(lower)) return true;
   if (/^\d+(\.\d+)?(mg|ml|mcg|gm|g|iu|%)?$/i.test(word)) return true;
+  if (/^[A-Z]{1,3}\d{3,}$/i.test(word)) return true; // Batch codes like AZ12345
+  if (/^\d{4,}$/.test(word)) return true; // Pincodes / dates
   return false;
 }
 
@@ -76,12 +86,22 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = REQUEST_TIMEOUT_M
  */
 export async function getBase64FromAsset(asset) {
   if (!asset) return null;
-  if (asset.base64) return asset.base64;
+  if (asset.base64) {
+    const b64 = String(asset.base64);
+    const comma = b64.indexOf(',');
+    return comma !== -1 ? b64.slice(comma + 1) : b64;
+  }
 
   const uri = asset.uri;
   if (!uri) return null;
 
   try {
+    // If uri is already a data URI (data:image/...)
+    if (typeof uri === 'string' && uri.startsWith('data:')) {
+      const comma = uri.indexOf(',');
+      return comma !== -1 ? uri.slice(comma + 1) : uri;
+    }
+
     const isWeb = typeof window !== 'undefined' && typeof document !== 'undefined';
     if (isWeb) {
       const res = await fetch(uri);
@@ -121,80 +141,106 @@ export function extractMedicineCandidates(rawText) {
 
   const addCandidate = (cand, toFront = false) => {
     if (!cand) return;
-    let clean = cleanToken(cand).replace(/\b(IP|BP|USP|I\.P\.|B\.P\.|U\.S\.P\.)\b/g, '').trim();
-    // remove dosage suffixes if attached like '500mg'
-    clean = clean.replace(/\s+\d+(\.\d+)?\s*(mg|ml|mcg|gm|g|iu)\b/i, '').trim();
-    if (clean.length < 3 || clean.length > 35) return;
-    if (isStopWordOrNoise(clean)) return;
+    let clean = cleanMedicineToken(cand);
+    // remove dosage suffixes if attached like '650mg' or '650 mg' or '500'
+    const withoutDosage = clean.replace(/\s+\d+(\.\d+)?\s*(mg|ml|mcg|gm|g|iu)?$/i, '').trim();
 
-    const words = clean.split(/\s+/);
-    if (words.length === 1 && isStopWordOrNoise(words[0])) return;
+    for (const item of [withoutDosage, clean]) {
+      if (!item || item.length < 3 || item.length > 55) continue;
+      const lower = item.toLowerCase();
+      if (PACKAGING_STOPWORDS.has(lower)) continue;
 
-    const lower = clean.toLowerCase();
-    const existingIdx = candidates.findIndex((c) => c.toLowerCase() === lower);
-    if (existingIdx !== -1) {
-      if (toFront && existingIdx > 0) {
-        candidates.splice(existingIdx, 1);
-        candidates.unshift(clean);
+      const words = item.split(/\s+/);
+      if (words.some((w) => PACKAGING_STOPWORDS.has(w.toLowerCase()))) continue;
+      if (words.every((w) => isStopWordOrNoise(w))) continue;
+      if (words.some((w) => isStopWordOrNoise(w.split('-')[0]))) continue;
+
+      const existingIdx = candidates.findIndex((c) => c.toLowerCase() === lower);
+      if (existingIdx !== -1) {
+        if (toFront && existingIdx > 0) {
+          candidates.splice(existingIdx, 1);
+          candidates.unshift(item);
+        }
+      } else {
+        if (toFront) candidates.unshift(item);
+        else candidates.push(item);
       }
-      return;
-    }
-
-    if (toFront) {
-      candidates.unshift(clean);
-    } else {
-      candidates.push(clean);
     }
   };
 
-  // 1. Registered Trade Marks or Brand Names with '®' or 'TM'
-  const registeredRegex = /\b([A-Za-z0-9-]{3,20})\s*[®™]/g;
-  let regMatch;
-  while ((regMatch = registeredRegex.exec(rawText)) !== null) {
-    addCandidate(regMatch[1], true);
-  }
+  // 1. Salt / Generic formulation ending in dosage form (Tablets, Capsules, Syrup, etc.)
+  const formRegex =
+    /\b([A-Z][a-zA-Z0-9-]+(?:\s+(?:and|&|\+|,)?\s+[A-Za-z0-9-]+){0,5})\s+(?:Dispersible\s+|Gastro-resistant\s+|Prolonged-release\s+|Sustained\s+Release\s+|Film-coated\s+|Uncoated\s+|Hard\s+gelatin\s+)?(?:Capsules?|Tablets?|Syrup|Injection|Suspension|Ointment|Gel|Cream|Drops|Solution)\b/gi;
 
-  // 2. Salt / Generic names followed by dosage form
-  // e.g. "Calcium Dobesilate Capsules", "Paracetamol Tablets"
-  const saltFormRegex =
-    /\b([A-Z][a-zA-Z]+(?:\s+(?:and|&|\+)\s+[A-Z][a-zA-Z]+|\s+[A-Z][a-zA-Z]+){0,3})\s+(?:Capsules|Tablets|Syrup|Injection|Suspension|Ointment|Gel|Cream|Drops)\b/gi;
   for (const line of lines) {
-    const cleanLine = line.replace(/[*•#]/g, '').trim();
-    let match;
-    while ((match = saltFormRegex.exec(cleanLine)) !== null) {
-      const saltName = match[1].trim();
-      const firstWord = saltName.split(/\s+/)[0].toLowerCase();
+    let formMatch;
+    while ((formMatch = formRegex.exec(line)) !== null) {
+      const salt = formMatch[1].trim();
+      const firstWord = salt.split(/\s+/)[0];
       if (!isStopWordOrNoise(firstWord)) {
-        addCandidate(saltName);
+        addCandidate(salt, false);
       }
     }
   }
 
-  // 3. Repeated uppercase brand names (blister strips repeat brand name on each pocket)
-  const tokenMatches = rawText.match(/\b[A-Z][A-Z0-9-]{2,18}\b/g) || [];
+  // 2. "contains:" lines
+  const containsRegex = /(?:contains|contains:)\s*([A-Za-z]+(?:\s+[A-Za-z]+){0,3})/gi;
+  let m;
+  while ((m = containsRegex.exec(rawText)) !== null) {
+    const salt = m[1].trim();
+    if (!isStopWordOrNoise(salt)) {
+      addCandidate(salt, false);
+    }
+  }
+
+  // 3. Repeated brand tokens (e.g. TOCIL appearing multiple times across blister foil pockets)
+  const tokenMatches = rawText.match(/\b[A-Za-z][A-Za-z0-9-]{2,18}\b/g) || [];
   const freqMap = {};
   for (const token of tokenMatches) {
     if (!isStopWordOrNoise(token)) {
-      freqMap[token] = (freqMap[token] || 0) + 1;
+      const key = token.toUpperCase();
+      freqMap[key] = (freqMap[key] || 0) + 1;
     }
   }
 
   const frequentTokens = Object.entries(freqMap).sort((a, b) => b[1] - a[1]);
-  for (const [token, count] of frequentTokens) {
+  // Reverse when unshifting so highest frequency ends up at the very front
+  for (const [token, count] of frequentTokens.slice().reverse()) {
     if (count >= 2) {
       addCandidate(token, true);
-    } else {
-      addCandidate(token, false);
     }
   }
 
-  // 4. Lines with "contains: [Salt]"
-  const containsRegex = /(?:contains|contains:)\s*([A-Za-z]+(?:\s+[A-Za-z]+){0,2})/gi;
-  let contMatch;
-  while ((contMatch = containsRegex.exec(rawText)) !== null) {
-    const salt = contMatch[1].trim();
-    if (!isStopWordOrNoise(salt)) {
-      addCandidate(salt);
+  // 4. Standalone Brand Name line (1 to 4 words, e.g. "Dolo 650", "Azithral 500", "Augmentin 625 Duo", "Pan-D", "TOCIL")
+  for (const line of lines) {
+    if (
+      /(?:Marketed|Manufactured|Biotech|Laboratories|Pharma|Road|Vill|Distt|Bazar|contains|Store|swallowed|opened|crushed|Prescription|Schedule|Batch|Expiry|Mfg|Lic|Limited|Ltd|Pvt|GlaxoSmithKline|Micro\s+Labs|Alkem|Cipla|Sun\s+Pharma|Dr\s+Reddy)/i.test(
+        line
+      )
+    ) {
+      continue;
+    }
+
+    const cleanL = cleanMedicineToken(line);
+    const words = cleanL.split(/\s+/).filter(Boolean);
+    if (words.length >= 1 && words.length <= 4) {
+      const first = words[0];
+      if (
+        /^[A-Za-z][A-Za-z0-9-]{2,20}$/.test(first) &&
+        !isStopWordOrNoise(first) &&
+        !/^(each|hard|soft|film|tablet|tablets|capsule|capsules|syrup|excipients)$/i.test(first)
+      ) {
+        addCandidate(cleanL, true);
+      }
+    }
+  }
+
+  // 5. Registered Trade Marks or Brand Names with '®' or 'TM' (Highest Priority)
+  const regRegex = /\b([A-Za-z0-9-]{3,25})\s*[®™]/g;
+  let regM;
+  while ((regM = regRegex.exec(rawText)) !== null) {
+    if (!isStopWordOrNoise(regM[1])) {
+      addCandidate(regM[1], true);
     }
   }
 
@@ -202,43 +248,46 @@ export function extractMedicineCandidates(rawText) {
 }
 
 /**
- * OCR.space text extraction fallback with key rotation.
+ * OCR.space text extraction fallback with key rotation and dual-engine fallback.
  */
 async function extractTextViaOcrSpace(base64Image) {
-  for (const apiKey of OCR_FALLBACK_KEYS) {
-    try {
-      const formData = new URLSearchParams();
-      formData.append('base64Image', `data:image/jpeg;base64,${base64Image}`);
-      formData.append('language', 'eng');
-      formData.append('scale', 'true');
-      formData.append('OCREngine', '2');
+  for (const engine of ['2', '1']) {
+    for (const apiKey of OCR_FALLBACK_KEYS) {
+      try {
+        const formData = new URLSearchParams();
+        formData.append('base64Image', `data:image/jpeg;base64,${base64Image}`);
+        formData.append('language', 'eng');
+        formData.append('scale', 'true');
+        formData.append('isOverlayRequired', 'false');
+        formData.append('OCREngine', engine);
 
-      const res = await fetchWithTimeout(
-        'https://api.ocr.space/parse/image',
-        {
-          method: 'POST',
-          headers: {
-            apikey: apiKey,
-            'Content-Type': 'application/x-www-form-urlencoded',
+        const res = await fetchWithTimeout(
+          'https://api.ocr.space/parse/image',
+          {
+            method: 'POST',
+            headers: {
+              apikey: apiKey,
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: formData.toString(),
           },
-          body: formData.toString(),
-        },
-        12000
-      );
+          12000
+        );
 
-      if (!res.ok) continue;
-      const data = await res.json();
-      if (data?.IsErroredOnProcessing) {
-        // Try next key if rate limit or error
-        continue;
-      }
+        if (!res.ok) continue;
+        const data = await res.json();
+        if (data?.IsErroredOnProcessing) {
+          // Try next key if rate limit or error
+          continue;
+        }
 
-      const text = data?.ParsedResults?.[0]?.ParsedText || '';
-      if (text.trim()) {
-        return text;
+        const text = data?.ParsedResults?.[0]?.ParsedText || '';
+        if (text && text.trim().length > 10) {
+          return text;
+        }
+      } catch (_e) {
+        // Try next key
       }
-    } catch (_e) {
-      // Try next key
     }
   }
 
@@ -354,7 +403,7 @@ export async function scanMedicineImage(asset) {
   }
 
   // 4. Resolve clinical medicine details by testing candidates in order of confidence
-  for (const cand of candidates.slice(0, 4)) {
+  for (const cand of candidates.slice(0, 6)) {
     try {
       const medData = await resolveMedicine(cand);
       if (medData) {

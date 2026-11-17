@@ -427,6 +427,47 @@ export default function HomeScreen({ onSelectScreen }) {
               />
             </LinearGradient>
           </TouchableOpacity>
+
+          {/* Live Location Share — emerald theme, consent-based partner location */}
+          <TouchableOpacity
+            style={styles.locationCardWrapper}
+            onPress={() => onSelectScreen('location')}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={['#0B1220', '#072428', '#0A3F42']}
+              locations={[0, 0.55, 1]}
+              start={{ x: 0, y: 0.1 }}
+              end={{ x: 0.85, y: 1 }}
+              style={styles.locationCardGradient}
+            >
+              <LinearGradient
+                colors={['#34D399', '#059669']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0.2, y: 1 }}
+                style={styles.locationIconBox}
+              >
+                <MaterialCommunityIcons name="map" size={30} color="#FFFFFF" />
+              </LinearGradient>
+
+              <View style={styles.locationCardBody}>
+                <Text style={styles.locationCardTitle}>Live Location Share</Text>
+                <Text style={styles.locationCardDescHindi} numberOfLines={1}>
+                  Partner ki live location — sirf mutual consent par
+                </Text>
+                <Text style={styles.locationCardDescEng} numberOfLines={1}>
+                  Consent-based live location · 1 hour expiry
+                </Text>
+              </View>
+
+              <Ionicons
+                name="chevron-forward"
+                size={26}
+                color="#34D399"
+                style={{ marginLeft: 8 }}
+              />
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
       </ScrollView>
 
@@ -997,6 +1038,63 @@ const styles = StyleSheet.create({
   medicineCardDescEng: {
     fontSize: 11,
     color: '#5EEAD4',
+    fontWeight: '600',
+    marginTop: 3,
+  },
+  locationCardWrapper: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 0,
+    elevation: 0,
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+  },
+  locationCardGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    minHeight: 88,
+    maxHeight: 104,
+    position: 'relative',
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' && {
+      backgroundImage:
+        'radial-gradient(ellipse at 100% 100%, rgba(52, 211, 153, 0.35) 0%, rgba(5, 150, 105, 0) 55%), linear-gradient(115deg, #0B1220 0%, #072428 55%, #0A3F42 100%)',
+    }),
+  },
+  locationIconBox: {
+    width: 58,
+    height: 58,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  locationCardBody: {
+    flex: 1,
+  },
+  locationCardTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+    marginBottom: 6,
+  },
+  locationCardDescHindi: {
+    fontSize: 12.5,
+    color: '#F8FAFC',
+    fontWeight: '600',
+    lineHeight: 17,
+  },
+  locationCardDescEng: {
+    fontSize: 11,
+    color: '#6EE7B7',
     fontWeight: '600',
     marginTop: 3,
   },

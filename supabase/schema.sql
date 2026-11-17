@@ -152,3 +152,75 @@ create policy kharcha_entries_update on public.kharcha_entries
 grant select, insert             on public.kharcha_families to anon;
 grant select, insert, update     on public.kharcha_members  to anon;
 grant select, insert, update     on public.kharcha_entries  to anon;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Location sharing — consent-based live location between paired devices
+--
+-- Sirf wohi device apni row likhti hai jisne shuru ki ho. Doosra device sirf
+-- read karta hai. expires_at ke baad row dead mananti hai (client delete bhi
+-- kar sakta hai jab sharing band kare).
+-- ─────────────────────────────────────────────────────────────────────────────
+create table if not exists public.location_shares (
+  id           text    primary key,
+  family_code  text    not null,
+  device_name  text    not null,
+  latitude     numeric not null,
+  longitude    numeric not null,
+  accuracy     numeric,
+  updated_at   bigint  not null default 0,
+  expires_at   bigint  not null default 0
+);
+
+create index if not exists location_shares_family_updated
+  on public.location_shares (family_code, updated_at);
+
+-- Har phone ki ghadi alag hoti hai. updated_at ko server ke clock par set karo
+-- (kharcha_entries jaisa hi), taaki "partner kitni der pehle online tha" aur
+-- 1-ghante ki expiry clock-skew se na toote.
+drop trigger if exists location_shares_touch on public.location_shares;
+create trigger location_shares_touch
+  before insert or update on public.location_shares
+  for each row execute function public.kharcha_set_updated_at();
+
+alter table public.location_shares enable row level security;
+
+drop policy if exists location_shares_read   on public.location_shares;
+drop policy if exists location_shares_write  on public.location_shares;
+drop policy if exists location_shares_update on public.location_shares;
+drop policy if exists location_shares_delete on public.location_shares;
+
+create policy location_shares_read on public.location_shares
+  for select to anon
+  using (
+    char_length(location_shares.family_code) >= 8
+    and exists (select 1 from public.kharcha_families f where f.code = location_shares.family_code)
+  );
+
+create policy location_shares_write on public.location_shares
+  for insert to anon
+  with check (
+    char_length(location_shares.family_code) >= 8
+    and exists (select 1 from public.kharcha_families f where f.code = location_shares.family_code)
+  );
+
+create policy location_shares_update on public.location_shares
+  for update to anon
+  using (
+    char_length(location_shares.family_code) >= 8
+    and exists (select 1 from public.kharcha_families f where f.code = location_shares.family_code)
+  )
+  with check (
+    char_length(location_shares.family_code) >= 8
+    and exists (select 1 from public.kharcha_families f where f.code = location_shares.family_code)
+  );
+
+-- Sharing band karte waqt device apni row delete karta hai (stopSharing).
+-- Iske bina DELETE anon se allowed nahi hota aur row sirf expire hoti rehti hai.
+create policy location_shares_delete on public.location_shares
+  for delete to anon
+  using (
+    char_length(location_shares.family_code) >= 8
+    and exists (select 1 from public.kharcha_families f where f.code = location_shares.family_code)
+  );
+
+grant select, insert, update, delete on public.location_shares to anon;

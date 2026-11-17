@@ -24,7 +24,17 @@
     },
     "plugins": [
       "expo-font",
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Live Location Share ke liye aapki location partner ke saath surakshit tareeke se share karne ke liye permission chahiye.",
+          "locationAlwaysAndWhenInUsePermission": "Live Location Share ko background mein chalu rakhne ke liye aapki location ki Always permission chahiye. Aap kabhi bhi sharing band kar sakte hain.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ]
     ],
     "extra": {
       "eas": {

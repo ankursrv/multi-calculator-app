@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from './src/theme/colors';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { LocationShareProvider } from './src/context/LocationShareContext';
 
 // Screens
 import HomeScreen from './src/screens/HomeScreen';
@@ -32,6 +33,7 @@ import FdCalculator from './src/screens/FdCalculator';
 import GoldRateScreen from './src/screens/GoldRateScreen';
 import TyohaarCalendarScreen from './src/screens/TyohaarCalendarScreen';
 import MedicineGuideScreen from './src/screens/MedicineGuideScreen';
+import LocationShareScreen from './src/screens/LocationShareScreen';
 
 // Global Web Style to remove focus-visible outlines from all input boxes
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -293,6 +295,9 @@ function MainApp() {
           {currentScreen === 'medicine' && (
           <MedicineGuideScreen onBack={() => goBack()} />
           )}
+          {currentScreen === 'location' && (
+          <LocationShareScreen onBack={() => goBack()} />
+          )}
         </Animated.View>
 
         {/* Curved Center-Notch Bottom Navigation Bar */}
@@ -427,7 +432,9 @@ function MainApp() {
     return (
       <SafeAreaProvider>
         <AuthProvider>
-          <MainApp />
+          <LocationShareProvider>
+            <MainApp />
+          </LocationShareProvider>
         </AuthProvider>
       </SafeAreaProvider>
     );
