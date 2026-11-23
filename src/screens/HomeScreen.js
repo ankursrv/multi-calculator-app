@@ -18,6 +18,7 @@ import FdCardGlow from '../components/FdCardGlow';
 import KhataCardGlow from '../components/KhataCardGlow';
 import GoldRateCardGlow from '../components/GoldRateCardGlow';
 import TyohaarCardGlow from '../components/TyohaarCardGlow';
+import TrainCardGlow from '../components/TrainCardGlow';
 import ProfileMenuModal from '../components/ProfileMenuModal';
 import LoginModal from '../components/LoginModal';
 import EditProfileModal from '../components/EditProfileModal';
@@ -330,6 +331,49 @@ export default function HomeScreen({ onSelectScreen }) {
                 name="chevron-forward"
                 size={26}
                 color="#FCD34D"
+                style={{ marginLeft: 8 }}
+              />
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* Live Train Status — railway tracking with live movement & crossing alerts */}
+          <TouchableOpacity
+            style={styles.trainCardWrapper}
+            onPress={() => onSelectScreen('train')}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={['#0B1220', '#0A1830', '#0A1F44']}
+              locations={[0, 0.55, 1]}
+              start={{ x: 0, y: 0.1 }}
+              end={{ x: 0.85, y: 1 }}
+              style={styles.trainCardGradient}
+            >
+              <TrainCardGlow />
+
+              <LinearGradient
+                colors={['#38BDF8', '#2563EB']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0.2, y: 1 }}
+                style={styles.trainIconBox}
+              >
+                <MaterialCommunityIcons name="train" size={30} color="#FFFFFF" />
+              </LinearGradient>
+
+              <View style={styles.trainCardBody}>
+                <Text style={styles.trainCardTitle}>Live Train Status</Text>
+                <Text style={styles.trainCardDescHindi}>
+                  रियल-टाइम ट्रेन लोकेशन और क्रॉसिंग अलर्ट
+                </Text>
+                <Text style={styles.trainCardDescEng} numberOfLines={1}>
+                  Live train tracking · Crossing alerts · Station ETA
+                </Text>
+              </View>
+
+              <Ionicons
+                name="chevron-forward"
+                size={26}
+                color="#38BDF8"
                 style={{ marginLeft: 8 }}
               />
             </LinearGradient>
@@ -879,6 +923,63 @@ const styles = StyleSheet.create({
   },
   calendarCardBody: {
     flex: 1,
+  },
+  trainCardWrapper: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 0,
+    elevation: 0,
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+  },
+  trainCardGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    minHeight: 88,
+    maxHeight: 104,
+    position: 'relative',
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' && {
+      backgroundImage:
+        'radial-gradient(ellipse at 100% 100%, rgba(56, 189, 248, 0.35) 0%, rgba(37, 99, 235, 0) 55%), linear-gradient(115deg, #0B1220 0%, #0A1830 55%, #0A1F44 100%)',
+    }),
+  },
+  trainIconBox: {
+    width: 58,
+    height: 58,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  trainCardBody: {
+    flex: 1,
+  },
+  trainCardTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+    marginBottom: 6,
+  },
+  trainCardDescHindi: {
+    fontSize: 12.5,
+    color: '#F8FAFC',
+    fontWeight: '600',
+    lineHeight: 17,
+  },
+  trainCardDescEng: {
+    fontSize: 11,
+    color: '#7DD3FC',
+    fontWeight: '600',
+    marginTop: 3,
   },
   calendarCardTitle: {
     fontSize: 18,

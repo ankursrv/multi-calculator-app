@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -31,6 +31,7 @@ import KharchaTrackerScreen from './src/screens/KharchaTrackerScreen';
 import FdCalculator from './src/screens/FdCalculator';
 import GoldRateScreen from './src/screens/GoldRateScreen';
 import TyohaarCalendarScreen from './src/screens/TyohaarCalendarScreen';
+import LiveTrainStatus from './src/screens/LiveTrainStatus';
 
 // Global Web Style to remove focus-visible outlines from all input boxes
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -88,6 +89,19 @@ function MainApp() {
   const transitionRef = useRef(null);
   const currentScreenRef = useRef('home');
   const historyRef = useRef(['home']);
+
+  // A mounted screen can register a hardware-back handler here so that
+  // back first closes its own inner view (e.g. live train detail) instead
+  // of jumping straight to the app home screen.
+  const screenBackHandlerRef = useRef(null);
+  const registerScreenBack = useCallback((handler) => {
+    screenBackHandlerRef.current = handler;
+    return () => {
+      if (screenBackHandlerRef.current === handler) {
+        screenBackHandlerRef.current = null;
+      }
+    };
+  }, []);
 
     const switchScreen = (screenId, isBack = false) => {
       if (currentScreenRef.current === screenId) return;
@@ -160,6 +174,15 @@ function MainApp() {
 
     useEffect(() => {
       const onBackPress = () => {
+        // Give the current screen a chance to handle back internally first
+        const screenHandler = screenBackHandlerRef.current;
+        if (typeof screenHandler === 'function') {
+          try {
+            if (screenHandler()) return true;
+          } catch (_e) {
+            // fall through to app-level navigation
+          }
+        }
         return goBack();
       };
 
@@ -287,6 +310,10 @@ function MainApp() {
 
           {currentScreen === 'calendar' && (
           <TyohaarCalendarScreen onBack={() => goBack()} />
+          )}
+
+          {currentScreen === 'train' && (
+          <LiveTrainStatus onBack={() => goBack()} onRegisterBack={registerScreenBack} />
           )}
         </Animated.View>
 
