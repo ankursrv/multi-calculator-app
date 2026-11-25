@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
+import { HIT_SLOP } from '../theme/touch';
 import { useAuth } from '../context/AuthContext';
 
 function LoginForm({ onClose, onSuccess }) {
@@ -133,7 +134,7 @@ function LoginForm({ onClose, onSuccess }) {
         <TouchableWithoutFeedback>
           <View style={styles.card}>
             {/* Close Button */}
-            <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.closeBtn} onPress={onClose} hitSlop={HIT_SLOP} activeOpacity={0.7}>
               <Ionicons name="close" size={20} color={Colors.textMuted} />
             </TouchableOpacity>
 

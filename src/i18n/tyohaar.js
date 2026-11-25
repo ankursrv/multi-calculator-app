@@ -23,6 +23,10 @@ const translations = {
   'महीना चुनें': { en: 'Choose month', hi: 'महीना चुनें' },
   'शहर चुनें': { en: 'Choose city', hi: 'शहर चुनें' },
 
+  // Festival list expand / collapse
+  'View More': { en: 'View more', hi: 'और देखें' },
+  'View Less': { en: 'View less', hi: 'कम देखें' },
+
   // Day sheet — section titles
   'सूर्य - चन्द्र': { en: 'Sun & Moon', hi: 'सूर्य - चन्द्र' },
   'पंचांग (पाँच अंग)': { en: 'Panchang (five angas)', hi: 'पंचांग (पाँच अंग)' },

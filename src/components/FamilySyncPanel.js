@@ -19,6 +19,7 @@ import { Text, TextInput } from '../components/I18nText';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import { Colors } from '../theme/colors';
+import { HIT_SLOP, pressableStyle } from '../theme/touch';
 import { CLOUD_ENABLED, FAMILY_CODE_LENGTH, makeFamilyCode, normalizeFamilyCode } from '../lib/supabaseConfig';
 import { cloud } from '../lib/cloudApi';
 import { clearMeta, setMeta } from '../lib/kharchaSync';
@@ -222,7 +223,7 @@ export default function FamilySyncPanel({ meta, statusText, syncing, onMetaChang
               {mode === null ? (
                 <View style={styles.btnRow}>
                   <Pressable
-                    style={styles.primaryBtn}
+                    style={pressableStyle(styles.primaryBtn)}
                     onPress={() => {
                       setDraftCode(makeFamilyCode());
                       setMode('create');
@@ -231,7 +232,7 @@ export default function FamilySyncPanel({ meta, statusText, syncing, onMetaChang
                   >
                     <Text style={styles.primaryBtnText}>नई Family बनाएं</Text>
                   </Pressable>
-                  <Pressable style={styles.ghostBtn} onPress={() => setMode('join')} accessibilityRole="button">
+                  <Pressable style={pressableStyle(styles.ghostBtn)} onPress={() => setMode('join')} accessibilityRole="button">
                     <Text style={styles.ghostBtnText}>कोड से जुड़ें</Text>
                   </Pressable>
                 </View>
@@ -258,8 +259,9 @@ export default function FamilySyncPanel({ meta, statusText, syncing, onMetaChang
                           editable={false}
                         />
                         <Pressable
-                          style={styles.codeEyeBtn}
+                          style={pressableStyle(styles.codeEyeBtn)}
                           onPress={() => setCodeVisible((v) => !v)}
+                          hitSlop={HIT_SLOP}
                           accessibilityRole="button"
                         >
                           <Ionicons
@@ -273,7 +275,7 @@ export default function FamilySyncPanel({ meta, statusText, syncing, onMetaChang
                         <Text style={[styles.subHint, styles.hintFlex]}>
                           यह कोड Family ke sath शेयर करें।
                         </Text>
-                        <Pressable style={styles.linkBtnInline} onPress={() => setDraftCode(makeFamilyCode())} accessibilityRole="button">
+                        <Pressable style={pressableStyle(styles.linkBtnInline)} onPress={() => setDraftCode(makeFamilyCode())} hitSlop={HIT_SLOP} accessibilityRole="button">
                           <Text style={styles.linkBtnText}>Generate Code</Text>
                         </Pressable>
                       </View>
@@ -296,7 +298,7 @@ export default function FamilySyncPanel({ meta, statusText, syncing, onMetaChang
 
                   <View style={styles.btnRow}>
                     <Pressable
-                      style={[styles.primaryBtn, busy && styles.btnDisabled]}
+                      style={pressableStyle([styles.primaryBtn, busy && styles.btnDisabled])}
                       onPress={mode === 'create' ? handleCreate : handleJoin}
                       disabled={busy}
                       accessibilityRole="button"
@@ -307,7 +309,7 @@ export default function FamilySyncPanel({ meta, statusText, syncing, onMetaChang
                         <Text style={styles.primaryBtnText}>{mode === 'create' ? 'Family बनाएं' : 'जुड़ें'}</Text>
                       )}
                     </Pressable>
-                    <Pressable style={styles.ghostBtn} onPress={resetForm} accessibilityRole="button">
+                    <Pressable style={pressableStyle(styles.ghostBtn)} onPress={resetForm} accessibilityRole="button">
                       <Text style={styles.ghostBtnText}>रुकें</Text>
                     </Pressable>
                   </View>
@@ -362,7 +364,7 @@ export default function FamilySyncPanel({ meta, statusText, syncing, onMetaChang
                   <View style={[styles.dot, syncing ? styles.dotBusy : styles.dotOn]} />
                   <Text style={styles.statusText}>{syncing ? 'Sync हो रहा है…' : statusText || 'Sync चालू'}</Text>
                 </View>
-                <Pressable style={styles.ghostBtnSmall} onPress={onSyncNow} disabled={syncing} accessibilityRole="button">
+                <Pressable style={pressableStyle(styles.ghostBtnSmall)} onPress={onSyncNow} disabled={syncing} accessibilityRole="button">
                   <Text style={styles.ghostBtnText}>Sync Now</Text>
                 </Pressable>
               </View>
@@ -401,7 +403,7 @@ export default function FamilySyncPanel({ meta, statusText, syncing, onMetaChang
                 <Text style={styles.modalTitle}>Family Members</Text>
               </View>
               <Pressable
-                style={styles.modalCloseBtn}
+                style={pressableStyle(styles.modalCloseBtn)}
                 onPress={() => setShowMembersModal(false)}
                 hitSlop={10}
                 accessibilityRole="button"
@@ -459,7 +461,7 @@ export default function FamilySyncPanel({ meta, statusText, syncing, onMetaChang
                       <View style={styles.tableColRight}>
                         {canDelete ? (
                           <Pressable
-                            style={styles.deleteMemberBtn}
+                            style={pressableStyle(styles.deleteMemberBtn)}
                             onPress={() => setMemberToDelete(m.device_name)}
                             accessibilityRole="button"
                             accessibilityLabel={`Delete ${m.device_name}`}
@@ -508,7 +510,7 @@ export default function FamilySyncPanel({ meta, statusText, syncing, onMetaChang
 
             <View style={styles.deleteActionRow}>
               <Pressable
-                style={styles.cancelBtn}
+                style={pressableStyle(styles.cancelBtn)}
                 onPress={() => setMemberToDelete(null)}
                 disabled={deletingMember}
                 accessibilityRole="button"
@@ -517,7 +519,7 @@ export default function FamilySyncPanel({ meta, statusText, syncing, onMetaChang
               </Pressable>
 
               <Pressable
-                style={[styles.confirmDeleteBtn, deletingMember && { opacity: 0.7 }]}
+                style={pressableStyle([styles.confirmDeleteBtn, deletingMember && { opacity: 0.7 }])}
                 onPress={handleConfirmDeleteMember}
                 disabled={deletingMember}
                 accessibilityRole="button"

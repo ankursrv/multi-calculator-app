@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
+import { HIT_SLOP } from '../theme/touch';
 import GradientText from './GradientText';
 import { useDrawer } from '../context/DrawerContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -75,6 +76,7 @@ export default function ScreenHeader({
           <TouchableOpacity
             onPress={canOpenDrawer ? drawer.openDrawer : onBack}
             style={styles.sideBtn}
+            hitSlop={HIT_SLOP}
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel={canOpenDrawer ? 'Open menu' : 'Go back'}
@@ -108,7 +110,7 @@ export default function ScreenHeader({
         </View>
 
         {onReset && (
-          <TouchableOpacity onPress={onReset} style={styles.sideBtn} activeOpacity={0.7}>
+          <TouchableOpacity onPress={onReset} style={styles.sideBtn} hitSlop={HIT_SLOP} activeOpacity={0.7}>
             <Ionicons name="refresh" size={20} color={t.sideIconColor} />
           </TouchableOpacity>
         )}

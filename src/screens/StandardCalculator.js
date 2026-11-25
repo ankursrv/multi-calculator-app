@@ -47,9 +47,15 @@ export default function StandardCalculator({ onBack }) {
   // History panel khulta/band hota hai — toggle icon keypad ke upar hi rehta hai
   const [showHistory, setShowHistory] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  // Har "=" par badhta hai — result text ko alag se animate karne ke liye
+  const [resultTick, setResultTick] = useState(0);
   // Slide animation: panel left (-width) se 0 par aata hai
   const [gridW, setGridW] = useState(0);
   const [slideAnim] = useState(() => new Animated.Value(0));
+  // Display / preview animations — all native-driver, so typing stays instant
+  const [displayAnim] = useState(() => new Animated.Value(1));
+  const [previewAnim] = useState(() => new Animated.Value(1));
+  const [resultPop] = useState(() => new Animated.Value(1));
 
   // Tab switch par screen unmount hoti hai, isliye history device par save rehti hai
   useEffect(() => {
@@ -69,8 +75,17 @@ export default function StandardCalculator({ onBack }) {
     AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(history)).catch(() => {});
   }, [history, historyLoaded]);
 
+  // `=` ke baad expression purana result hota hai. Koi bhi nayi key dabate hi
+  // wo hata dete hain taaki preview naye calculation se update ho.
+  const clearPreviousResult = () => {
+    if (!expression) return false;
+    setExpression('');
+    return true;
+  };
+
   const handleNumber = (digit) => {
-    if (display === '0' || display === 'Error') {
+    const wasResult = clearPreviousResult();
+    if (wasResult || display === '0' || display === 'Error') {
       setDisplay(digit);
     } else {
       setDisplay(display + digit);
@@ -78,6 +93,10 @@ export default function StandardCalculator({ onBack }) {
   };
 
   const handleDecimal = () => {
+    if (clearPreviousResult()) {
+      setDisplay('0.');
+      return;
+    }
     const parts = display.split(/[\+\-\×\÷]/);
     const lastPart = parts[parts.length - 1];
     if (!lastPart.includes('.')) {
@@ -87,6 +106,7 @@ export default function StandardCalculator({ onBack }) {
 
   const handleOperator = (op) => {
     if (display === 'Error') return;
+    clearPreviousResult();
     const lastChar = display.slice(-1);
     if (['+', '-', '×', '÷'].includes(lastChar)) {
       setDisplay(display.slice(0, -1) + op);
@@ -101,6 +121,7 @@ export default function StandardCalculator({ onBack }) {
   };
 
   const handleBackspace = () => {
+    clearPreviousResult();
     if (display.length <= 1 || display === 'Error') {
       setDisplay('0');
     } else {
@@ -109,6 +130,7 @@ export default function StandardCalculator({ onBack }) {
   };
 
   const handlePercentage = () => {
+    clearPreviousResult();
     try {
       const val = parseFloat(display);
       if (!isNaN(val)) {
@@ -120,6 +142,7 @@ export default function StandardCalculator({ onBack }) {
   };
 
   const handleToggleSign = () => {
+    clearPreviousResult();
     if (display === '0' || display === 'Error') return;
     if (display.startsWith('-')) {
       setDisplay(display.substring(1));
@@ -142,16 +165,77 @@ export default function StandardCalculator({ onBack }) {
         : parseFloat(result.toFixed(6)).toString();
 
       setHistory([{ expr: display, res: rounded, ts: nowStamp() }, ...history.slice(0, 49)]);
-      setExpression(display + ' =');
+      setExpression(display);
       setDisplay(rounded);
+      setResultTick((v) => v + 1);
     } catch {
       setDisplay('Error');
     }
   };
 
+  // Live result while typing — sanitize first, then evaluate only complete
+  // expressions (never a trailing operator), so the big display always shows
+  // the current answer instead of waiting for "=".
+  const livePreview = useMemo(() => {
+    if (!display || display === '0' || display === 'Error') return '';
+    if (!/[+\-×÷]/.test(display) || /[+\-×÷]$/.test(display)) return '';
+    const sanitized = display.replace(/×/g, '*').replace(/÷/g, '/');
+    if (!/^[\d\.\+\-\*\/\(\)\s]+$/.test(sanitized)) return '';
+    try {
+      const result = Function(`"use strict"; return (${sanitized})`)();
+      if (!Number.isFinite(result)) return '';
+      return Number.isInteger(result)
+        ? result.toString()
+        : parseFloat(result.toFixed(6)).toString();
+    } catch {
+      return '';
+    }
+  }, [display]);
+
+  // Quick fade when the big value changes, slide-up for the live answer,
+  // and a soft pop when "=" lands.
+  useEffect(() => {
+    displayAnim.setValue(0.55);
+    Animated.timing(displayAnim, {
+      toValue: 1,
+      duration: 160,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+  }, [display, displayAnim]);
+
+  useEffect(() => {
+    previewAnim.setValue(0);
+    Animated.timing(previewAnim, {
+      toValue: 1,
+      duration: 200,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [livePreview, previewAnim]);
+
+  useEffect(() => {
+    if (!resultTick) return;
+    resultPop.setValue(0.82);
+    Animated.timing(resultPop, {
+      toValue: 1,
+      duration: 320,
+      easing: Easing.out(Easing.back(1.8)),
+      useNativeDriver: true,
+    }).start();
+  }, [resultTick, resultPop]);
+
   const clearHistory = () => {
     setHistory([]);
     setConfirmClear(false);
+    // Empty history ke baad panel khula rehna ajeeb lagta hai — wapas slide out karo
+    setShowHistory(false);
+    Animated.timing(slideAnim, {
+      toValue: 0,
+      duration: 280,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
   };
 
   // Panel ki slide panel ki hi width par depend karti hai, isliye grid naap te hain
@@ -224,18 +308,47 @@ export default function StandardCalculator({ onBack }) {
       {/* Fixed Header (same style as Home) with subtle shadow fade */}
       <ScreenHeader title="Calculator" subtitle="Quick & Accurate Maths" onBack={onBack} />
 
-      {/* Screen Body */}
+      {/* Screen Body — flex layout adapts rows/buttons to the device height */}
       <View style={styles.body}>
-        {/* Display Card */}
+        {/* Display Card — typed expression big, live answer just below it */}
         <View style={styles.displayCard}>
-          <Text style={styles.expressionText}>{expression}</Text>
-          <Text
-            style={[styles.displayText, display.length > 9 && { fontSize: 36 }]}
+          {expression ? (
+            <Text style={styles.expressionText} numberOfLines={1}>
+              {expression}
+            </Text>
+          ) : null}
+          <Animated.Text
+            style={[
+              styles.displayText,
+              { opacity: displayAnim, transform: [{ scale: resultPop }] },
+              display.length > 9 && { fontSize: 36 },
+            ]}
             numberOfLines={1}
             adjustsFontSizeToFit
           >
             {display}
-          </Text>
+          </Animated.Text>
+          {livePreview ? (
+            <Animated.Text
+              style={[
+                styles.livePreviewText,
+                {
+                  opacity: previewAnim,
+                  transform: [
+                    {
+                      translateY: previewAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [5, 0],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+              numberOfLines={1}
+            >
+              {livePreview}
+            </Animated.Text>
+          ) : null}
         </View>
 
         {/* Keypad */}
@@ -419,21 +532,23 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
+    minHeight: 0,
     paddingHorizontal: 14,
     paddingTop: 16,
-    paddingBottom: 80,
-    justifyContent: 'space-between',
+    paddingBottom: 16,
   },
   displayCard: {
     backgroundColor: Colors.cardBg,
     borderRadius: 22,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
     borderWidth: 1,
     borderColor: Colors.cardBorder,
-    minHeight: 160,
+    minHeight: 104,
+    maxHeight: 156,
     justifyContent: 'flex-end',
     alignItems: 'flex-end',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   // History panel: number keys ke upar baithta hai, left se smooth slide
   historyPanel: {
@@ -609,24 +724,35 @@ const styles = StyleSheet.create({
     fontSize: 48,
     fontWeight: '800',
   },
+  livePreviewText: {
+    color: Colors.textMuted,
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: 2,
+    alignSelf: 'flex-end',
+  },
   keypad: {
-    gap: 12,
+    flex: 1,
+    minHeight: 0,
+    gap: 8,
   },
   keypadGrid: {
-    gap: 12,
+    flex: 1,
+    minHeight: 0,
+    gap: 8,
   },
   row: {
+    flex: 1,
+    minHeight: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 8,
   },
   btnWrap: {
     flex: 1,
-    aspectRatio: 1.25,
   },
   btn: {
     flex: 1,
-    aspectRatio: 1.25,
     backgroundColor: Colors.cardBg,
     borderRadius: 18,
     borderWidth: 1,

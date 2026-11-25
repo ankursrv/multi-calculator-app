@@ -19,7 +19,8 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from './src/theme/colors';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import DrawerContext from './src/context/DrawerContext';
-import { LanguageProvider } from './src/context/LanguageContext';
+import { LanguageProvider, useLanguage } from './src/context/LanguageContext';
+import { DEFAULT_CITY, getGrahaRashiChakra, warmPanchangDays } from './src/utils/hinduPanchang';
 import SideDrawer from './src/components/SideDrawer';
 
 // Screens
@@ -79,6 +80,8 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
 function MainApp() {
   const insets = useSafeAreaInsets();
   const { expensesStorageKey } = useAuth();
+  const { language } = useLanguage();
+
   const [currentScreen, setCurrentScreen] = useState('home');
   const [activeBottomTab, setActiveBottomTab] = useState('home');
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -102,6 +105,34 @@ function MainApp() {
   const currentScreenRef = useRef('home');
   const historyRef = useRef(['home']);
 
+  // Warm the panchang cache gently while on Home, one month at a time.
+  // Cancelled as soon as the user navigates (e.g. opens the calendar), so it
+  // never competes with the screen that needs the calculations.
+  useEffect(() => {
+    if (currentScreen !== 'home') return undefined;
+    let cancelled = false;
+    let cancelWarm = null;
+    // Let the first paint / navigation settle before warming in the background
+    const startTimer = setTimeout(() => {
+      if (cancelled) return;
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = now.getMonth() + 1;
+      const ny = m === 12 ? y + 1 : y;
+      const nm = m === 12 ? 1 : m + 1;
+      getGrahaRashiChakra(y, m, now.getDate(), DEFAULT_CITY);
+      cancelWarm = warmPanchangDays(y, m, DEFAULT_CITY, language, null, () => {
+        if (!cancelled) cancelWarm = warmPanchangDays(ny, nm, DEFAULT_CITY, language);
+      });
+    }, 500);
+    return () => {
+      cancelled = true;
+      clearTimeout(startTimer);
+      if (cancelWarm) cancelWarm();
+    };
+  }, [language, currentScreen]);
+
+
     const switchScreen = (screenId, isBack = false) => {
       if (currentScreenRef.current === screenId) return;
       currentScreenRef.current = screenId;
@@ -117,19 +148,25 @@ function MainApp() {
 
       // Stop any in-flight animation so rapid taps never stack/glitch transitions
       if (transitionRef.current) transitionRef.current.stop();
-      fadeAnim.setValue(0);
-      slideAnim.setValue(isBack ? -10 : 14);
+
+      // Back must feel instant: start nearly visible with a short travel.
+      // Forward navigation keeps the fuller 220ms entrance.
+      const duration = isBack ? 140 : 220;
+      fadeAnim.setValue(isBack ? 0.88 : 0);
+      slideAnim.setValue(isBack ? -6 : 14);
 
       transitionRef.current = Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 220,
+          duration,
+          isInteraction: false,
           useNativeDriver: true,
         }),
         Animated.timing(slideAnim, {
           toValue: 0,
-          duration: 220,
+          duration,
           easing: Easing.out(Easing.quad),
+          isInteraction: false,
           useNativeDriver: true,
         }),
       ]);

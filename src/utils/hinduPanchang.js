@@ -270,6 +270,37 @@ export function getMonthDays(year, month, city, language = 'hi') {
   return list;
 }
 
+/**
+ * Warm the day cache one day per frame, so opening the calendar doesn't block
+ * the JS thread with ~30+ synchronous panchang calculations. Returns a cancel
+ * function; call it when the screen/app unmounts.
+ */
+export function warmPanchangDays(year, month, city, language = 'hi', upToDay = null, onDone = null) {
+  let cancelled = false;
+  let timer = null;
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const total = upToDay == null ? daysInMonth : Math.min(upToDay, daysInMonth);
+  let d = 1;
+
+  const step = () => {
+    if (cancelled) return;
+    if (d > total) {
+      if (onDone) onDone();
+      return;
+    }
+    getDayPanchang(year, month, d, city, language);
+    d += 1;
+    // Leave room between days so taps/animations still get frames on mobile
+    timer = setTimeout(step, 32);
+  };
+  timer = setTimeout(step, 32);
+
+  return () => {
+    cancelled = true;
+    if (timer) clearTimeout(timer);
+  };
+}
+
 /** Full almanac breakdown for the selected-day sheet. */
 export function buildDayDetail(day) {
   const r = day.raw;

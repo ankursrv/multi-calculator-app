@@ -16,6 +16,7 @@ import { Text } from '../components/I18nText';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
+import { HIT_SLOP } from '../theme/touch';
 import ScreenHeader from '../components/ScreenHeader';
 import MuhurtSearch from '../components/MuhurtSearch';
 import GrahaRashiChakra from '../components/GrahaRashiChakra';
@@ -27,7 +28,6 @@ import { useLanguage } from '../context/LanguageContext';
 import {
   DEFAULT_CITY,
   getDayPanchang,
-  getMonthDays,
   buildDayDetail,
   buildMonthPrintHtml,
   festivalColor,
@@ -58,6 +58,9 @@ const TONE = {
 
 const WEEKDAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+// Festival list: show only this many rows until "View more" is tapped
+const FESTIVAL_PREVIEW_LIMIT = 5;
+
 const LEGEND = [
   { label: 'प्रमुख त्योहार', color: festivalColor('major') },
   { label: 'एकादशी', color: festivalColor('ekadashi') },
@@ -79,6 +82,21 @@ export default function TyohaarCalendarScreen({ onBack }) {
   const [sheetAnim] = useState(() => new Animated.Value(0));
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState(false);
+  // Index of the month whose festival list is expanded; null = collapsed.
+  // Tying it to the month makes switching month/year collapse it automatically.
+  const [expandedMonthIdx, setExpandedMonthIdx] = useState(null);
+  // Animated height/opacity of the rows hidden behind "View more".
+  // Height can't use the native driver, so this animation runs on the JS thread.
+  const [festivalAnim] = useState(() => new Animated.Value(0));
+  const [hiddenHeight, setHiddenHeight] = useState(0);
+  const hiddenHeightRef = useRef(0);
+  // Keep the View more/less button at the same screen position while rows
+  // above it expand or collapse, by moving the scroll offset in sync.
+  const scrollRef = useRef(null);
+  const scrollOffsetRef = useRef(0);
+
+  // Guard against a second hardware-back press starting a second close animation
+  const sheetClosingRef = useRef(false);
 
   // If user was viewing current month and midnight crosses into a new month, advance view
   const prevDateRef = useRef({ year: currentYear, month: currentMonth, day: currentDay });
@@ -93,12 +111,48 @@ export default function TyohaarCalendarScreen({ onBack }) {
     }
   }, [currentYear, currentMonth, currentDay, selYear, selMonth]);
 
+  // A new month means a fresh collapsed list — reset the running animation
+  useEffect(() => {
+    festivalAnim.removeAllListeners();
+    festivalAnim.setValue(0);
+  }, [selYear, selMonth, festivalAnim]);
+
   // Panchang is always computed for the default city (Kanpur); the calendar
   // no longer exposes a city selector.
   const city = DEFAULT_CITY;
 
-  // ~30 offline panchang calculations, cached per month+city in the util layer
-  const days = useMemo(() => getMonthDays(selYear, selMonth, city, language), [selYear, selMonth, city, language]);
+  // Month days are computed in small batches so this screen opens instantly
+  // instead of blocking on ~30 synchronous panchang calculations.
+  const [days, setDays] = useState([]);
+  const [daysLoading, setDaysLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    const total = new Date(selYear, selMonth, 0).getDate();
+    const acc = [];
+    let d = 1;
+    let first = true;
+    const chunk = () => {
+      if (cancelled) return;
+      if (first) {
+        first = false;
+        setDays([]);
+        setDaysLoading(true);
+      }
+      const end = Math.min(d + 3, total + 1);
+      for (; d < end; d += 1) {
+        const day = getDayPanchang(selYear, selMonth, d, city, language);
+        if (day) acc.push(day);
+      }
+      setDays(acc.slice());
+      if (d <= total) setTimeout(chunk, 0);
+      else setDaysLoading(false);
+    };
+    setTimeout(chunk, 0);
+    return () => {
+      cancelled = true;
+    };
+  }, [selYear, selMonth, city, language]);
+
   const leadingBlanks = weekdayOf(selYear, selMonth, 1);
 
   // Rows of 7 cells (null = empty slot) so columns always line up with the
@@ -118,27 +172,42 @@ export default function TyohaarCalendarScreen({ onBack }) {
     [currentYear, currentMonth, currentDay, city, language],
   );
 
-  // Upcoming festivals for the hero card, today first. एकादशी / प्रदोष /
-  // पूर्णिमा are never more than ~16 days apart, so five of them always turn up
-  // inside 40 steps, and every step is a per-day calculation the util caches —
-  // the rest of this month is already computed by the grid.
-  const upcomingEvents = useMemo(() => {
+  // Upcoming hero festivals — also chunked; the old loop did up to 41
+  // calculations in one render pass.
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
+  useEffect(() => {
+    let cancelled = false;
     const out = [];
-    for (let i = 0; i <= 40 && out.length < 5; i++) {
-      const d = new Date(currentYear, currentMonth - 1, currentDay + i);
-      const p = getDayPanchang(d.getFullYear(), d.getMonth() + 1, d.getDate(), city, language);
-      const f = p && p.festivals[0];
-      if (f) {
-        out.push({
-          festival: f,
-          day: p,
-          isToday: i === 0,
-          inDays: i,
-          dateHi: `${p.day} ${language === 'hi' ? monthNameHi(p.month) : monthNameEn(p.month)} ${d.getFullYear()}`,
-        });
+    let i = 0;
+    let first = true;
+    const chunk = () => {
+      if (cancelled) return;
+      if (first) {
+        first = false;
+        setUpcomingEvents([]);
       }
-    }
-    return out;
+      const end = Math.min(i + 5, 41);
+      for (; i < end && out.length < 5; i += 1) {
+        const dt = new Date(currentYear, currentMonth - 1, currentDay + i);
+        const p = getDayPanchang(dt.getFullYear(), dt.getMonth() + 1, dt.getDate(), city, language);
+        const f = p && p.festivals[0];
+        if (f) {
+          out.push({
+            festival: f,
+            day: p,
+            isToday: i === 0,
+            inDays: i,
+            dateHi: `${p.day} ${language === 'hi' ? monthNameHi(p.month) : monthNameEn(p.month)} ${dt.getFullYear()}`,
+          });
+        }
+      }
+      setUpcomingEvents(out.slice());
+      if (i <= 40 && out.length < 5) setTimeout(chunk, 0);
+    };
+    setTimeout(chunk, 0);
+    return () => {
+      cancelled = true;
+    };
   }, [currentYear, currentMonth, currentDay, city, language]);
 
   const heroEvent = upcomingEvents[Math.min(heroIdx, upcomingEvents.length - 1)] || null;
@@ -152,14 +221,62 @@ export default function TyohaarCalendarScreen({ onBack }) {
   const stepHero = (delta) =>
     setHeroIdx((i) => Math.min(Math.max(i + delta, 0), Math.max(upcomingEvents.length - 1, 0)));
 
+  const currentIdx = monthIndex(selYear, selMonth);
+  const showAllFestivals = expandedMonthIdx === currentIdx;
+
   // One row per date, holding every festival on that day. `days` already has a
   // single entry per date, so the same date is never repeated in the list.
   const monthFestivals = useMemo(
     () => days.filter((d) => d.festivals.length).map((d) => ({ day: d, festivals: d.festivals })),
     [days],
   );
+  const hiddenFestivals = monthFestivals.slice(FESTIVAL_PREVIEW_LIMIT);
+  const hiddenFestivalCount = Math.max(monthFestivals.length - FESTIVAL_PREVIEW_LIMIT, 0);
+  // Fallback for native, where a child inside a zero-height clipped parent can
+  // report 0 from onLayout. maxHeight never adds empty space beyond the content.
+  const fallbackHiddenHeight = hiddenFestivals.length * 90;
+  const expandTarget = Math.max(hiddenHeight || fallbackHiddenHeight, 1);
 
-  const currentIdx = monthIndex(selYear, selMonth);
+  // Measure the natural height of the hidden rows (it varies by month,
+  // language and text length) so the animation opens to exactly that height.
+  const onHiddenLayout = (e) => {
+    const h = e.nativeEvent.layout.height;
+    if (h > 0 && Math.abs(h - hiddenHeightRef.current) > 0.5) {
+      hiddenHeightRef.current = h;
+      setHiddenHeight(h);
+    }
+  };
+
+  const toggleFestivals = () => {
+    const opening = expandedMonthIdx !== currentIdx;
+    const fullHeight = hiddenHeightRef.current > 0 ? hiddenHeightRef.current : fallbackHiddenHeight;
+    const startValue = opening ? 0 : fullHeight;
+    const startScrollY = scrollOffsetRef.current;
+    setExpandedMonthIdx(opening ? currentIdx : null);
+
+    // On collapse, scroll by the same delta as the shrinking rows so the
+    // "View less" button stays visually anchored. On expand, leave the scroll
+    // position untouched so the new rows continue from the current spot
+    // instead of jumping to the end of the list.
+    festivalAnim.removeAllListeners();
+    const listenerId = opening
+      ? null
+      : festivalAnim.addListener(({ value }) => {
+          if (!scrollRef.current) return;
+          const nextY = Math.max(0, startScrollY + (value - startValue));
+          scrollRef.current.scrollTo({ y: nextY, animated: false });
+        });
+
+    Animated.timing(festivalAnim, {
+      toValue: opening ? fullHeight : 0,
+      duration: 300,
+      easing: Easing.inOut(Easing.cubic),
+      useNativeDriver: false, // `maxHeight` is not supported by the native driver
+    }).start(() => {
+      if (listenerId !== null) festivalAnim.removeListener(listenerId);
+    });
+  };
+
   const canGoPrev = currentIdx > IDX_MIN;
   const canGoNext = currentIdx < IDX_MAX;
 
@@ -175,6 +292,7 @@ export default function TyohaarCalendarScreen({ onBack }) {
   };
 
   const openDay = (day) => {
+    sheetClosingRef.current = false;
     setDetailDay(day);
     setModalVisible(true);
     sheetAnim.setValue(0);
@@ -187,12 +305,15 @@ export default function TyohaarCalendarScreen({ onBack }) {
   };
 
   const closeDay = () => {
+    if (sheetClosingRef.current) return;
+    sheetClosingRef.current = true;
     Animated.timing(sheetAnim, {
       toValue: 0,
       duration: 220,
       easing: Easing.in(Easing.cubic),
       useNativeDriver: Platform.OS !== 'web',
     }).start(() => {
+      sheetClosingRef.current = false;
       setModalVisible(false);
       setDetailDay(null);
     });
@@ -248,6 +369,39 @@ export default function TyohaarCalendarScreen({ onBack }) {
 
   const detailSections = detailDay ? buildDayDetail(detailDay) : [];
 
+  // Shared row renderer for the always-visible and the animated sections
+  const renderFestivalRow = ({ day, festivals }) => (
+    <TouchableOpacity
+      key={`${day.year}-${day.month}-${day.day}`}
+      style={[styles.festRow, festivals.length > 1 && styles.festRowMulti]}
+      onPress={() => openDay(day)}
+      activeOpacity={0.75}
+    >
+      <View style={styles.festDateBox}>
+        <Text style={styles.festDateNum} allowFontScaling={false}>{day.day}</Text>
+        <Text style={styles.festDateVar} allowFontScaling={false}>
+          {(language === 'hi' ? WEEKDAYS_HI : WEEKDAYS_EN)[day.weekday]}
+        </Text>
+      </View>
+      <View style={styles.festBody}>
+        {festivals.map((festival, idx) => (
+          <View
+            key={festival.key}
+            style={idx < festivals.length - 1 && styles.festEntryGap}
+          >
+            <Text style={[styles.festName, { color: festivalColor(festival.type) }]}>
+              {festival.name}
+            </Text>
+            <Text style={styles.festMasa} numberOfLines={1}>
+              {festival.description || day.tithiName}
+            </Text>
+          </View>
+        ))}
+      </View>
+      <Text style={styles.festTithi}>{day.tithiShort.rest}</Text>
+    </TouchableOpacity>
+  );
+
   return (
     <View style={styles.container}>
       <ScreenHeader
@@ -259,15 +413,21 @@ export default function TyohaarCalendarScreen({ onBack }) {
       />
 
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={(e) => {
+          scrollOffsetRef.current = e.nativeEvent.contentOffset.y;
+        }}
       >
         {/* ── Month navigation ─────────────────────────────── */}
         <View style={styles.navRow}>
           <TouchableOpacity
             style={[styles.navBtn, !canGoPrev && styles.navBtnOff]}
             onPress={() => goMonth(-1)}
+            hitSlop={HIT_SLOP}
             disabled={!canGoPrev}
             activeOpacity={0.7}
           >
@@ -289,6 +449,7 @@ export default function TyohaarCalendarScreen({ onBack }) {
           <TouchableOpacity
             style={[styles.navBtn, !canGoNext && styles.navBtnOff]}
             onPress={() => goMonth(1)}
+            hitSlop={HIT_SLOP}
             disabled={!canGoNext}
             activeOpacity={0.7}
           >
@@ -366,12 +527,12 @@ export default function TyohaarCalendarScreen({ onBack }) {
 
           {/* ‹ › walk the list of upcoming festivals */}
           {upcomingEvents.length > 1 && heroIdx > 0 ? (
-            <TouchableOpacity style={styles.heroNavLeft} onPress={() => stepHero(-1)} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.heroNavLeft} onPress={() => stepHero(-1)} hitSlop={HIT_SLOP} activeOpacity={0.7}>
               <Ionicons name="chevron-back" size={21} color={heroPalette.ink} />
             </TouchableOpacity>
           ) : null}
           {upcomingEvents.length > 1 && heroIdx < upcomingEvents.length - 1 ? (
-            <TouchableOpacity style={styles.heroNavRight} onPress={() => stepHero(1)} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.heroNavRight} onPress={() => stepHero(1)} hitSlop={HIT_SLOP} activeOpacity={0.7}>
               <Ionicons name="chevron-forward" size={21} color={heroPalette.ink} />
             </TouchableOpacity>
           ) : null}
@@ -393,6 +554,14 @@ export default function TyohaarCalendarScreen({ onBack }) {
           </View>
 
           {/* ── Month grid ───────────────────────────────────── */}
+          {daysLoading ? (
+            <View style={styles.loadingBox}>
+              <ActivityIndicator size="small" color="#FDBA74" />
+              <Text style={styles.loadingText}>
+                {language === 'hi' ? 'पंचांग तैयार हो रहा है…' : 'Preparing panchang…'}
+              </Text>
+            </View>
+          ) : (
           <View style={styles.grid}>
             {gridRows.map((row, rowIdx) => (
               <View key={`row-${rowIdx}`} style={styles.gridRow}>
@@ -461,6 +630,7 @@ export default function TyohaarCalendarScreen({ onBack }) {
               </View>
             ))}
           </View>
+          )}
         </View>
 
         {/* ── Legend ───────────────────────────────────────── */}
@@ -473,6 +643,8 @@ export default function TyohaarCalendarScreen({ onBack }) {
           ))}
         </View>
 
+        {!daysLoading ? (
+        <>
         {/* ── Month festival list ──────────────────────────── */}
         <View style={styles.card}>
           <View style={styles.cardHead}>
@@ -487,37 +659,59 @@ export default function TyohaarCalendarScreen({ onBack }) {
           {monthFestivals.length === 0 ? (
             <Text style={styles.emptyText}>इस महीने कोई त्योहार नहीं।</Text>
           ) : (
-            monthFestivals.map(({ day, festivals }) => (
-              <TouchableOpacity
-                key={`${day.year}-${day.month}-${day.day}`}
-                style={[styles.festRow, festivals.length > 1 && styles.festRowMulti]}
-                onPress={() => openDay(day)}
-                activeOpacity={0.75}
-              >
-                <View style={styles.festDateBox}>
-                  <Text style={styles.festDateNum} allowFontScaling={false}>{day.day}</Text>
-                  <Text style={styles.festDateVar} allowFontScaling={false}>
-                    {(language === 'hi' ? WEEKDAYS_HI : WEEKDAYS_EN)[day.weekday]}
-                  </Text>
-                </View>
-                <View style={styles.festBody}>
-                  {festivals.map((festival, idx) => (
+            <>
+              {monthFestivals.slice(0, FESTIVAL_PREVIEW_LIMIT).map(renderFestivalRow)}
+
+              {hiddenFestivalCount > 0 ? (
+                <>
+                  <View style={styles.festivalReveal}>
+                    {/* Invisible copy outside the clipped container: on native a
+                        zero-height parent can report 0 from onLayout, so measure here. */}
                     <View
-                      key={festival.key}
-                      style={idx < festivals.length - 1 && styles.festEntryGap}
+                      pointerEvents="none"
+                      accessible={false}
+                      importantForAccessibility="no-hide-descendants"
+                      style={styles.festivalMeasureGhost}
+                      onLayout={onHiddenLayout}
                     >
-                      <Text style={[styles.festName, { color: festivalColor(festival.type) }]}>
-                        {festival.name}
-                      </Text>
-                      <Text style={styles.festMasa} numberOfLines={1}>
-                        {festival.description || day.tithiName}
-                      </Text>
+                      {hiddenFestivals.map(renderFestivalRow)}
                     </View>
-                  ))}
-                </View>
-                <Text style={styles.festTithi}>{day.tithiShort.rest}</Text>
-              </TouchableOpacity>
-            ))
+
+                    <Animated.View
+                      style={[
+                        styles.hiddenFestivals,
+                        {
+                          maxHeight: festivalAnim,
+                          opacity: festivalAnim.interpolate({
+                            inputRange: [0, expandTarget],
+                            outputRange: [0, 1],
+                            extrapolate: 'clamp',
+                          }),
+                        },
+                      ]}
+                    >
+                      {hiddenFestivals.map(renderFestivalRow)}
+                    </Animated.View>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.moreBtn}
+                    onPress={toggleFestivals}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.moreBtnText} allowFontScaling={false}>
+                      {showAllFestivals ? t('View Less') : t('View More')}
+                      {!showAllFestivals ? ` (${hiddenFestivalCount})` : null}
+                    </Text>
+                    <MaterialCommunityIcons
+                      name={showAllFestivals ? 'chevron-up' : 'chevron-down'}
+                      size={16}
+                      color="#FDBA74"
+                    />
+                  </TouchableOpacity>
+                </>
+              ) : null}
+            </>
           )}
         </View>
 
@@ -556,10 +750,14 @@ export default function TyohaarCalendarScreen({ onBack }) {
           monthName={monthNameHi(selMonth)}
           year={selYear}
           onSelectDay={openDay}
+          scrollRef={scrollRef}
+          scrollOffsetRef={scrollOffsetRef}
         />
 
         {/* ── Graha rashi chakra (today) ───────────────────── */}
         {todayInfo ? <GrahaRashiChakra day={todayInfo} city={city} /> : null}
+        </>
+        ) : null}
       </ScrollView>
 
       {/* ── Month / Year dropdown ────────────────────────────── */}
@@ -673,7 +871,7 @@ export default function TyohaarCalendarScreen({ onBack }) {
                         विक्रम संवत {detailDay.vikramSamvat} · शक संवत {detailDay.shakaSamvat}
                       </Text>
                     </View>
-                    <TouchableOpacity style={styles.sheetClose} onPress={closeDay} activeOpacity={0.7}>
+                    <TouchableOpacity style={styles.sheetClose} onPress={closeDay} hitSlop={HIT_SLOP} activeOpacity={0.7}>
                       <Ionicons name="close" size={20} color="#FDBA74" />
                     </TouchableOpacity>
                   </View>
@@ -911,6 +1109,18 @@ const styles = StyleSheet.create({
     opacity: 0.68,
   },
 
+  loadingBox: {
+    minHeight: 180,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: Colors.textDim,
+  },
+
   // Calendar grid
   calendarWrap: {
     marginHorizontal: -10,
@@ -1116,6 +1326,41 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.textMuted,
     marginLeft: 8,
+  },
+
+  // Animated container for the rows revealed by "View more"
+  festivalReveal: {
+    position: 'relative',
+  },
+  // Off-flow measurement copy — never visible, never tappable
+  festivalMeasureGhost: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    opacity: 0,
+  },
+  hiddenFestivals: {
+    overflow: 'hidden',
+  },
+
+  // View more / view less toggle for the festival list
+  moreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginTop: 10,
+    paddingVertical: 9,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: 'rgba(251, 186, 116, 0.35)',
+    backgroundColor: 'rgba(251, 146, 60, 0.10)',
+  },
+  moreBtnText: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: '#FDBA74',
   },
 
   // Month PDF / share

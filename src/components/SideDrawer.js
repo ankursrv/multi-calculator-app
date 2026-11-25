@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../theme/colors';
+import { HIT_SLOP } from '../theme/touch';
 import { useLanguage } from '../context/LanguageContext';
 
 const LANGUAGE_OPTIONS = [
@@ -103,6 +104,7 @@ export default function SideDrawer({ visible, onClose }) {
           <TouchableOpacity
             style={styles.closeBtn}
             onPress={handleClose}
+            hitSlop={HIT_SLOP}
             activeOpacity={0.75}
             accessibilityRole="button"
             accessibilityLabel="Close menu"

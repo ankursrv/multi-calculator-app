@@ -17,6 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Colors } from '../theme/colors';
+import { HIT_SLOP } from '../theme/touch';
 import { useAuth, getUserBadgeInitials } from '../context/AuthContext';
 
 function EditProfileContent({ currentUser, updateProfile, onClose }) {
@@ -97,7 +98,7 @@ function EditProfileContent({ currentUser, updateProfile, onClose }) {
             {/* Header */}
             <View style={styles.headerRow}>
               <Text style={styles.title}>Edit Profile</Text>
-              <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.7}>
+              <TouchableOpacity style={styles.closeBtn} onPress={onClose} hitSlop={HIT_SLOP} activeOpacity={0.7}>
                 <Ionicons name="close" size={20} color={Colors.textMuted} />
               </TouchableOpacity>
             </View>

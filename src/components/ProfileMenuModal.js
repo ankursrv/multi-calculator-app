@@ -12,6 +12,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
+import { HIT_SLOP } from '../theme/touch';
 import { useAuth, getUserBadgeInitials } from '../context/AuthContext';
 
 export default function ProfileMenuModal({
@@ -63,7 +64,7 @@ export default function ProfileMenuModal({
                   <Ionicons name="person-circle" size={20} color="#34D399" />
                   <Text style={styles.headerTitle}>Account</Text>
                 </View>
-                <TouchableOpacity style={styles.closeBtn} onPress={onClose} activeOpacity={0.7}>
+                <TouchableOpacity style={styles.closeBtn} onPress={onClose} hitSlop={HIT_SLOP} activeOpacity={0.7}>
                   <Ionicons name="close" size={18} color={Colors.textMuted} />
                 </TouchableOpacity>
               </View>
