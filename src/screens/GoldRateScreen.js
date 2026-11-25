@@ -1,20 +1,20 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   StyleSheet,
-  Text,
   View,
   TouchableOpacity,
   ScrollView,
-  TextInput,
   ActivityIndicator,
   Animated,
   Easing,
 } from 'react-native';
+import { Text, TextInput } from '../components/I18nText';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
+import { useLanguage } from '../context/LanguageContext';
 
 // ---- Live prices from free gold-api.com (no key, updates every 30s) ----
 // gold-api gives the INTERNATIONAL spot price (USD->INR). That is NOT what an
@@ -70,29 +70,33 @@ const round2 = (n) => (Math.round(n * 100) / 100).toString();
 
 // Weight is always typed in grams; anything under 1 g reads better in milligrams,
 // so the unit is derived from the number instead of being toggled by the user.
-const weightUnit = (grams) => (grams > 0 && grams < 1 ? 'मि.ग्रा' : 'ग्राम');
+const weightUnit = (grams, language = 'hi') =>
+  grams > 0 && grams < 1
+    ? language === 'hi' ? 'मि.ग्रा' : 'mg'
+    : language === 'hi' ? 'ग्राम' : 'g';
 
-const formatWeight = (grams) => {
-  if (!(grams > 0)) return 'ग्राम';
+const formatWeight = (grams, language = 'hi') => {
+  if (!(grams > 0)) return language === 'hi' ? 'ग्राम' : 'g';
   if (grams < 1) {
     // keep 2 decimals in mg so tiny weights (0.0004 g = 0.4 mg) don't round to 0
     const mg = Math.round(grams * 100000) / 100;
-    return `${mg.toLocaleString('en-IN', { maximumFractionDigits: 2 })} ${weightUnit(grams)}`;
+    return `${mg.toLocaleString('en-IN', { maximumFractionDigits: 2 })} ${weightUnit(grams, language)}`;
   }
-  return `${(Math.round(grams * 1000) / 1000).toLocaleString('en-IN')} ${weightUnit(grams)}`;
+  return `${(Math.round(grams * 1000) / 1000).toLocaleString('en-IN')} ${weightUnit(grams, language)}`;
 };
 
-const timeAgoText = (isoString) => {
+const timeAgoText = (isoString, language = 'hi') => {
   if (!isoString) return '';
   const secs = Math.max(Math.round((Date.now() - new Date(isoString).getTime()) / 1000), 0);
-  if (secs < 60) return 'abhi';
+  if (secs < 60) return language === 'hi' ? 'abhi' : 'just now';
   const mins = Math.floor(secs / 60);
-  if (mins < 60) return `${mins} मिनट पहले`;
+  if (mins < 60) return language === 'hi' ? `${mins} मिनट पहले` : `${mins} min ago`;
   const hrs = Math.floor(mins / 60);
-  return `${hrs} घंटे पहले`;
+  return language === 'hi' ? `${hrs} घंटे पहले` : `${hrs} hours ago`;
 };
 
 export default function GoldRateScreen({ onBack }) {
+  const { language, t } = useLanguage();
   const [rates, setRates] = useState(null); // { goldPerGram, silverPerGram, updatedAt }
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -181,12 +185,12 @@ export default function GoldRateScreen({ onBack }) {
       AsyncStorage.setItem(CACHE_KEY, JSON.stringify(data)).catch(() => { });
     } catch {
       if (mountedRef.current) {
-        setError('इंटरनेट कनेक्शन चेक करें');
+        setError(t('इंटरनेट कनेक्शन चेक करें'));
         setLoading(false);
         setRefreshing(false);
       }
     }
-  }, []);
+  }, [t]);
 
   // Manual refresh: flag spinner then fetch (setState happens off the effect path)
   const handleRefresh = useCallback(() => {
@@ -238,10 +242,20 @@ export default function GoldRateScreen({ onBack }) {
   const isGold = metal === 'gold';
   // Hero big number: gold shows the 10-gram rate, silver shows 1 किलो.
   const heroMain = isGold ? gold24 * 10 : silverRate * 1000;
-  const heroTitle = isGold ? '24K सोना · 10 ग्राम' : 'चांदी 999 · 1 किलो';
+  const heroTitle = language === 'hi'
+    ? (isGold ? '24K सोना · 10 ग्राम' : 'चांदी 999 · 1 किलो')
+    : (isGold ? '24K Gold · 10 g' : 'Silver 999 · 1 kg');
   const heroStats = isGold
-    ? [{ k: '22K /ग्राम', v: gold22 }, { k: '18K /ग्राम', v: gold18 }, { k: '14K /ग्राम', v: gold14 }]
-    : [{ k: '1 ग्राम', v: silverRate }, { k: '10 ग्राम', v: silverRate * 10 }, { k: '100 ग्राम', v: silverRate * 100 }];
+    ? [
+        { k: language === 'hi' ? '22K /ग्राम' : '22K /g', v: gold22 },
+        { k: language === 'hi' ? '18K /ग्राम' : '18K /g', v: gold18 },
+        { k: language === 'hi' ? '14K /ग्राम' : '14K /g', v: gold14 },
+      ]
+    : [
+        { k: language === 'hi' ? '1 ग्राम' : '1 gram', v: silverRate },
+        { k: language === 'hi' ? '10 ग्राम' : '10 grams', v: silverRate * 10 },
+        { k: language === 'hi' ? '100 ग्राम' : '100 grams', v: silverRate * 100 },
+      ];
 
   // stable ko white rakha hai — muted slate hero ke amber bg par visible nahi tha
   const changeColor = change === 'up' ? Colors.success : change === 'down' ? Colors.danger : Colors.text;
@@ -290,7 +304,9 @@ export default function GoldRateScreen({ onBack }) {
 
   // Making line on the bill: rate, its % of the shop's भाव, and the weight it ran
   // on — the three numbers a "2250.00 Wt" invoice column actually stands for.
-  const makingBillLabel = `मेकिंग · ${formatRupee(makingRatePerGram)}/ग्राम (${round2(makingPctEquiv)}%) × ${formatWeight(jewelWeight)}`;
+  const makingBillLabel = language === 'hi'
+    ? `मेकिंग · ${formatRupee(makingRatePerGram)}/ग्राम (${round2(makingPctEquiv)}%) × ${formatWeight(jewelWeight, language)}`
+    : `Making · ${formatRupee(makingRatePerGram)}/g (${round2(makingPctEquiv)}%) × ${formatWeight(jewelWeight, language)}`;
 
   // ---- 10-gram rate splitter ----
   // Newspapers & rate boards quote gold as a 10-gram figure; split it to per gram.
@@ -352,7 +368,7 @@ export default function GoldRateScreen({ onBack }) {
               <View style={styles.liveDot} />
             )}
             {rates && (
-              <Text style={styles.updatedText}>{timeAgoText(rates.updatedAt)}</Text>
+              <Text style={styles.updatedText}>{timeAgoText(rates.updatedAt, language)}</Text>
             )}
           </View>
 
@@ -418,7 +434,7 @@ export default function GoldRateScreen({ onBack }) {
           <View style={styles.errorBanner}>
             <Ionicons name="cloud-offline-outline" size={16} color="#FCA5A5" />
             <Text style={styles.errorBannerText}>
-              {error} · आखिरी भाव दिखाए जा रहे हैं
+              {error} · {t('आखिरी भाव दिखाए जा रहे हैं')}
             </Text>
           </View>
         )}
@@ -629,7 +645,7 @@ export default function GoldRateScreen({ onBack }) {
                     placeholderTextColor={Colors.placeholderHint}
                   />
                   {/* unit picks itself from the entered weight */}
-                  <Text style={styles.unitAutoText}>{weightUnit(jewelWeight)}</Text>
+                  <Text style={styles.unitAutoText}>{weightUnit(jewelWeight, language)}</Text>
                 </View>
 
                 <Text style={styles.calcLabel}>मेकिंग चार्ज</Text>
@@ -725,9 +741,17 @@ export default function GoldRateScreen({ onBack }) {
                           />
                           <Text style={styles.folderFooterText}>
                             {makingSrc === 'pct'
-                              ? `${makingTyped}% = ${formatRupee(makingRatePerGram)}/ग्राम के बराबर`
-                              : `${formatRupee(makingRatePerGram)}/ग्राम = ${round2(makingPctEquiv)}% मेकिंग`}
-                            {jewelWeight > 0 ? ` (कुल: ${formatRupee(makingAmount)})` : ''}
+                              ? language === 'hi'
+                                ? `${makingTyped}% = ${formatRupee(makingRatePerGram)}/ग्राम के बराबर`
+                                : `${makingTyped}% = ${formatRupee(makingRatePerGram)}/g`
+                              : language === 'hi'
+                                ? `${formatRupee(makingRatePerGram)}/ग्राम = ${round2(makingPctEquiv)}% मेकिंग`
+                                : `${formatRupee(makingRatePerGram)}/g = ${round2(makingPctEquiv)}% making`}
+                            {jewelWeight > 0
+                              ? language === 'hi'
+                                ? ` (कुल: ${formatRupee(makingAmount)})`
+                                : ` (Total: ${formatRupee(makingAmount)})`
+                              : ''}
                           </Text>
                         </View>
                       </View>
@@ -787,7 +811,9 @@ export default function GoldRateScreen({ onBack }) {
                     <View style={styles.billBreakdown}>
                       <View style={styles.billLine}>
                         <Text style={styles.billLineLabel}>
-                          सोने का भाव ({jewelKarat}K × {formatWeight(jewelWeight)})
+                          {language === 'hi'
+                             ? `सोने का भाव (${jewelKarat}K × ${formatWeight(jewelWeight, language)})`
+                             : `Gold rate (${jewelKarat}K × ${formatWeight(jewelWeight, language)})`}
                         </Text>
                         <Text style={styles.billLineValue}>{formatRupee(goldValue)}</Text>
                       </View>
@@ -800,7 +826,13 @@ export default function GoldRateScreen({ onBack }) {
                       {chargedOtherRows.map((c, i) => (
                         <View key={c.id} style={styles.billLine}>
                           <Text style={styles.billLineLabel}>
-                            {chargedOtherRows.length > 1 ? `अन्य चार्ज ${i + 1}` : 'अन्य चार्ज'}
+                            {language === 'hi'
+                              ? chargedOtherRows.length > 1
+                                ? `अन्य चार्ज ${i + 1}`
+                                : 'अन्य चार्ज'
+                              : chargedOtherRows.length > 1
+                                ? `Other charge ${i + 1}`
+                                : 'Other charge'}
                           </Text>
                           <Text style={styles.billLineValue}>{formatRupee(c.value)}</Text>
                         </View>
@@ -819,7 +851,9 @@ export default function GoldRateScreen({ onBack }) {
                       <View style={{ flex: 1 }}>
                         <Text style={styles.billTotalLabel}>कुल देना होगा</Text>
                         <Text style={styles.billEffective}>
-                          असरदार भाव · {formatRupee(effectivePerGram)} /ग्राम
+                          {language === 'hi'
+                             ? `असरदार भाव · ${formatRupee(effectivePerGram)} /ग्राम`
+                             : `Effective rate · ${formatRupee(effectivePerGram)} /g`}
                         </Text>
                       </View>
                       <Text style={styles.billTotalValue}>{formatRupee(billTotal)}</Text>
@@ -849,6 +883,7 @@ export default function GoldRateScreen({ onBack }) {
 const SILVER_PURITY_OPTIONS = [999, 970, 925, 800];
 
 function SilverPriceCalculator({ liveRatePerGram }) {
+  const { language } = useLanguage();
   const [purity, setPurity] = useState(999);
   const [rateByPurity, setRateByPurity] = useState({}); // manual ₹/gram per purity
   const [wt, setWt] = useState(''); // grams
@@ -905,7 +940,9 @@ function SilverPriceCalculator({ liveRatePerGram }) {
   const billTotal = billSubtotal + gstAmount;
   const effectivePerGram = weight > 0 ? billTotal / weight : 0;
 
-  const makingBillLabel = `मेकिंग · ${formatRupee(makingRatePerGram)}/ग्राम (${round2(makingPctEquiv)}%) × ${formatWeight(weight)}`;
+  const makingBillLabel = language === 'hi'
+    ? `मेकिंग · ${formatRupee(makingRatePerGram)}/ग्राम (${round2(makingPctEquiv)}%) × ${formatWeight(weight, language)}`
+    : `Making · ${formatRupee(makingRatePerGram)}/g (${round2(makingPctEquiv)}%) × ${formatWeight(weight, language)}`;
 
   return (
     <View style={styles.calcCard}>
@@ -955,7 +992,7 @@ function SilverPriceCalculator({ liveRatePerGram }) {
           placeholderTextColor={Colors.placeholderHint}
         />
         {/* unit picks itself from the entered weight */}
-        <Text style={styles.unitAutoText}>{weightUnit(weight)}</Text>
+        <Text style={styles.unitAutoText}>{weightUnit(weight, language)}</Text>
       </View>
 
       <Text style={styles.calcLabel}>मेकिंग चार्ज</Text>
@@ -1042,9 +1079,17 @@ function SilverPriceCalculator({ liveRatePerGram }) {
                 />
                 <Text style={styles.folderFooterText}>
                   {makingSrc === 'pct'
-                    ? `${makingTyped}% = ${formatRupee(makingRatePerGram)}/ग्राम के बराबर`
-                    : `${formatRupee(makingRatePerGram)}/ग्राम = ${round2(makingPctEquiv)}% मेकिंग`}
-                  {weight > 0 ? ` (कुल: ${formatRupee(makingAmount)})` : ''}
+                    ? language === 'hi'
+                      ? `${makingTyped}% = ${formatRupee(makingRatePerGram)}/ग्राम के बराबर`
+                      : `${makingTyped}% = ${formatRupee(makingRatePerGram)}/g`
+                    : language === 'hi'
+                      ? `${formatRupee(makingRatePerGram)}/ग्राम = ${round2(makingPctEquiv)}% मेकिंग`
+                      : `${formatRupee(makingRatePerGram)}/g = ${round2(makingPctEquiv)}% making`}
+                  {weight > 0
+                    ? language === 'hi'
+                      ? ` (कुल: ${formatRupee(makingAmount)})`
+                      : ` (Total: ${formatRupee(makingAmount)})`
+                    : ''}
                 </Text>
               </View>
             </View>
@@ -1104,7 +1149,9 @@ function SilverPriceCalculator({ liveRatePerGram }) {
           <View style={styles.billBreakdown}>
             <View style={styles.billLine}>
               <Text style={styles.billLineLabel}>
-                चांदी का भाव ({purity} × {formatWeight(weight)})
+                {language === 'hi'
+                  ? `चांदी का भाव (${purity} × ${formatWeight(weight, language)})`
+                  : `Silver rate (${purity} × ${formatWeight(weight, language)})`}
               </Text>
               <Text style={styles.billLineValue}>{formatRupee(silverValue)}</Text>
             </View>
@@ -1117,7 +1164,13 @@ function SilverPriceCalculator({ liveRatePerGram }) {
             {chargedOtherRows.map((c, i) => (
               <View key={c.id} style={styles.billLine}>
                 <Text style={styles.billLineLabel}>
-                  {chargedOtherRows.length > 1 ? `अन्य चार्ज ${i + 1}` : 'अन्य चार्ज'}
+                  {language === 'hi'
+                    ? chargedOtherRows.length > 1
+                      ? `अन्य चार्ज ${i + 1}`
+                      : 'अन्य चार्ज'
+                    : chargedOtherRows.length > 1
+                      ? `Other charge ${i + 1}`
+                      : 'Other charge'}
                 </Text>
                 <Text style={styles.billLineValue}>{formatRupee(c.value)}</Text>
               </View>
@@ -1136,7 +1189,9 @@ function SilverPriceCalculator({ liveRatePerGram }) {
             <View style={{ flex: 1 }}>
               <Text style={styles.billTotalLabel}>कुल देना होगा</Text>
               <Text style={styles.billEffective}>
-                असरदार भाव · {formatRupee(effectivePerGram)} /ग्राम
+                {language === 'hi'
+                  ? `असरदार भाव · ${formatRupee(effectivePerGram)} /ग्राम`
+                  : `Effective rate · ${formatRupee(effectivePerGram)} /g`}
               </Text>
             </View>
             <Text style={styles.billTotalValue}>{formatRupee(billTotal)}</Text>

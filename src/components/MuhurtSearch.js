@@ -1,8 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, ScrollView } from 'react-native';
+import { Text } from '../components/I18nText';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import { MUHURT_TYPES, findMuhurtasInMonth, formatTime, WEEKDAYS_HI } from '../utils/hinduPanchang';
+import { useLanguage } from '../context/LanguageContext';
 
 const SHUBH = '#6EE7B7';
 const ASHUBH = '#FDA4AF';
@@ -12,6 +14,7 @@ const ASHUBH = '#FDA4AF';
  * Times come from the same day objects the grid and the day sheet use.
  */
 export default function MuhurtSearch({ days, monthName, year, onSelectDay }) {
+  const { language, t } = useLanguage();
   const [selected, setSelected] = useState('amritKala');
 
   const type = MUHURT_TYPES.find((t) => t.id === selected) || MUHURT_TYPES[0];
@@ -23,7 +26,7 @@ export default function MuhurtSearch({ days, monthName, year, onSelectDay }) {
     <View style={styles.card}>
       <View style={styles.head}>
         <MaterialCommunityIcons name="clock-outline" size={17} color={accent} />
-        <Text style={styles.title}>मुहूर्त खोज · {monthName} {year}</Text>
+        <Text style={styles.title}>{t('मुहूर्त खोज')} · {monthName} {year}</Text>
       </View>
 
       <Text style={styles.note}>
@@ -60,7 +63,7 @@ export default function MuhurtSearch({ days, monthName, year, onSelectDay }) {
       <View style={styles.countRow}>
         <Ionicons name="time-outline" size={12} color={accent} />
         <Text style={[styles.countText, { color: accent }]} allowFontScaling={false}>
-          {type.hi} — {rows.length} बार इस महीने
+          {type.hi} — {rows.length} {language === 'hi' ? 'बार इस महीने' : 'times this month'}
         </Text>
       </View>
 
@@ -77,13 +80,13 @@ export default function MuhurtSearch({ days, monthName, year, onSelectDay }) {
             <View style={styles.dateBox}>
               <Text style={styles.dateNum} allowFontScaling={false}>{r.day.day}</Text>
               <Text style={styles.dateVar} allowFontScaling={false}>
-                {WEEKDAYS_HI[r.day.weekday]}
+                {language === 'hi' ? WEEKDAYS_HI[r.day.weekday] : r.day.weekdayEn}
               </Text>
             </View>
 
             <View style={styles.body}>
               <Text style={[styles.time, { color: accent }]} allowFontScaling={false}>
-                {formatTime(r.start)} <Text style={styles.timeTo}>से</Text> {formatTime(r.end)}
+                {formatTime(r.start)} {t('से')} {formatTime(r.end)}
               </Text>
               <Text style={styles.sub} numberOfLines={1}>
                 {r.day.tithiName} · {r.day.nakshatra}

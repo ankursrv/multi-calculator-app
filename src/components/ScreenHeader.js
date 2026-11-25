@@ -4,6 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import GradientText from './GradientText';
+import { useDrawer } from '../context/DrawerContext';
+import { useLanguage } from '../context/LanguageContext';
 
 /**
  * Fixed sub-screen header (same style as Home header but with a constant
@@ -55,6 +57,11 @@ export default function ScreenHeader({
   theme = 'amber',
 }) {
   const t = THEMES[theme] || THEMES.amber;
+  const drawer = useDrawer();
+  const { t: translate } = useLanguage();
+  // Drawer available? Then the leading icon is the hamburger, else classic back arrow.
+  const canOpenDrawer = !!(drawer && typeof drawer.openDrawer === 'function');
+
   return (
     <View style={styles.wrapper}>
       <LinearGradient
@@ -64,9 +71,15 @@ export default function ScreenHeader({
         end={{ x: 1, y: 0.9 }}
         style={styles.headerBar}
       >
-        {onBack && (
-          <TouchableOpacity onPress={onBack} style={styles.sideBtn} activeOpacity={0.7}>
-            <Ionicons name="arrow-back" size={20} color={t.sideIconColor} />
+        {(canOpenDrawer || onBack) && (
+          <TouchableOpacity
+            onPress={canOpenDrawer ? drawer.openDrawer : onBack}
+            style={styles.sideBtn}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={canOpenDrawer ? 'Open menu' : 'Go back'}
+          >
+            <Ionicons name={canOpenDrawer ? 'menu' : 'arrow-back'} size={21} color={t.sideIconColor} />
           </TouchableOpacity>
         )}
 
@@ -81,7 +94,7 @@ export default function ScreenHeader({
 
         <View style={styles.textWrap}>
           <GradientText
-            text={title}
+            text={translate(title)}
             style={styles.title}
             colors={t.titleGradient}
             numberOfLines={1}
@@ -89,7 +102,7 @@ export default function ScreenHeader({
           <View style={styles.subtitleRow}>
             <Ionicons name="sparkles" size={11} color={t.sparkleColor} style={{ marginRight: 5 }} />
             <Text style={[styles.subtitle, { color: t.subtitleColor }]} numberOfLines={1}>
-              {subtitle}
+              {translate(subtitle)}
             </Text>
           </View>
         </View>

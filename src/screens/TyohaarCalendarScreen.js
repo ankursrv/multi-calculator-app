@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   StyleSheet,
-  Text,
   View,
   TouchableOpacity,
   ScrollView,
@@ -13,9 +12,9 @@ import {
   Easing,
   Dimensions,
 } from 'react-native';
+import { Text } from '../components/I18nText';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
 import MuhurtSearch from '../components/MuhurtSearch';
@@ -24,11 +23,9 @@ import FestivalIcon from '../components/FestivalIcon';
 import FestivalArt, { festivalArt } from '../components/FestivalArt';
 import webPrintHtml from '../utils/webPrintHtml';
 import useCurrentDate from '../hooks/useCurrentDate';
+import { useLanguage } from '../context/LanguageContext';
 import {
-  CITIES,
-  CITY_STORAGE_KEY,
   DEFAULT_CITY,
-  findCity,
   getDayPanchang,
   getMonthDays,
   buildDayDetail,
@@ -59,6 +56,8 @@ const TONE = {
   violet: '#C4B5FD',
 };
 
+const WEEKDAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 const LEGEND = [
   { label: 'प्रमुख त्योहार', color: festivalColor('major') },
   { label: 'एकादशी', color: festivalColor('ekadashi') },
@@ -69,11 +68,11 @@ const LEGEND = [
 ];
 
 export default function TyohaarCalendarScreen({ onBack }) {
+  const { language, t } = useLanguage();
   const { year: currentYear, month: currentMonth, day: currentDay, isToday } = useCurrentDate();
   const [selYear, setSelYear] = useState(currentYear);
   const [selMonth, setSelMonth] = useState(currentMonth);
-  const [cityId, setCityId] = useState(DEFAULT_CITY.id);
-  const [openDropdown, setOpenDropdown] = useState(null); // 'month' | 'year' | 'city'
+  const [openDropdown, setOpenDropdown] = useState(null); // 'month' | 'year'
   const [detailDay, setDetailDay] = useState(null);
   const [heroIdx, setHeroIdx] = useState(0); // which upcoming त्योहार the banner shows
   const [modalVisible, setModalVisible] = useState(false);
@@ -94,28 +93,12 @@ export default function TyohaarCalendarScreen({ onBack }) {
     }
   }, [currentYear, currentMonth, currentDay, selYear, selMonth]);
 
-  // Selected city is remembered across app launches
-  useEffect(() => {
-    (async () => {
-      try {
-        const saved = await AsyncStorage.getItem(CITY_STORAGE_KEY);
-        if (saved && CITIES.some((c) => c.id === saved)) setCityId(saved);
-      } catch {
-        // first run — keep the default city
-      }
-    })();
-  }, []);
-
-  const handlePickCity = (id) => {
-    setCityId(id);
-    setOpenDropdown(null);
-    AsyncStorage.setItem(CITY_STORAGE_KEY, id).catch(() => { });
-  };
-
-  const city = useMemo(() => findCity(cityId), [cityId]);
+  // Panchang is always computed for the default city (Kanpur); the calendar
+  // no longer exposes a city selector.
+  const city = DEFAULT_CITY;
 
   // ~30 offline panchang calculations, cached per month+city in the util layer
-  const days = useMemo(() => getMonthDays(selYear, selMonth, city), [selYear, selMonth, city]);
+  const days = useMemo(() => getMonthDays(selYear, selMonth, city, language), [selYear, selMonth, city, language]);
   const leadingBlanks = weekdayOf(selYear, selMonth, 1);
 
   // Rows of 7 cells (null = empty slot) so columns always line up with the
@@ -131,8 +114,8 @@ export default function TyohaarCalendarScreen({ onBack }) {
   // Hero banner always shows *today* — computed from the real date, so browsing
   // another month never relabels the 1st of that month as "आज"
   const todayInfo = useMemo(
-    () => getDayPanchang(currentYear, currentMonth, currentDay, city),
-    [currentYear, currentMonth, currentDay, city],
+    () => getDayPanchang(currentYear, currentMonth, currentDay, city, language),
+    [currentYear, currentMonth, currentDay, city, language],
   );
 
   // Upcoming festivals for the hero card, today first. एकादशी / प्रदोष /
@@ -143,7 +126,7 @@ export default function TyohaarCalendarScreen({ onBack }) {
     const out = [];
     for (let i = 0; i <= 40 && out.length < 5; i++) {
       const d = new Date(currentYear, currentMonth - 1, currentDay + i);
-      const p = getDayPanchang(d.getFullYear(), d.getMonth() + 1, d.getDate(), city);
+      const p = getDayPanchang(d.getFullYear(), d.getMonth() + 1, d.getDate(), city, language);
       const f = p && p.festivals[0];
       if (f) {
         out.push({
@@ -151,30 +134,30 @@ export default function TyohaarCalendarScreen({ onBack }) {
           day: p,
           isToday: i === 0,
           inDays: i,
-          dateHi: `${p.day} ${monthNameHi(p.month)} ${d.getFullYear()}`,
+          dateHi: `${p.day} ${language === 'hi' ? monthNameHi(p.month) : monthNameEn(p.month)} ${d.getFullYear()}`,
         });
       }
     }
     return out;
-  }, [currentYear, currentMonth, currentDay, city]);
+  }, [currentYear, currentMonth, currentDay, city, language]);
 
   const heroEvent = upcomingEvents[Math.min(heroIdx, upcomingEvents.length - 1)] || null;
   // Falls back to the plain maroon palette when there is nothing to show
   const heroPalette = festivalArt(
     heroEvent ? heroEvent.festival.name : '',
     heroEvent ? heroEvent.festival.type : 'minor',
+    heroEvent ? heroEvent.festival.key : undefined,
   );
 
   const stepHero = (delta) =>
     setHeroIdx((i) => Math.min(Math.max(i + delta, 0), Math.max(upcomingEvents.length - 1, 0)));
 
-  const monthFestivals = useMemo(() => {
-    const rows = [];
-    days.forEach((d) => {
-      d.festivals.forEach((f) => rows.push({ day: d, festival: f }));
-    });
-    return rows;
-  }, [days]);
+  // One row per date, holding every festival on that day. `days` already has a
+  // single entry per date, so the same date is never repeated in the list.
+  const monthFestivals = useMemo(
+    () => days.filter((d) => d.festivals.length).map((d) => ({ day: d, festivals: d.festivals })),
+    [days],
+  );
 
   const currentIdx = monthIndex(selYear, selMonth);
   const canGoPrev = currentIdx > IDX_MIN;
@@ -233,7 +216,7 @@ export default function TyohaarCalendarScreen({ onBack }) {
     setExporting(true);
     setExportError(false);
 
-    const html = buildMonthPrintHtml(selYear, selMonth, city, days);
+    const html = buildMonthPrintHtml(selYear, selMonth, city, days, language);
     try {
       if (Platform.OS === 'web') {
         webPrintHtml(html);
@@ -249,7 +232,7 @@ export default function TyohaarCalendarScreen({ onBack }) {
           await Sharing.shareAsync(uri, {
             mimeType: 'application/pdf',
             UTI: 'com.adobe.pdf',
-            dialogTitle: `${monthNameHi(selMonth)} ${selYear} पंचांग · ${city.hi}`,
+            dialogTitle: `${language === 'hi' ? monthNameHi(selMonth) : monthNameEn(selMonth)} ${selYear} ${language === 'hi' ? 'पंचांग' : 'Panchang'} · ${language === 'hi' ? city.hi : city.en}`,
           });
         } else {
           await Print.printAsync({ html });
@@ -292,7 +275,9 @@ export default function TyohaarCalendarScreen({ onBack }) {
           </TouchableOpacity>
 
           <TouchableOpacity style={[styles.navChip, styles.navChipMonth]} onPress={() => setOpenDropdown('month')} activeOpacity={0.8}>
-            <Text style={styles.navChipText} numberOfLines={1}>{monthNameHi(selMonth)}</Text>
+            <Text style={styles.navChipText} numberOfLines={1}>
+              {language === 'hi' ? monthNameHi(selMonth) : monthNameEn(selMonth)}
+            </Text>
             <MaterialCommunityIcons name="menu-down" size={18} color="#FDBA74" />
           </TouchableOpacity>
 
@@ -311,21 +296,9 @@ export default function TyohaarCalendarScreen({ onBack }) {
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.todayBtn} onPress={goToday} activeOpacity={0.8}>
-            <Text style={styles.todayBtnText}>आज</Text>
+            <Text style={styles.todayBtnText}>{t('Today')}</Text>
           </TouchableOpacity>
         </View>
-
-        {/* ── City selector ────────────────────────────────── */}
-        <TouchableOpacity style={styles.cityRow} onPress={() => setOpenDropdown('city')} activeOpacity={0.8}>
-          <View style={styles.cityLeft}>
-            <Ionicons name="location" size={15} color="#FB923C" />
-            <Text style={styles.cityLabel}>{city.hi}</Text>
-            <Text style={styles.cityEn}>· {city.en}</Text>
-          </View>
-          <View style={styles.cityRight}>
-            <MaterialCommunityIcons name="menu-down" size={18} color="#FB923C" />
-          </View>
-        </TouchableOpacity>
 
         {/* ── Hero holiday card ───────────────────────────── */}
         <LinearGradient
@@ -339,6 +312,7 @@ export default function TyohaarCalendarScreen({ onBack }) {
             <FestivalArt
               name={heroEvent.festival.name}
               type={heroEvent.festival.type}
+              festivalKey={heroEvent.festival.key}
               width={104}
               height={98}
               style={styles.heroArt}
@@ -351,14 +325,18 @@ export default function TyohaarCalendarScreen({ onBack }) {
               allowFontScaling={false}
               numberOfLines={1}
             >
-              {heroEvent ? (heroEvent.isToday ? 'आज का त्योहार' : 'अगला त्योहार') : 'अभी कोई त्योहार नहीं'}
+              {heroEvent
+                ? heroEvent.isToday
+                  ? t('Today’s festival')
+                  : t('Next festival')
+                : t('No upcoming festival')}
             </Text>
             <Text
               style={[styles.heroName, { color: heroPalette.ink }]}
               allowFontScaling={false}
               numberOfLines={2}
             >
-              {heroEvent ? heroEvent.festival.name : 'पंचांग'}
+              {heroEvent ? heroEvent.festival.name : t('Panchang')}
             </Text>
             {heroEvent ? (
               <Text
@@ -366,13 +344,23 @@ export default function TyohaarCalendarScreen({ onBack }) {
                 allowFontScaling={false}
                 numberOfLines={1}
               >
-                {`${heroEvent.day.weekdayHi}, ${heroEvent.dateHi}`}
-                {heroEvent.isToday ? '' : ` · ${heroEvent.inDays} दिन बाद`}
+                {`${language === 'hi' ? heroEvent.day.weekdayHi : heroEvent.day.weekdayEn}, ${heroEvent.dateHi}`}
+                {heroEvent.isToday
+                  ? ''
+                  : language === 'hi'
+                    ? ` · ${heroEvent.inDays} दिन बाद`
+                    : ` · in ${heroEvent.inDays} days`}
               </Text>
             ) : null}
             <Text style={[styles.heroFoot, { color: heroPalette.ink }]} allowFontScaling={false} numberOfLines={2}>
-              {`पौर्णिमान्त पंचांग · ${todayInfo ? todayInfo.masa : ''} मास · संवत् ${todayInfo ? todayInfo.vikramSamvat : ''} · ${monthNameEn(selMonth)} ${selYear}`}
-              {todayInfo ? ` · आज ${todayInfo.weekdayHi}, ${todayInfo.tithiName}` : ''}
+              {language === 'hi'
+                ? `पौर्णिमान्त पंचांग · ${todayInfo ? todayInfo.masa : ''} मास · संवत् ${todayInfo ? todayInfo.vikramSamvat : ''} · ${monthNameEn(selMonth)} ${selYear}`
+                : `Purnimanta Panchang · ${todayInfo ? todayInfo.masa : ''} · Samvat ${todayInfo ? todayInfo.vikramSamvat : ''} · ${monthNameEn(selMonth)} ${selYear}`}
+              {todayInfo
+                ? language === 'hi'
+                  ? ` · आज ${todayInfo.weekdayHi}, ${todayInfo.tithiName}`
+                  : ` · Today ${todayInfo.weekdayEn}, ${todayInfo.tithiName}`
+                : ''}
             </Text>
           </View>
 
@@ -392,7 +380,7 @@ export default function TyohaarCalendarScreen({ onBack }) {
         {/* ── Weekday header ───────────────────────────────── */}
         <View style={styles.calendarWrap}>
           <View style={styles.gridRow}>
-            {WEEKDAYS_HI.map((w, i) => (
+            {(language === 'hi' ? WEEKDAYS_HI : WEEKDAYS_EN).map((w, i) => (
               <Text
                 key={w}
                 style={[styles.weekText, i === 0 && styles.weekTextSunday]}
@@ -427,7 +415,13 @@ export default function TyohaarCalendarScreen({ onBack }) {
                     >
                       {top ? (
                         <View style={styles.cellIcon}>
-                          <FestivalIcon name={top.name} type={top.type} seed={d.day} size={20} />
+                          <FestivalIcon
+                            name={top.name}
+                            type={top.type}
+                            festivalKey={top.key}
+                            seed={d.day}
+                            size={20}
+                          />
                         </View>
                       ) : null}
 
@@ -483,32 +477,43 @@ export default function TyohaarCalendarScreen({ onBack }) {
         <View style={styles.card}>
           <View style={styles.cardHead}>
             <MaterialCommunityIcons name="fire" size={17} color="#FDBA74" />
-            <Text style={styles.cardTitle}>{monthNameHi(selMonth)} {selYear} के त्योहार</Text>
+            <Text style={styles.cardTitle}>
+              {language === 'hi'
+                ? `${monthNameHi(selMonth)} ${selYear} के त्योहार`
+                : `${monthNameEn(selMonth)} ${selYear} festivals`}
+            </Text>
           </View>
 
           {monthFestivals.length === 0 ? (
             <Text style={styles.emptyText}>इस महीने कोई त्योहार नहीं।</Text>
           ) : (
-            monthFestivals.map(({ day, festival }) => (
+            monthFestivals.map(({ day, festivals }) => (
               <TouchableOpacity
-                key={`${day.day}-${festival.key}`}
-                style={styles.festRow}
+                key={`${day.year}-${day.month}-${day.day}`}
+                style={[styles.festRow, festivals.length > 1 && styles.festRowMulti]}
                 onPress={() => openDay(day)}
                 activeOpacity={0.75}
               >
                 <View style={styles.festDateBox}>
                   <Text style={styles.festDateNum} allowFontScaling={false}>{day.day}</Text>
                   <Text style={styles.festDateVar} allowFontScaling={false}>
-                    {WEEKDAYS_HI[day.weekday]}
+                    {(language === 'hi' ? WEEKDAYS_HI : WEEKDAYS_EN)[day.weekday]}
                   </Text>
                 </View>
                 <View style={styles.festBody}>
-                  <Text style={[styles.festName, { color: festivalColor(festival.type) }]}>
-                    {festival.name}
-                  </Text>
-                  <Text style={styles.festMasa} numberOfLines={1}>
-                    {festival.description || day.tithiName}
-                  </Text>
+                  {festivals.map((festival, idx) => (
+                    <View
+                      key={festival.key}
+                      style={idx < festivals.length - 1 && styles.festEntryGap}
+                    >
+                      <Text style={[styles.festName, { color: festivalColor(festival.type) }]}>
+                        {festival.name}
+                      </Text>
+                      <Text style={styles.festMasa} numberOfLines={1}>
+                        {festival.description || day.tithiName}
+                      </Text>
+                    </View>
+                  ))}
                 </View>
                 <Text style={styles.festTithi}>{day.tithiShort.rest}</Text>
               </TouchableOpacity>
@@ -535,7 +540,9 @@ export default function TyohaarCalendarScreen({ onBack }) {
               <MaterialCommunityIcons name="file-pdf-box" size={19} color="#0B1220" />
             )}
             <Text style={styles.exportText} allowFontScaling={false}>
-              {monthNameHi(selMonth)} {selYear} का पंचांग · PDF / साझा
+              {language === 'hi'
+                ? `${monthNameHi(selMonth)} ${selYear} का पंचांग · PDF / साझा`
+                : `${monthNameEn(selMonth)} ${selYear} Panchang · PDF / Share`}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -555,7 +562,7 @@ export default function TyohaarCalendarScreen({ onBack }) {
         {todayInfo ? <GrahaRashiChakra day={todayInfo} city={city} /> : null}
       </ScrollView>
 
-      {/* ── Month / Year / City dropdown ─────────────────────── */}
+      {/* ── Month / Year dropdown ────────────────────────────── */}
       <Modal
         visible={openDropdown !== null}
         transparent
@@ -567,11 +574,7 @@ export default function TyohaarCalendarScreen({ onBack }) {
             <TouchableWithoutFeedback>
               <View style={styles.dropPanel}>
                 <Text style={styles.dropTitle}>
-                  {openDropdown === 'year'
-                    ? 'वर्ष चुनें'
-                    : openDropdown === 'city'
-                      ? 'शहर चुनें'
-                      : 'महीना चुनें'}
+                  {openDropdown === 'year' ? 'वर्ष चुनें' : 'महीना चुनें'}
                 </Text>
                 <ScrollView style={styles.dropScroll} showsVerticalScrollIndicator={false}>
                   {openDropdown === 'year' &&
@@ -610,7 +613,7 @@ export default function TyohaarCalendarScreen({ onBack }) {
                           <Text
                             style={[styles.dropOptionText, m === selMonth && styles.dropOptionTextActive]}
                           >
-                            {monthNameHi(m)}
+                            {language === 'hi' ? monthNameHi(m) : monthNameEn(m)}
                           </Text>
                           {m === selMonth ? (
                             <Ionicons name="checkmark" size={16} color="#FDBA74" />
@@ -619,24 +622,6 @@ export default function TyohaarCalendarScreen({ onBack }) {
                       );
                     })}
 
-                  {openDropdown === 'city' &&
-                    CITIES.map((c) => (
-                      <TouchableOpacity
-                        key={c.id}
-                        style={[styles.dropOption, c.id === cityId && styles.dropOptionActive]}
-                        onPress={() => handlePickCity(c.id)}
-                      >
-                        <Text
-                          style={[styles.dropOptionText, c.id === cityId && styles.dropOptionTextActive]}
-                        >
-                          {c.hi}
-                          <Text style={styles.dropOptionEn}> · {c.en}</Text>
-                        </Text>
-                        {c.id === cityId ? (
-                          <Ionicons name="checkmark" size={16} color="#FDBA74" />
-                        ) : null}
-                      </TouchableOpacity>
-                    ))}
                 </ScrollView>
               </View>
             </TouchableWithoutFeedback>
@@ -677,10 +662,12 @@ export default function TyohaarCalendarScreen({ onBack }) {
                   <View style={styles.sheetHead}>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.sheetDate} allowFontScaling={false}>
-                        {detailDay.day} {monthNameHi(detailDay.month)} {detailDay.year}
+                        {detailDay.day}{' '}
+                        {language === 'hi' ? monthNameHi(detailDay.month) : monthNameEn(detailDay.month)}{' '}
+                        {detailDay.year}
                       </Text>
                       <Text style={styles.sheetVar} allowFontScaling={false}>
-                        {detailDay.weekdayHi} · {detailDay.masa} {detailDay.tithiName}
+                        {language === 'hi' ? detailDay.weekdayHi : detailDay.weekdayEn} · {detailDay.masa} {detailDay.tithiName}
                       </Text>
                       <Text style={styles.sheetSamvat} allowFontScaling={false}>
                         विक्रम संवत {detailDay.vikramSamvat} · शक संवत {detailDay.shakaSamvat}
@@ -763,8 +750,9 @@ export default function TyohaarCalendarScreen({ onBack }) {
                   })}
 
                   <Text style={styles.sheetFootnote} allowFontScaling={false}>
-                    गणना: {city.hi} के सूर्योदय पर, पौर्णिमान्त मान्यता · स्रोत offline
-                    panchang engine
+                    {language === 'hi'
+                      ? `गणना: ${city.hi} के सूर्योदय पर, पौर्णिमान्त मान्यता · स्रोत offline panchang engine`
+                      : `Computed for ${city.en} sunrise, Purnimanta tradition · offline panchang engine`}
                   </Text>
                 </ScrollView>
               </>
@@ -794,7 +782,7 @@ const styles = StyleSheet.create({
   navRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     marginBottom: 10,
   },
   navBtn: {
@@ -825,10 +813,15 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: Colors.text,
     marginRight: 2,
+    // Long English names (September, November) must shrink, not truncate
+    adjustsFontSizeToFit: true,
+    minimumFontScale: 0.85,
   },
-  // Fixed width so the chip doesn't grow/shrink as the month name changes
+  // Wide enough for the longest English month; fixed width keeps the chip from
+  // jumping as the name changes, flexShrink guards narrow phone widths.
   navChipMonth: {
-    width: 86,
+    width: 118,
+    flexShrink: 1,
     justifyContent: 'center',
   },
   todayBtn: {
@@ -847,40 +840,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     color: '#FDBA74',
-  },
-
-  // City selector
-  cityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 13,
-    backgroundColor: Colors.cardBg,
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
-    marginBottom: 12,
-  },
-  cityLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  cityLabel: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: Colors.text,
-  },
-  cityEn: {
-    fontSize: 11.5,
-    color: Colors.textDim,
-    fontWeight: '600',
-  },
-  cityRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
   },
 
   // Hero holiday card — the whole card takes the festival's colours and the
@@ -1115,6 +1074,11 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(51, 65, 85, 0.5)',
   },
+  // With several festivals on one date, keep the date/tithi pinned to the top
+  // instead of floating in the middle of the stacked names.
+  festRowMulti: {
+    alignItems: 'flex-start',
+  },
   festDateBox: {
     width: 34,
     alignItems: 'center',
@@ -1133,6 +1097,10 @@ const styles = StyleSheet.create({
   },
   festBody: {
     flex: 1,
+  },
+  // spacing between festivals on the same date — no divider inside the group
+  festEntryGap: {
+    marginBottom: 8,
   },
   festName: {
     fontSize: 13.5,
@@ -1254,12 +1222,6 @@ const styles = StyleSheet.create({
     color: '#FDBA74',
     fontWeight: '800',
   },
-  dropOptionEn: {
-    fontSize: 11.5,
-    fontWeight: '600',
-    color: Colors.textDim,
-  },
-
   // Day detail sheet
   sheetBackdrop: {
     flex: 1,

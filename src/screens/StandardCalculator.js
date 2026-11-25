@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
+import { useLanguage } from '../context/LanguageContext';
 
 const HISTORY_KEY = 'calculatorHistory';
 
@@ -38,6 +39,7 @@ function dayLabel(ts) {
 }
 
 export default function StandardCalculator({ onBack }) {
+  const { language, t } = useLanguage();
   const [display, setDisplay] = useState('0');
   const [expression, setExpression] = useState('');
   const [history, setHistory] = useState([]);
@@ -324,8 +326,8 @@ export default function StandardCalculator({ onBack }) {
               {history.length === 0 ? (
                 <View style={styles.emptyBox}>
                   <Ionicons name="time-outline" size={32} color={Colors.textDim} />
-                  <Text style={styles.emptyText}>अभी कोई history नहीं है।</Text>
-                  <Text style={styles.emptySub}>= दबाओ, entries यहाँ जुड़ती जाएँगी।</Text>
+                  <Text style={styles.emptyText}>{t('No history yet')}</Text>
+                  <Text style={styles.emptySub}>{t('Press = to add entries here')}</Text>
                 </View>
               ) : (
                 <ScrollView
@@ -335,7 +337,7 @@ export default function StandardCalculator({ onBack }) {
                 >
                   {historyGroups.map((g) => (
                     <View key={g.label}>
-                      <Text style={styles.groupLabel}>{g.label}</Text>
+                      <Text style={styles.groupLabel}>{t(g.label)}</Text>
                       {g.items.map((h, i) => (
                         <View key={`${h.expr}-${i}`} style={styles.hEntry}>
                           <Text style={styles.hExpr} numberOfLines={1}>
@@ -357,7 +359,7 @@ export default function StandardCalculator({ onBack }) {
                   onPress={() => setConfirmClear(true)}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.clearBarText}>Clear history</Text>
+                  <Text style={styles.clearBarText}>{t('Clear history')}</Text>
                 </TouchableOpacity>
               )}
             </Animated.View>
@@ -379,9 +381,11 @@ export default function StandardCalculator({ onBack }) {
                 <View style={styles.confirmIconWrap}>
                   <Ionicons name="trash-outline" size={26} color="#F87171" />
                 </View>
-                <Text style={styles.confirmTitle}>पूरी history मिटाएं?</Text>
+                <Text style={styles.confirmTitle}>{t('Clear all history?')}</Text>
                 <Text style={styles.confirmMsg}>
-                  {history.length} calculations की history delete हो जाएगी। यह वापस नहीं मिलेगी।
+                  {language === 'hi'
+                    ? `${history.length} calculations की history delete हो जाएगी। यह वापस नहीं मिलेगी।`
+                    : `${history.length} calculation(s) will be deleted. This cannot be undone.`}
                 </Text>
                 <View style={styles.confirmBtnRow}>
                   <TouchableOpacity
@@ -389,14 +393,14 @@ export default function StandardCalculator({ onBack }) {
                     onPress={() => setConfirmClear(false)}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.confirmCancelText}>रुको ✋</Text>
+                    <Text style={styles.confirmCancelText}>{t('Cancel')} ✋</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.confirmDangerBtn}
                     onPress={clearHistory}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.confirmDangerText}>हाँ, मिटाएं</Text>
+                    <Text style={styles.confirmDangerText}>{t('Yes, delete')}</Text>
                   </TouchableOpacity>
                 </View>
               </View>

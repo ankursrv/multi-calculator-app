@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   StyleSheet,
   Text,
@@ -18,6 +18,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors } from './src/theme/colors';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+import DrawerContext from './src/context/DrawerContext';
+import { LanguageProvider } from './src/context/LanguageContext';
+import SideDrawer from './src/components/SideDrawer';
 
 // Screens
 import HomeScreen from './src/screens/HomeScreen';
@@ -78,6 +81,16 @@ function MainApp() {
   const { expensesStorageKey } = useAuth();
   const [currentScreen, setCurrentScreen] = useState('home');
   const [activeBottomTab, setActiveBottomTab] = useState('home');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // App-wide side drawer controls (ScreenHeader reads openDrawer from this)
+  const drawerValue = useMemo(
+    () => ({
+      openDrawer: () => setDrawerOpen(true),
+      closeDrawer: () => setDrawerOpen(false),
+    }),
+    []
+  );
 
   // Shared Smart Bill / Khata State — khaali shuru, entries user khud add karega
   const [billList, setBillList] = useState([]);
@@ -160,6 +173,11 @@ function MainApp() {
 
     useEffect(() => {
       const onBackPress = () => {
+        // Drawer open? Close it first instead of leaving the screen
+        if (drawerOpen) {
+          setDrawerOpen(false);
+          return true;
+        }
         return goBack();
       };
 
@@ -175,7 +193,7 @@ function MainApp() {
           BackHandler.removeEventListener('hardwareBackPress', onBackPress);
         }
       };
-    }, []);
+    }, [drawerOpen]);
 
     const handleAddItemToBill = (newItem) => {
       setBillList((prev) => [newItem, ...prev]);
@@ -226,8 +244,10 @@ function MainApp() {
     ];
 
     return (
-      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-        <StatusBar style="light" backgroundColor={Colors.bgDark} />
+      <DrawerContext.Provider value={drawerValue}>
+        <View style={styles.appRoot}>
+          <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+            <StatusBar style="light" backgroundColor={Colors.bgDark} />
 
         {/* Screen Content with Smooth Animation */}
         <Animated.View
@@ -414,7 +434,15 @@ function MainApp() {
             </View>
           );
         })()}
-      </SafeAreaView>
+          </SafeAreaView>
+
+          {/* App-wide left-to-right drawer (language + quick navigation) */}
+          <SideDrawer
+            visible={drawerOpen}
+            onClose={() => setDrawerOpen(false)}
+          />
+        </View>
+      </DrawerContext.Provider>
     );
   }
 
@@ -422,13 +450,19 @@ function MainApp() {
     return (
       <SafeAreaProvider>
         <AuthProvider>
-          <MainApp />
+          <LanguageProvider>
+            <MainApp />
+          </LanguageProvider>
         </AuthProvider>
       </SafeAreaProvider>
     );
   }
 
   const styles = StyleSheet.create({
+    appRoot: {
+      flex: 1,
+      backgroundColor: Colors.bgDark,
+    },
     safeArea: {
       flex: 1,
       backgroundColor: Colors.bgDark,

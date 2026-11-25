@@ -12,32 +12,38 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
 import FdHeroIllustration from '../components/FdHeroIllustration';
+import { useLanguage } from '../context/LanguageContext';
 
 // ---- simple tenure helpers (no date pickers, no external dependency) ----
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-const formatTenureDays = (days) => {
+const formatTenureDays = (days, language) => {
   const years = Math.floor(days / 365);
   const months = Math.floor((days - years * 365) / 30.44);
   const remDays = Math.max(days - years * 365 - months * 30, 0);
-  return `${years} साल ${months} महीने ${remDays} दिन`;
+  return language === 'hi'
+    ? `${years} साल ${months} महीने ${remDays} दिन`
+    : `${years}y ${months}m ${remDays}d`;
 };
 
-const maturityDateText = (days) => {
+const maturityDateText = (days, language) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const d = new Date(today.getTime() + days * DAY_MS);
   const dd = String(d.getDate()).padStart(2, '0');
-  return `${dd} ${MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return language === 'hi'
+    ? `${dd}/${mm}/${d.getFullYear()}`
+    : `${dd} ${MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}`;
 };
 // -------------------------------------------------------------------------
 
 const UNITS = [
-  { id: 'day', label: 'दिन' },
-  { id: 'month', label: 'महीने' },
-  { id: 'year', label: 'साल' },
+  { id: 'day', label: 'Day' },
+  { id: 'month', label: 'Month' },
+  { id: 'year', label: 'Year' },
 ];
 
 // FDs are usually quarterly compounding — kept fixed so user doesn't get confused
@@ -52,6 +58,7 @@ const tenureToDays = (value, unit) => {
 };
 
 export default function FdCalculator({ onBack }) {
+  const { language, t } = useLanguage();
   const [amount, setAmount] = useState('');
   const [rate, setRate] = useState('');
   const [tenure, setTenure] = useState('');   // manually entered tenure value
@@ -97,16 +104,16 @@ export default function FdCalculator({ onBack }) {
             style={StyleSheet.absoluteFill}
           />
           <FdHeroIllustration />
-          <Text style={styles.heroSubText} allowFontScaling={false}>मैच्योरिटी पर मिलेगी (Maturity Amount):</Text>
+          <Text style={styles.heroSubText} allowFontScaling={false}>{t('Maturity Amount')}:</Text>
           <Text style={styles.heroMain} allowFontScaling={false}>₹{Math.round(maturityAmount).toLocaleString('en-IN')}</Text>
 
           <View style={styles.heroStatsRow}>
             <View style={styles.heroStat}>
-              <Text style={styles.statLabel} allowFontScaling={false}>कुल ब्याज (Interest):</Text>
+              <Text style={styles.statLabel} allowFontScaling={false}>{t('Interest')}:</Text>
               <Text style={styles.statVal} allowFontScaling={false}>₹{Math.round(interestEarned).toLocaleString('en-IN')}</Text>
             </View>
             <View style={styles.heroStat}>
-              <Text style={styles.statLabel} allowFontScaling={false}>आपकी निवेश राशि:</Text>
+              <Text style={styles.statLabel} allowFontScaling={false}>{t('Your Investment')}:</Text>
               <Text style={styles.statVal} allowFontScaling={false}>₹{(Math.round(P) || 0).toLocaleString('en-IN')}</Text>
             </View>
           </View>
@@ -114,8 +121,10 @@ export default function FdCalculator({ onBack }) {
           <View style={styles.heroDivider} />
           <Text style={styles.heroTenorText} allowFontScaling={false}>
             {days > 0
-              ? `⏳ अवधि: ${formatTenureDays(days)} · ${maturityDateText(days)} को मैच्योर`
-              : '⏳ नीचे अवधि डालें (जैसे 1 साल, 6 महीने, 30 दिन)'}
+              ? language === 'hi'
+                ? `⏳ अवधि: ${formatTenureDays(days, language)} · ${maturityDateText(days, language)} को मैच्योर`
+                : `⏳ ${t('Duration')}: ${formatTenureDays(days, language)} · matures on ${maturityDateText(days, language)}`
+              : `⏳ ${t('Enter tenure below')} (${t('e.g. 1 year, 6 months, 30 days')})`}
           </Text>
         </View>
 
@@ -123,7 +132,7 @@ export default function FdCalculator({ onBack }) {
         <View style={styles.card}>
           {/* Deposit Amount */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>जमा राशि (Deposit Amount):</Text>
+            <Text style={styles.label}>{t('Deposit Amount')}:</Text>
             <View style={styles.inputPrefixWrap}>
               <Text style={styles.prefix}>₹</Text>
               <TextInput
@@ -139,7 +148,7 @@ export default function FdCalculator({ onBack }) {
 
           {/* Interest Rate */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>ब्याज दर (Annual Interest Rate %):</Text>
+            <Text style={styles.label}>{t('Annual Interest Rate')} %:</Text>
             <View style={styles.inputPrefixWrap}>
               <Text style={styles.prefix}>%</Text>
               <TextInput
@@ -147,7 +156,7 @@ export default function FdCalculator({ onBack }) {
                 value={rate}
                 onChangeText={setRate}
                 keyboardType="numeric"
-                placeholder="Enter rate (e.g. 7.1)"
+                placeholder={t('Enter rate (e.g. 7.1)')}
                 placeholderTextColor={Colors.placeholderHint}
               />
             </View>
@@ -155,7 +164,7 @@ export default function FdCalculator({ onBack }) {
 
           {/* Tenure: manual entry + unit toggle */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>अवधि (Duration):</Text>
+            <Text style={styles.label}>{t('Duration')}:</Text>
             <View style={styles.tenureRow}>
               <TextInput
                 style={[styles.input, styles.tenureInput]}
@@ -175,7 +184,7 @@ export default function FdCalculator({ onBack }) {
                       onPress={() => setUnit(u.id)}
                       activeOpacity={0.8}
                     >
-                      <Text style={[styles.unitText, active && styles.unitTextActive]}>{u.label}</Text>
+                      <Text style={[styles.unitText, active && styles.unitTextActive]}>{t(u.label)}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -185,7 +194,7 @@ export default function FdCalculator({ onBack }) {
 
           {/* Principal vs Interest breakdown bar */}
           <View style={styles.breakdownBox}>
-            <Text style={styles.breakdownTitle}>जमा राशि vs ब्याज अनुपात:</Text>
+            <Text style={styles.breakdownTitle}>{t('Deposit vs Interest Ratio')}:</Text>
             <View style={styles.bar}>
               <View
                 style={[
@@ -204,13 +213,13 @@ export default function FdCalculator({ onBack }) {
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: '#38BDF8' }]} />
                 <Text style={styles.legendText}>
-                  जमा राशि ({maturityAmount > 0 ? ((P / maturityAmount) * 100).toFixed(0) : 0}%)
+                  {t('Deposit')} ({maturityAmount > 0 ? ((P / maturityAmount) * 100).toFixed(0) : 0}%)
                 </Text>
               </View>
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: '#1E3A8A' }]} />
                 <Text style={styles.legendText}>
-                  ब्याज ({maturityAmount > 0 ? ((interestEarned / maturityAmount) * 100).toFixed(0) : 0}%)
+                  {t('Interest')} ({maturityAmount > 0 ? ((interestEarned / maturityAmount) * 100).toFixed(0) : 0}%)
                 </Text>
               </View>
             </View>
@@ -221,10 +230,10 @@ export default function FdCalculator({ onBack }) {
         <View style={styles.infoBox}>
           <View style={styles.infoTitleRow}>
             <Ionicons name="information-circle" size={16} color="#38BDF8" />
-            <Text style={styles.infoTitle}>महत्वपूर्ण सूचना</Text>
+            <Text style={styles.infoTitle}>{t('Important Info')}</Text>
           </View>
           <Text style={styles.infoDesc}>
-            यह अनुमानित हिसाब है, वास्तविक ब्याज दर आपके बैंक पर निर्भर करती है।
+            {t('This is an estimate; actual interest rate depends on your bank.')}
           </Text>
         </View>
       </ScrollView>

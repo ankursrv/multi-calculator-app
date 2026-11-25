@@ -31,13 +31,6 @@ export const CITIES = [
 
 export const DEFAULT_CITY = CITIES[0];
 
-// AsyncStorage key for the city whose sunrise the panchang follows
-export const CITY_STORAGE_KEY = 'tyohaarCalendarCity';
-
-export function findCity(cityId) {
-  return CITIES.find((c) => c.id === cityId) || DEFAULT_CITY;
-}
-
 // Purnimanta + UP festival set = the printed Hindi calendar convention
 const BASE_OPTIONS = {
   timezone: IST_OFFSET_MINUTES,
@@ -54,6 +47,30 @@ const NATIONAL_DAYS = {
   '10-2': 'गांधी जयंती',
   '4-14': 'अंबेडकर जयंती',
 };
+const NATIONAL_DAYS_EN = {
+  '1-26': 'Republic Day',
+  '8-15': 'Independence Day',
+  '10-2': 'Gandhi Jayanti',
+  '4-14': 'Ambedkar Jayanti',
+};
+// Same language-independent keys the engine uses, so icon/art lookup survives
+// a HI/EN switch even for these hand-added, fixed-date festivals.
+const NATIONAL_KEYS = {
+  '1-26': 'republic_day',
+  '8-15': 'independence_day',
+  '10-2': 'gandhi_jayanti',
+  '4-14': 'ambedkar_jayanti',
+};
+
+// Kartik Purnima observances the panchang engine does not ship. They follow the
+// lunar date, so add them whenever the engine flags Kartika Purnima. Guru Nanak
+// Jayanti is a gazetted holiday in India -> 'national' keeps it at the top of
+// the day's list in both languages (no alphabetical flip on a HI/EN switch).
+const KARTIK_PURNIMA_EXTRAS = [
+  { key: 'guru_nanak_jayanti', hi: 'गुरू नानक जयंती', en: 'Guru Nanak Jayanti', type: 'national' },
+  { key: 'dev_diwali', hi: 'देव दीपावली', en: 'Dev Diwali', type: 'major' },
+  { key: 'tripuri_purnima', hi: 'त्रिपुरी पूर्णिमा', en: 'Tripuri Purnima', type: 'major' },
+];
 
 const MONTH_NAMES_EN = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -176,33 +193,40 @@ const dayCache = new Map();
 
 // A panchang failure must degrade the UI, never blank a screen: callers
 // already treat null as "no data for this day".
-export function getDayPanchang(year, month, day, city) {
+export function getDayPanchang(year, month, day, city, language = 'hi') {
   try {
-    return computeDayPanchang(year, month, day, city);
+    return computeDayPanchang(year, month, day, city, language);
   } catch (err) {
     console.warn(`Panchang गणना विफल (${day}.${month}.${year})`, err);
     return null;
   }
 }
 
-function computeDayPanchang(year, month, day, city) {
-  const key = `${city.id}|${year}-${month}-${day}`;
+function computeDayPanchang(year, month, day, city, language = 'hi') {
+  const key = `${language}|${city.id}|${year}-${month}-${day}`;
   const hit = dayCache.get(key);
   if (hit) return hit;
 
   const raw = getDailyPanchang(istNoon(year, month, day), {
     latitude: city.latitude,
     longitude: city.longitude,
-  }, BASE_OPTIONS);
+  }, { ...BASE_OPTIONS, language });
 
   if (!raw) return null;
 
   const tithi = raw.angas.tithis[0];
   // National holidays are fixed Gregorian dates, so the lunar engine never
   // returns them — printed almanacs list both, so merge ours in here.
-  const national = NATIONAL_DAYS[`${month}-${day}`];
+  const national = language === 'en'
+    ? NATIONAL_DAYS_EN[`${month}-${day}`]
+    : NATIONAL_DAYS[`${month}-${day}`];
   const list = [...(raw.festivals || [])];
-  if (national) list.push({ name: national, type: 'national' });
+  if (national) list.push({ key: NATIONAL_KEYS[`${month}-${day}`], name: national, type: 'national' });
+  if (list.some((f) => f.key === 'kartika_purnima')) {
+    KARTIK_PURNIMA_EXTRAS.forEach((f) =>
+      list.push({ key: f.key, name: language === 'en' ? f.en : f.hi, type: f.type }),
+    );
+  }
   const festivals = list.sort(
     (a, b) => festivalRank(a) - festivalRank(b) || a.name.localeCompare(b.name),
   );
@@ -236,11 +260,11 @@ function computeDayPanchang(year, month, day, city) {
   return parsed;
 }
 
-export function getMonthDays(year, month, city) {
+export function getMonthDays(year, month, city, language = 'hi') {
   const total = new Date(year, month, 0).getDate();
   const list = [];
   for (let d = 1; d <= total; d++) {
-    const day = getDayPanchang(year, month, d, city);
+    const day = getDayPanchang(year, month, d, city, language);
     if (day) list.push(day);
   }
   return list;
@@ -460,7 +484,12 @@ const escapeHtml = (value) =>
  * A4-ish printable month sheet in the printed-almanac layout (light paper,
  * Devanagari), rendered to PDF by expo-print.
  */
-export function buildMonthPrintHtml(year, month, city, days) {
+export function buildMonthPrintHtml(year, month, city, days, language = 'hi') {
+  const hi = language === 'hi';
+  const monthLabel = hi ? monthNameHi(month) : monthNameEn(month);
+  const weekNames = hi
+    ? ['रवि', 'सोम', 'मंगल', 'बुध', 'गुरु', 'शुक्र', 'शनि']
+    : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const first = days[0];
   const lead = weekdayOf(year, month, 1);
 
@@ -495,7 +524,7 @@ export function buildMonthPrintHtml(year, month, city, days) {
     d.festivals.forEach((f) => {
       festList.push(
         `<li><b style="color:${PRINT_COLORS[f.type] || '#B45309'}">${escapeHtml(f.name)}</b>` +
-        ` — ${d.day} ${escapeHtml(monthNameHi(month))}, ${escapeHtml(d.weekdayHi)} · ${escapeHtml(d.tithiName)}</li>`
+        ` — ${d.day} ${monthLabel}, ${hi ? d.weekdayHi : d.weekdayEn} · ${d.tithiName}</li>`
       );
     });
   });
@@ -523,24 +552,24 @@ export function buildMonthPrintHtml(year, month, city, days) {
   .foot { font-size: 10px; color: #6B7280; margin-top: 12px; }
 </style></head>
 <body>
-  <h1>${escapeHtml(monthNameHi(month))} ${year}</h1>
-  <div class="sub">${escapeHtml(monthNameEn(month))} ${year} · पौर्णिमान्त पंचांग</div>
+  <h1>${escapeHtml(monthLabel)} ${year}</h1>
+  <div class="sub">${escapeHtml(hi ? monthNameHi(month) : monthNameEn(month))} ${year} · ${hi ? 'पौर्णिमान्त पंचांग' : 'Purnimanta Panchang'}</div>
   <div class="meta">
-    <b>${escapeHtml(first ? first.masa : '')} मास</b> ·
-    विक्रम संवत ${first ? first.vikramSamvat : ''} ·
-    शहर: <b>${escapeHtml(city.hi)}</b> (${escapeHtml(city.en)}) — तिथियाँ यहीं के सूर्योदय पर
+    <b>${escapeHtml(first ? first.masa : '')} ${hi ? 'मास' : 'month'}</b> ·
+    ${hi ? 'विक्रम संवत' : 'Vikram Samvat'} ${first ? first.vikramSamvat : ''} ·
+    ${hi ? 'शहर' : 'City'}: <b>${escapeHtml(hi ? city.hi : city.en)}</b> (${escapeHtml(hi ? city.en : city.hi)}) — ${hi ? 'तिथियाँ यहीं के सूर्योदय पर' : 'tithis computed for this city’s sunrise'}
   </div>
   <table>
-    <tr>${['रवि', 'सोम', 'मंगल', 'बुध', 'गुरु', 'शुक्र', 'शनि']
+    <tr>${weekNames
       .map((w, i) => `<th class="${i === 0 ? 'sun' : ''}">${w}</th>`).join('')}</tr>
     ${rowsHtml.join('')}
   </table>
-  <h2>त्योहार व व्रत</h2>
-  <ul>${festList.join('') || '<li>इस महीने कोई त्योहार नहीं</li>'}</ul>
+  <h2>${hi ? 'त्योहार व व्रत' : 'Festivals & observances'}</h2>
+  <ul>${festList.join('') || `<li>${hi ? 'इस महीने कोई त्योहार नहीं' : 'No festivals this month'}</li>`}</ul>
   <div class="foot">
-    तिथि, नक्षत्र, योग व करण चुने हुए शहर के सूर्योदय पर बनाई गई हैं (पौर्णिमान्त मान्यता)।
-    एक तिथि दो सूर्योदय में आए तो पहला दिन माना जाता है। शुभ मुहूर्त व राहुकाल के समय
-    ऐप में हर दिन पर टैप करके देख सकते हैं।
+    ${hi
+      ? 'तिथि, नक्षत्र, योग व करण चुने हुए शहर के सूर्योदय पर बनाई गई हैं (पौर्णिमान्त मान्यता)। एक तिथि दो सूर्योदय में आए तो पहला दिन माना जाता है। शुभ मुहूर्त व राहुकाल के समय ऐप में हर दिन पर टैप करके देख सकते हैं।'
+      : 'Tithi, Nakshatra, Yoga and Karana are computed for the selected city’s sunrise (Purnimanta tradition). If a tithi spans two sunrises, the first day is used. Tap any day in the app for auspicious muhurta and Rahu Kalam timings.'}
   </div>
 </body></html>`;
 }

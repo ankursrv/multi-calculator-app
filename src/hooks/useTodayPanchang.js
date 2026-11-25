@@ -1,10 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useMemo } from 'react';
 import useCurrentDate from './useCurrentDate';
 import {
-  CITY_STORAGE_KEY,
   DEFAULT_CITY,
-  findCity,
   getDayPanchang,
   monthNameHi,
   shortNakshatra,
@@ -19,20 +16,8 @@ import {
  */
 export default function useTodayPanchang() {
   const { year, month, day: currentDay } = useCurrentDate();
-  const [cityId, setCityId] = useState(DEFAULT_CITY.id);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const saved = await AsyncStorage.getItem(CITY_STORAGE_KEY);
-        if (saved && saved !== DEFAULT_CITY.id) setCityId(saved);
-      } catch {
-        // first run — keep the default city
-      }
-    })();
-  }, []);
-
-  const city = useMemo(() => findCity(cityId), [cityId]);
+  // No city selector in the UI — panchang always follows the default city.
+  const city = DEFAULT_CITY;
   const day = useMemo(
     () => getDayPanchang(year, month, currentDay, city),
     [year, month, currentDay, city],

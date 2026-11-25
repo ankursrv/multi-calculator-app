@@ -1,9 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   StyleSheet,
-  Text,
   View,
-  TextInput,
   TouchableOpacity,
   ScrollView,
   Modal,
@@ -15,6 +13,7 @@ import {
   LayoutAnimation,
   UIManager,
 } from 'react-native';
+import { Text, TextInput } from '../components/I18nText';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -27,6 +26,7 @@ import GPayLogo from '../components/GPayLogo';
 import { CLOUD_ENABLED } from '../lib/supabaseConfig';
 import { applyRows, checkActiveMembership, clearMeta, ensureOwnerMembership, ensureIds, mergeBackup, newEntryId, readMeta, readSnapshot, stripSyncedEntries, syncOnce } from '../lib/kharchaSync';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import useCurrentDate from '../hooks/useCurrentDate';
 
 // Animate the backup hint's collapse/expand on Android too (iOS is on by default).
@@ -128,6 +128,7 @@ function renderPaymentModeIcon(mode) {
 }
 
 export default function KharchaTrackerScreen({ onBack }) {
+  const { language, t } = useLanguage();
   const { year: currentYear, month: currentMonth, day: currentDay } = useCurrentDate();
   const { expensesStorageKey, currentUser, isLoggedIn, userScope } = useAuth();
   // { "year-month": [{ id, name, cost, day }] }
@@ -296,14 +297,16 @@ export default function KharchaTrackerScreen({ onBack }) {
       const mm = String(d.getMinutes()).padStart(2, '0');
       setStatusText(
         result.ok
-          ? `आख़िरी सिंक ${hh}:${mm}`
-          : 'इंटरनेट नहीं — बदलाव क़्यू में हैं',
+          ? language === 'hi'
+            ? `आख़िरी सिंक ${hh}:${mm}`
+            : `Last synced ${hh}:${mm}`
+          : t('इंटरनेट नहीं — बदलाव क़्यू में हैं'),
       );
     } finally {
       setSyncing(false);
       busyRef.current = false;
     }
-  }, [userScope]);
+  }, [userScope, language, t]);
 
   // Push shortly after the local data settles. Also fires once when a family
   // link is created or removed via handleMetaChange.
@@ -657,11 +660,14 @@ export default function KharchaTrackerScreen({ onBack }) {
     const pendingList = entries.filter((e) => !e.paid);
     const paidList = entries.filter((e) => e.paid);
 
-    let text = `📒 *Daily Expenses — ${MONTHS_HI[selMonth - 1]} ${selYear}*\n`;
+    const monthName = language === 'hi' ? MONTHS_HI[selMonth - 1] : MONTHS_EN[selMonth - 1];
+    let text = `📒 *Daily Expenses — ${monthName} ${selYear}*\n`;
     text += `════════════════════════════════\n`;
 
     if (pendingList.length > 0) {
-      text += `⏳ *बाकी हिसाब (Pending Dues): ${fmt(pendingTotal)}*\n`;
+      text += language === 'hi'
+        ? `⏳ *बाकी हिसाब: ${fmt(pendingTotal)}*\n`
+        : `⏳ *Pending dues: ${fmt(pendingTotal)}*\n`;
       const pendingMap = {};
       pendingList.forEach((e) => {
         (pendingMap[e.day] = pendingMap[e.day] || []).push(e);
@@ -679,7 +685,9 @@ export default function KharchaTrackerScreen({ onBack }) {
     }
 
     if (paidList.length > 0) {
-      text += `✓ *चुकता हिसाब (Paid / Settled): ${fmt(paidTotal)}*\n`;
+      text += language === 'hi'
+        ? `✓ *चुकता हिसाब: ${fmt(paidTotal)}*\n`
+        : `✓ *Paid / settled: ${fmt(paidTotal)}*\n`;
       const paidMap = {};
       paidList.forEach((e) => {
         (paidMap[e.day] = paidMap[e.day] || []).push(e);
@@ -701,11 +709,15 @@ export default function KharchaTrackerScreen({ onBack }) {
       text += `────────────────────────────────\n`;
     }
 
-    text += `*महीने का कुल खर्चा: ${fmt(monthTotal)}* (${entries.length} entries)\n`;
+    text += language === 'hi'
+      ? `*महीने का कुल खर्चा: ${fmt(monthTotal)}* (${entries.length} entries)\n`
+      : `*Total monthly expense: ${fmt(monthTotal)}* (${entries.length} entries)\n`;
     if (pendingTotal > 0) {
-      text += `*बकाया राशि: ${fmt(pendingTotal)}*\n`;
+      text += language === 'hi'
+        ? `*बकाया राशि: ${fmt(pendingTotal)}*\n`
+        : `*Pending amount: ${fmt(pendingTotal)}*\n`;
     } else {
-      text += `*सारा हिसाब चुकता है ✅*\n`;
+      text += language === 'hi' ? `*सारा हिसाब चुकता है ✅*\n` : `*All settled ✅*\n`;
     }
     try {
       await Share.share({ message: text });
@@ -740,12 +752,13 @@ export default function KharchaTrackerScreen({ onBack }) {
     setBackupExpanded((v) => !v);
   };
 
-  const backupHintText =
-    'बैकअप फाइल में आपका सारा खर्चा सेव हो जाता है। यह फाइल WhatsApp या Google Drive में भेजकर रख लें — नया फोन लेने पर या ऐप डिलीट होने पर इसी फाइल से सारा डेटा वापस आ जाएगा।';
+  const backupHintText = t(
+    'बैकअप फाइल में आपका सारा खर्चा सेव हो जाता है। यह फाइल WhatsApp या Google Drive में भेजकर रख लें — नया फोन लेने पर या ऐप डिलीट होने पर इसी फाइल से सारा डेटा वापस आ जाएगा।',
+  );
 
   const handleBackup = async () => {
     if (totalEntryCount === 0) {
-      Alert.alert('कुछ बैकअप नहीं', 'पहले कोई खर्चा जोड़ें, फिर बैकअप फाइल बनेगी।');
+      Alert.alert(t('कुछ बैकअप नहीं'), t('पहले कोई खर्चा जोड़ें, फिर बैकअप फाइल बनेगी।'));
       return;
     }
     const json = JSON.stringify(data, null, 2);
@@ -767,16 +780,16 @@ export default function KharchaTrackerScreen({ onBack }) {
       await file.write(json);
       const canShare = await Sharing.isAvailableAsync();
       if (!canShare) {
-        Alert.alert('बैकअप सेव नहीं हुआ', 'इस फोन में फाइल शेयर करना उपलब्ध नहीं है।');
+        Alert.alert(t('बैकअप सेव नहीं हुआ'), t('इस फोन में फाइल शेयर करना उपलब्ध नहीं है।'));
         return;
       }
       await Sharing.shareAsync(file.uri, {
         mimeType: 'application/json',
-        dialogTitle: 'Kharcha बैकअप सेव करें',
+        dialogTitle: t('Kharcha बैकअप सेव करें'),
         UTI: 'public.json',
       });
     } catch (e) {
-      Alert.alert('बैकअप नहीं बना', e && e.message ? String(e.message) : 'कोई दिक्कत आ गई, दोबारा कोशिश करें।');
+      Alert.alert(t('बैकअप नहीं बना'), e && e.message ? String(e.message) : t('कोई दिक्कत आ गई, दोबारा कोशिश करें।'));
     }
   };
 
@@ -813,14 +826,14 @@ export default function KharchaTrackerScreen({ onBack }) {
       if (!text) return;
       const parsed = JSON.parse(text);
       if (!isValidBackup(parsed)) {
-        Alert.alert('गलत फाइल', 'यह फाइल Daily Expenses का सही बैकअप नहीं लग रही।');
+        Alert.alert(t('गलत फाइल'), t('यह फाइल Daily Expenses का सही बैकअप नहीं लग रही।'));
         return;
       }
       setRestoreData(parsed);
     } catch (_e) {
       Alert.alert(
-        'Restore नहीं हुआ',
-        'फाइल पढ़ी नहीं जा सकी। सुनिश्चित करें कि चुनी गई फाइल .json बैकअप है।',
+        t('Restore नहीं हुआ'),
+        t('फाइल पढ़ी नहीं जा सकी। सुनिश्चित करें कि चुनी गई फाइल .json बैकअप है।'),
       );
     }
   };
@@ -828,7 +841,7 @@ export default function KharchaTrackerScreen({ onBack }) {
   const doRestore = () => {
     if (!restoreData) return;
     if (isMember) {
-      Alert.alert('अनुमति नहीं है', 'कोड से जुड़े सदस्य entry add और भुगतान कर सकते हैं — backup restore नहीं कर सकते।');
+      Alert.alert(t('अनुमति नहीं है'), t('कोड से जुड़े सदस्य entry add और भुगतान कर सकते हैं — backup restore नहीं कर सकते।'));
       setRestoreData(null);
       return;
     }
@@ -838,7 +851,7 @@ export default function KharchaTrackerScreen({ onBack }) {
     setData((prev) => (cloudMeta ? mergeBackup(prev, sanitized, cloudMeta.deviceName) : sanitized));
     setRestoreData(null);
     setYearSummaryOpen(false);
-    Alert.alert('डेटा वापस आ गया ✅', 'बैकअप से सारा खर्चा फोन में लाद दिया गया है।');
+    Alert.alert(t('डेटा वापस आ गया ✅'), t('बैकअप से सारा खर्चा फोन में लाद दिया गया है।'));
   };
 
   const restoreStats = restoreData ? backupStats(restoreData) : null;
@@ -887,7 +900,9 @@ export default function KharchaTrackerScreen({ onBack }) {
               activeOpacity={0.7}
             >
               <View style={styles.segmentValueRow}>
-                <Text style={styles.segmentValue}>{MONTHS_HI[selMonth - 1]}</Text>
+                <Text style={styles.segmentValue}>
+                  {language === 'hi' ? MONTHS_HI[selMonth - 1] : MONTHS_EN[selMonth - 1]}
+                </Text>
                 <View style={styles.chevronDown} />
               </View>
             </TouchableOpacity>
@@ -906,7 +921,9 @@ export default function KharchaTrackerScreen({ onBack }) {
           </Text>
 
           <Text style={styles.heroLabel}>
-            {MONTHS_HI[selMonth - 1]} {selYear} का कुल खर्चा
+            {language === 'hi'
+              ? `${MONTHS_HI[selMonth - 1]} ${selYear} का कुल खर्चा`
+              : `Total expense · ${MONTHS_EN[selMonth - 1]} ${selYear}`}
           </Text>
           <Text style={styles.heroTotal}>{fmt(monthTotal)}</Text>
 
@@ -1076,7 +1093,9 @@ export default function KharchaTrackerScreen({ onBack }) {
             <View style={styles.emptyBox}>
               <Ionicons name="book-outline" size={40} color={Colors.textDim} />
               <Text style={styles.emptyText}>
-                {MONTHS_HI[selMonth - 1]} {selYear} me abhi kharcha nahi hai.
+                {language === 'hi'
+                  ? `${MONTHS_HI[selMonth - 1]} ${selYear} me abhi kharcha nahi hai.`
+                  : `No expenses recorded for ${MONTHS_EN[selMonth - 1]} ${selYear} yet.`}
               </Text>
               <Text style={styles.emptySub}>
                 Upar se saman aur kiमत likh ke + dabao.
@@ -1435,7 +1454,9 @@ export default function KharchaTrackerScreen({ onBack }) {
 
         {yearSummaryOpen && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>{selYear} का मासिक हिसाब:</Text>
+            <Text style={styles.cardTitle}>
+              {language === 'hi' ? `${selYear} का मासिक हिसाब:` : `${selYear} monthly breakdown:`}
+            </Text>
             {yearRows.totals.map((t) => (
               <View
                 key={t.month}
@@ -1444,7 +1465,9 @@ export default function KharchaTrackerScreen({ onBack }) {
                   t.month === selMonth && styles.yRowCurrent,
                 ]}
               >
-                <Text style={styles.yRowLabel}>{MONTHS_HI[t.month - 1]}</Text>
+                <Text style={styles.yRowLabel}>
+                  {language === 'hi' ? MONTHS_HI[t.month - 1] : MONTHS_EN[t.month - 1]}
+                </Text>
                 <View style={styles.barWrap}>
                   <LinearGradient
                     colors={['#34D399', '#059669']}
@@ -1576,7 +1599,7 @@ export default function KharchaTrackerScreen({ onBack }) {
                               i + 1 === selMonth && styles.dropOptionTextActive,
                             ]}
                           >
-                            {m}
+                            {language === 'hi' ? m : MONTHS_EN[i]}
                           </Text>
                           {i + 1 === selMonth ? (
                             <Ionicons name="checkmark" size={16} color="#34D399" />
@@ -1624,7 +1647,7 @@ export default function KharchaTrackerScreen({ onBack }) {
                       </TouchableOpacity>
 
                       <Text style={styles.dropSubTitle}>
-                        {MONTHS_HI[selMonth - 1]} {selYear}
+                        {language === 'hi' ? MONTHS_HI[selMonth - 1] : MONTHS_EN[selMonth - 1]} {selYear}
                       </Text>
 
                       <TouchableOpacity
@@ -1735,7 +1758,9 @@ export default function KharchaTrackerScreen({ onBack }) {
                   >
                     <Ionicons name="today-outline" size={14} color="#34D399" />
                     <Text style={styles.dayTodayBtnText}>
-                      आज ({currentDay} {MONTHS_EN[currentMonth - 1]})
+                      {language === 'hi'
+                        ? `आज (${currentDay} ${MONTHS_EN[currentMonth - 1]})`
+                        : `Today (${currentDay} ${MONTHS_EN[currentMonth - 1]})`}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -1795,10 +1820,16 @@ export default function KharchaTrackerScreen({ onBack }) {
                     : confirm?.type === 'blockedDelete'
                       ? 'कोड से जुड़े सदस्य entry add कर सकते हैं और भुगतान भी — Entry delete सिर्फ़ Family owner की device से होगा।'
                       : confirm?.type === 'entry'
-                        ? `"${confirm.name}" वाली यह entry delete हो जाएगी। यह वापस नहीं आएगी।`
+                        ? language === 'hi'
+                          ? `"${confirm.name}" वाली यह entry delete हो जाएगी। यह वापस नहीं आएगी।`
+                          : `"${confirm.name}" will be deleted from the list. This cannot be undone.`
                         : confirm?.type === 'unmarkDay'
-                          ? `${confirm.day} ${MONTHS_EN[selMonth - 1]} का हिसाब चुकता से वापस बाकी (Pending) में बदल जाएगा।`
-                          : `${MONTHS_HI[selMonth - 1]} ${selYear} की सारी entries delete हो जाएँगी। यह वापस नहीं मिलेगी।`}
+                          ? language === 'hi'
+                            ? `${confirm.day} ${MONTHS_EN[selMonth - 1]} का हिसाब चुकता से वापस बाकी (Pending) में बदल जाएगा।`
+                            : `Payment for ${confirm.day} ${MONTHS_EN[selMonth - 1]} will be marked as pending again.`
+                          : language === 'hi'
+                            ? `${MONTHS_HI[selMonth - 1]} ${selYear} की सारी entries delete हो जाएँगी। यह वापस नहीं मिलेगी।`
+                            : `All entries for ${MONTHS_EN[selMonth - 1]} ${selYear} will be deleted. This cannot be undone.`}
                 </Text>
                 <View style={styles.confirmBtnRow}>
                   {(confirm?.type === 'blockedDelete' || confirm?.type === 'kicked') ? (
@@ -1861,10 +1892,16 @@ export default function KharchaTrackerScreen({ onBack }) {
                 <Text style={styles.settleTitle}>हिसाब चुकता करें</Text>
                 <Text style={styles.settleSubTitle}>
                   {targetEntry
-                    ? `"${targetEntry.name}" का भुगतान दर्ज करें`
+                    ? language === 'hi'
+                      ? `"${targetEntry.name}" का भुगतान दर्ज करें`
+                      : `Record payment for "${targetEntry.name}"`
                     : settleTargetDay !== null
-                      ? `${settleTargetDay} ${MONTHS_EN[selMonth - 1]} का बकाया भुगतान दर्ज करें`
-                      : `${MONTHS_HI[selMonth - 1]} ${selYear} का कुल बकाया भुगतान दर्ज करें`}
+                      ? language === 'hi'
+                        ? `${settleTargetDay} ${MONTHS_EN[selMonth - 1]} का बकाया भुगतान दर्ज करें`
+                        : `Record pending payment for ${settleTargetDay} ${MONTHS_EN[selMonth - 1]}`
+                      : language === 'hi'
+                        ? `${MONTHS_HI[selMonth - 1]} ${selYear} का कुल बकाया भुगतान दर्ज करें`
+                        : `Record total pending payment for ${MONTHS_EN[selMonth - 1]} ${selYear}`}
                 </Text>
 
                 <View style={styles.settleAmountBox}>
@@ -1875,7 +1912,9 @@ export default function KharchaTrackerScreen({ onBack }) {
                     {fmt(targetSettleAmount)}
                   </Text>
                   <Text style={styles.settleCountBadge}>
-                    {targetSettleCount} {targetSettleCount === 1 ? 'Item' : 'Items'} चुकता होंगे
+                    {language === 'hi'
+                      ? `${targetSettleCount} ${targetSettleCount === 1 ? 'Item' : 'Items'} चुकता होंगे`
+                      : `${targetSettleCount} ${targetSettleCount === 1 ? 'item' : 'items'} will be settled`}
                   </Text>
                 </View>
 
@@ -1967,11 +2006,23 @@ export default function KharchaTrackerScreen({ onBack }) {
                 </View>
                 <Text style={styles.confirmTitle}>बैकअप से डेटा लाएं?</Text>
                 <Text style={styles.confirmMsg}>
-                  इस बैकअप में {restoreStats ? restoreStats.months : 0} महीने,{' '}
-                  {restoreStats ? restoreStats.entries : 0} entries और कुल{' '}
-                  {restoreStats ? fmt(restoreStats.total) : '₹0'} है।{'\n'}
-                  Restore करने पर फोन का मौजूदा सारा खर्चा मिट जाएगा और सिर्फ यही बैकअप
-                  लोड होगा।
+                  {language === 'hi' ? (
+                    <>
+                      इस बैकअप में {restoreStats ? restoreStats.months : 0} महीने,{' '}
+                      {restoreStats ? restoreStats.entries : 0} entries और कुल{' '}
+                      {restoreStats ? fmt(restoreStats.total) : '₹0'} है।{'\n'}
+                      Restore करने पर फोन का मौजूदा सारा खर्चा मिट जाएगा और सिर्फ यही बैकअप
+                      लोड होगा।
+                    </>
+                  ) : (
+                    <>
+                      This backup contains {restoreStats ? restoreStats.months : 0} months,{' '}
+                      {restoreStats ? restoreStats.entries : 0} entries and a total of{' '}
+                      {restoreStats ? fmt(restoreStats.total) : '₹0'}.{'\n'}
+                      Restoring will erase the current expenses on this phone and load only
+                      this backup.
+                    </>
+                  )}
                 </Text>
                 <View style={styles.confirmBtnRow}>
                   <TouchableOpacity

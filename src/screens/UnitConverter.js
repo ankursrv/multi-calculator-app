@@ -11,10 +11,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
+import { useLanguage } from '../context/LanguageContext';
 
 const CONVERSIONS = {
   weight: {
-    title: 'वजन (Weight)',
+    title: 'Weight',
     icon: 'scale',
     base: 'g',
     units: [
@@ -26,7 +27,7 @@ const CONVERSIONS = {
     ],
   },
   length: {
-    title: 'लंबाई (Length)',
+    title: 'Length',
     icon: 'resize',
     base: 'm',
     units: [
@@ -39,7 +40,7 @@ const CONVERSIONS = {
     ],
   },
   volume: {
-    title: 'मात्रा (Volume)',
+    title: 'Volume',
     icon: 'water',
     base: 'ml',
     units: [
@@ -51,6 +52,7 @@ const CONVERSIONS = {
 };
 
 export default function UnitConverter() {
+  const { t } = useLanguage();
   const [category, setCategory] = useState('weight');
   const [val, setVal] = useState('1');
   const [fromUnit, setFromUnit] = useState('kg');
@@ -115,7 +117,7 @@ export default function UnitConverter() {
                 color={active ? Colors.amber : Colors.textMuted}
               />
               <Text style={[styles.catBtnText, active && styles.catBtnTextActive]}>
-                {item.title}
+                {t(item.title)}
               </Text>
             </TouchableOpacity>
           );
@@ -130,16 +132,16 @@ export default function UnitConverter() {
         style={styles.heroCard}
       >
         <Text style={styles.heroSubText}>
-          {val} {converted.fromName} =
+          {val} {t(converted.fromName)} =
         </Text>
         <Text style={styles.heroVal}>{converted.result}</Text>
-        <Text style={styles.heroUnit}>{converted.toName}</Text>
+        <Text style={styles.heroUnit}>{t(converted.toName)}</Text>
       </LinearGradient>
 
       {/* Inputs Card */}
       <View style={styles.card}>
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>इकाई मान (Value to convert):</Text>
+          <Text style={styles.label}>{t('Value to convert')}:</Text>
           <TextInput
             style={styles.input}
             value={val}
@@ -152,7 +154,7 @@ export default function UnitConverter() {
 
         {/* From Unit */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>From (किससे):</Text>
+          <Text style={styles.label}>{t('From')}:</Text>
           <View style={styles.unitList}>
             {currentCat.units.map((u) => (
               <TouchableOpacity
@@ -161,7 +163,7 @@ export default function UnitConverter() {
                 onPress={() => setFromUnit(u.id)}
               >
                 <Text style={[styles.unitChipText, fromUnit === u.id && styles.unitChipTextActive]}>
-                  {u.name}
+                  {t(u.name)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -171,12 +173,12 @@ export default function UnitConverter() {
         {/* Swap Button */}
         <TouchableOpacity style={styles.swapBtn} onPress={handleSwap}>
           <Ionicons name="swap-vertical" size={18} color={Colors.amber} />
-          <Text style={styles.swapText}>उलट-पुलट करें (Swap Units)</Text>
+          <Text style={styles.swapText}>{t('Swap Units')}</Text>
         </TouchableOpacity>
 
         {/* To Unit */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>To (किसमें बदलना है):</Text>
+          <Text style={styles.label}>{t('To')}:</Text>
           <View style={styles.unitList}>
             {currentCat.units.map((u) => (
               <TouchableOpacity
@@ -190,7 +192,7 @@ export default function UnitConverter() {
                     toUnit === u.id && { color: Colors.amber, fontWeight: '800' },
                   ]}
                 >
-                  {u.name}
+                  {t(u.name)}
                 </Text>
               </TouchableOpacity>
             ))}

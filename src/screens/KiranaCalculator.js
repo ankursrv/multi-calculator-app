@@ -14,8 +14,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function KiranaCalculator({ onBack, onSaveToBill }) {
+  const { language, t } = useLanguage();
+  const isHi = language === 'hi';
   // Mode: 'priceToWeight' (रुपये से वजन) or 'weightToPrice' (वजन से रुपये)
   const [mode, setMode] = useState('priceToWeight');
 
@@ -31,11 +34,24 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
   const [unitModalVisible, setUnitModalVisible] = useState(false);
 
   const unitsList = [
-    { label: 'Kilogram (किलो / 1000g)', val: 'Kilogram', factor: 1000 },
-    { label: '100 Gram (100 ग्राम)', val: '100 Gram', factor: 100 },
-    { label: '500 Gram (आधा किलो)', val: '500 Gram', factor: 500 },
-    { label: 'Litre (लीटर / 1000ml)', val: 'Litre', factor: 1000 },
+    { label: t('Kilogram (1000 g)'), val: 'Kilogram', factor: 1000 },
+    { label: t('100 Gram'), val: '100 Gram', factor: 100 },
+    { label: t('500 Gram (half kg)'), val: '500 Gram', factor: 500 },
+    { label: t('Litre (1000 ml)'), val: 'Litre', factor: 1000 },
   ];
+
+  // Unit ka display label — value (calculation key) English hi rehti hai
+  const unitLabel = (val) => {
+    if (!isHi) return val;
+    const map = {
+      Kilogram: 'किलो',
+      Gram: 'ग्राम',
+      '100 Gram': '100 ग्राम',
+      '500 Gram': '500 ग्राम',
+      Litre: 'लीटर',
+    };
+    return map[val] || val;
+  };
 
   const handleReset = () => {
     setRate('');
@@ -128,13 +144,13 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
                   end={{ x: 1, y: 0 }}
                   style={styles.activeTabGradient}
                 >
-                  <Text style={styles.activeTabTitle}>रुपये से वजन</Text>
-                  <Text style={styles.activeTabSub}>Money ➔ Weight</Text>
+                  <Text style={styles.activeTabTitle}>{t('Money to Weight')}</Text>
+                  <Text style={styles.activeTabSub}>{t('Enter rupees, get weight')}</Text>
                 </LinearGradient>
               ) : (
                 <View style={styles.inactiveTab}>
-                  <Text style={styles.inactiveTabTitle}>रुपये से वजन</Text>
-                  <Text style={styles.inactiveTabSub}>Money ➔ Weight</Text>
+                  <Text style={styles.inactiveTabTitle}>{t('Money to Weight')}</Text>
+                  <Text style={styles.inactiveTabSub}>{t('Enter rupees, get weight')}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -152,13 +168,13 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
                   end={{ x: 1, y: 0 }}
                   style={styles.activeTabGradient}
                 >
-                  <Text style={styles.activeTabTitle}>वजन से रुपये</Text>
-                  <Text style={styles.activeTabSub}>Weight ➔ Money</Text>
+                  <Text style={styles.activeTabTitle}>{t('Weight to Money')}</Text>
+                  <Text style={styles.activeTabSub}>{t('Enter weight, get rupees')}</Text>
                 </LinearGradient>
               ) : (
                 <View style={styles.inactiveTab}>
-                  <Text style={styles.inactiveTabTitle}>वजन से रुपये</Text>
-                  <Text style={styles.inactiveTabSub}>Weight ➔ Money</Text>
+                  <Text style={styles.inactiveTabTitle}>{t('Weight to Money')}</Text>
+                  <Text style={styles.inactiveTabSub}>{t('Enter weight, get rupees')}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -170,7 +186,7 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
             <View style={styles.inputRow}>
               {/* Market Rate */}
               <View style={{ flex: 1.2 }}>
-                <Text style={styles.inputFloatingLabel}>Market Rate (भाव / दर)</Text>
+                <Text style={styles.inputFloatingLabel}>{t('Market Rate')}</Text>
                 <View style={styles.fieldBox}>
                   <Text style={styles.rupeeSymbol}>₹</Text>
                   <TextInput
@@ -178,7 +194,7 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
                     value={rate}
                     onChangeText={setRate}
                     keyboardType="numeric"
-                    placeholder="Enter rate"
+                    placeholder={t('Enter rate')}
                     placeholderTextColor={Colors.placeholderHint}
                   />
                 </View>
@@ -186,14 +202,14 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
 
               {/* Per Unit */}
               <View style={{ flex: 1 }}>
-                <Text style={styles.inputFloatingLabel}>Per Unit (प्रति)</Text>
+                <Text style={styles.inputFloatingLabel}>{t('Per Unit')}</Text>
                 <TouchableOpacity
                   style={styles.dropdownBox}
                   onPress={() => setUnitModalVisible(true)}
                   activeOpacity={0.8}
                 >
                   <Text style={styles.dropdownText} numberOfLines={1}>
-                    {rateUnit}
+                    {unitLabel(rateUnit)}
                   </Text>
                   <Ionicons name="caret-down" size={14} color={Colors.amber} />
                 </TouchableOpacity>
@@ -207,7 +223,7 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
             {mode === 'priceToWeight' ? (
               <View>
                 <Text style={styles.inputFloatingLabel}>
-                  Target Budget / Money (कितने रुपये का चाहिए?)
+                  {t('Target Budget')}
                 </Text>
                 <View style={styles.fieldBox}>
                   <Text style={styles.rupeeSymbol}>₹</Text>
@@ -220,7 +236,7 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
                     value={budget}
                     onChangeText={setBudget}
                     keyboardType="numeric"
-                    placeholder="Enter amount"
+                    placeholder={t('Enter amount')}
                     placeholderTextColor={Colors.placeholderHint}
                   />
                 </View>
@@ -228,7 +244,7 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
             ) : (
               <View>
                 <Text style={styles.inputFloatingLabel}>
-                  Kitna Samaan Chahiye (Weight / Quantity):
+                  {t('Quantity Required')}
                 </Text>
                 <View style={{ flexDirection: 'row', gap: 10 }}>
                   <View style={[styles.fieldBox, { flex: 1.2 }]}>
@@ -241,7 +257,7 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
                       value={weight}
                       onChangeText={setWeight}
                       keyboardType="numeric"
-                      placeholder="Enter weight"
+                      placeholder={t('Enter weight')}
                       placeholderTextColor={Colors.placeholderHint}
                     />
                   </View>
@@ -261,7 +277,7 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
                           weightUnit === 'Gram' && styles.weightUnitTextActive,
                         ]}
                       >
-                        Gram (g)
+                        {t('Gram (g)')}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -277,7 +293,7 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
                           weightUnit === 'Kilogram' && styles.weightUnitTextActive,
                         ]}
                       >
-                        Kg (किलो)
+                        {t('Kg')}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -295,24 +311,24 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
           >
             {mode === 'priceToWeight' ? (
               <>
-                <Text style={styles.heroLabel}>कुल सामान मिलेगा (Quantity Received):</Text>
+                <Text style={styles.heroLabel}>{t('Total Quantity Received')}:</Text>
                 <Text style={styles.heroMainValue}>
-                  {qtyResult.valid ? `${qtyResult.grams} Gram` : '0.00 Gram'}
+                  {qtyResult.valid ? `${qtyResult.grams} ${t('Gram')}` : `0.00 ${t('Gram')}`}
                 </Text>
                 <Text style={styles.heroSubValue}>
-                  = {qtyResult.valid ? `${qtyResult.kg} Kilogram` : '0.000 Kg'}
+                  = {qtyResult.valid ? `${qtyResult.kg} ${t('Kilogram')}` : `0.000 ${t('Kilogram')}`}
                 </Text>
               </>
             ) : (
               <>
-                <Text style={styles.heroLabel}>कुल भुगतान राशि (Total Price to Pay):</Text>
+                <Text style={styles.heroLabel}>{t('Total Price to Pay')}:</Text>
                 <Text style={styles.heroMainValue}>
                   {priceResult.valid ? `₹ ${priceResult.cost}` : '₹ 0.00'}
                 </Text>
                 <Text style={styles.heroSubValue}>
-                  {priceResult.valid
-                    ? `(${weight} ${weightUnit} का कुल हिसाब)`
-                    : `(0 ${weightUnit} का कुल हिसाब)`}
+                  {isHi
+                    ? `(${priceResult.valid ? weight : 0} ${unitLabel(weightUnit)} का कुल हिसाब)`
+                    : `(Total for ${priceResult.valid ? weight : 0} ${unitLabel(weightUnit)})`}
                 </Text>
               </>
             )}
@@ -331,7 +347,7 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
               onPress={() => setUnitModalVisible(false)}
             >
               <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>Select Unit (प्रति इकाई):</Text>
+                <Text style={styles.modalTitle}>{t('Select Unit')}:</Text>
                 {unitsList.map((u) => (
                   <TouchableOpacity
                     key={u.val}

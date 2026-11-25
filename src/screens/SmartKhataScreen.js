@@ -14,12 +14,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
+import { useLanguage } from '../context/LanguageContext';
 
-// Empty state me dikhane wala "ise use kaise kare" hint
-const HOW_TO_SUMMARY =
-  'दोस्तों के साथ खाना खाया, बिल आया ₹900 — यहाँ सामान की entries जोड़ें, कुल बिल अपने-आप जुड़ जाएगा। अब स्प्लिट में 3 चुनें तो हर किसी का हिस्सा ₹300 दिखेगा, और Share से पूरा हिसाब WhatsApp पर भेज दें।';
+// Empty state me dikhane wala "ise use kaise kare" hint (dictionary key)
+const HOW_TO_SUMMARY = 'HOW_TO_SUMMARY';
 
 export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveItem, onAddItem, onBack }) {
+  const { language, t } = useLanguage();
   const [itemName, setItemName] = useState('');
   const [itemCost, setItemCost] = useState('');
   const [splitCount, setSplitCount] = useState('2');
@@ -51,7 +52,7 @@ export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveI
     onAddItem({
       id: Date.now().toString(),
       name: itemName.trim() || `Item #${billList.length + 1}`,
-      details: 'Manual Entry',
+      details: t('Manual Entry'),
       result: `₹${parseFloat(itemCost).toFixed(2)}`,
       cost: parseFloat(itemCost),
     });
@@ -66,13 +67,13 @@ export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveI
 
   const handleShare = async () => {
     if (billList.length === 0) return;
-    let text = `🛒 *MultiCalc - Kirana Bill Summary*\n------------------------------\n`;
+    let text = `🛒 *MultiCalc - ${t('Kirana Bill Summary')}*\n------------------------------\n`;
     billList.forEach((item, idx) => {
       text += `${idx + 1}. ${item.name} (${item.details}): ${item.result}\n`;
     });
-    text += `------------------------------\n*Total Bill: ₹${totalBill.toFixed(2)}*\n`;
+    text += `------------------------------\n*${t('Total Bill')}: ₹${totalBill.toFixed(2)}*\n`;
     if (people > 1) {
-      text += `*Split among ${people} people: ₹${perPerson.toFixed(2)} each*\n`;
+      text += `*${t('Split among')} ${people} ${t('people')}: ₹${perPerson.toFixed(2)} ${t('each')}*\n`;
     }
     try {
       await Share.share({ message: text });
@@ -100,13 +101,13 @@ export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveI
           end={{ x: 1, y: 1 }}
           style={styles.heroCard}
         >
-          <Text style={styles.heroLabel}>कुल बिल रकम (Total Bill Amount):</Text>
+          <Text style={styles.heroLabel}>{t('Total Bill Amount')}:</Text>
           <Text style={styles.heroTotal}>₹{totalBill.toFixed(2)}</Text>
           {hasItems && (
             <View style={styles.heroFooter}>
-              <Text style={styles.heroItemCount}>{billList.length} Items Listed</Text>
+              <Text style={styles.heroItemCount}>{billList.length} {t('Items Listed')}</Text>
               {people > 1 && (
-                <Text style={styles.heroSplit}>₹{perPerson.toFixed(2)} / person ({people})</Text>
+                <Text style={styles.heroSplit}>₹{perPerson.toFixed(2)} / {t('person')} ({people})</Text>
               )}
             </View>
           )}
@@ -114,13 +115,13 @@ export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveI
 
         {/* Quick Add Form */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>सामान जोड़ें (Quick Add Item):</Text>
+          <Text style={styles.cardTitle}>{t('Quick Add Item')}:</Text>
           <View style={styles.formRow}>
             <TextInput
               style={[styles.input, styles.itemInput]}
               value={itemName}
               onChangeText={setItemName}
-              placeholder="Add Items..."
+              placeholder={t('Add Items...')}
               placeholderTextColor="rgb(100, 116, 139)"
             />
             <View style={styles.inputPrefixWrap}>
@@ -130,7 +131,7 @@ export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveI
                 value={itemCost}
                 onChangeText={setItemCost}
                 keyboardType="numeric"
-                placeholder="रुपये"
+                placeholder={t('Rupees')}
                 placeholderTextColor="rgb(100, 116, 139)"
               />
             </View>
@@ -141,7 +142,7 @@ export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveI
 
           {/* Split Calculator */}
           <View style={styles.splitRow}>
-            <Text style={styles.splitLabel}>Split among people</Text>
+            <Text style={styles.splitLabel}>{t('Split among people')}</Text>
             <View style={styles.splitControls}>
               {['1', '2', '3', '4', '5'].map((num) => (
                 <TouchableOpacity
@@ -167,7 +168,7 @@ export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveI
         <View style={styles.card}>
           <View style={styles.listHeader}>
             <View style={styles.cardTitleRow}>
-              <Text style={styles.cardTitleInline}>Bill Items</Text>
+              <Text style={styles.cardTitleInline}>{t('Bill Items')}</Text>
               {hasItems && (
                 <View style={styles.countBadge}>
                   <Text style={styles.countBadgeText}>{billList.length}</Text>
@@ -178,11 +179,11 @@ export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveI
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <TouchableOpacity style={styles.actionPill} onPress={handleShare}>
                   <Ionicons name="share-social-outline" size={14} color={Colors.amber} />
-                  <Text style={styles.actionPillText}>Share</Text>
+                  <Text style={styles.actionPillText}>{t('Share')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.clearPill} onPress={handleClearAll}>
                   <Ionicons name="trash-outline" size={14} color={Colors.danger} />
-                  <Text style={styles.clearPillText}>Clear</Text>
+                  <Text style={styles.clearPillText}>{t('Clear')}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -193,9 +194,9 @@ export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveI
             <View style={styles.howToBox}>
               <View style={styles.howToHead}>
                 <Ionicons name="help-circle-outline" size={15} color={Colors.textDim} />
-                <Text style={styles.howToHeadText}>Ise use kaise karein?</Text>
+                <Text style={styles.howToHeadText}>{t('How to use this?')}</Text>
               </View>
-              <Text style={styles.howToText}>{HOW_TO_SUMMARY}</Text>
+              <Text style={styles.howToText}>{t(HOW_TO_SUMMARY)}</Text>
             </View>
           ) : (
             billList.map((item, index) => (
@@ -235,12 +236,16 @@ export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveI
                   <Ionicons name="trash-outline" size={26} color="#F87171" />
                 </View>
                 <Text style={styles.confirmTitle}>
-                  {confirm?.type === 'item' ? 'Item डिलीट करें?' : 'पूरा बिल मिटाएं?'}
+                  {confirm?.type === 'item' ? t('Delete item?') : t('Clear entire bill?')}
                 </Text>
                 <Text style={styles.confirmMsg}>
                   {confirm?.type === 'item'
-                    ? `"${confirm.name}" वाली यह item list से delete हो जाएगी। यह वापस नहीं आएगी।`
-                    : 'सारी Bill Items delete हो जाएँगी। यह वापस नहीं मिलेगी।'}
+                    ? language === 'hi'
+                      ? `"${confirm.name}" वाली यह item list से delete हो जाएगी। यह वापस नहीं आएगी।`
+                      : `"${confirm.name}" will be removed from the list. This cannot be undone.`
+                    : language === 'hi'
+                      ? 'सारी Bill Items delete हो जाएँगी। यह वापस नहीं मिलेगी।'
+                      : 'All bill items will be deleted. This cannot be undone.'}
                 </Text>
                 <View style={styles.confirmBtnRow}>
                   <TouchableOpacity
@@ -248,7 +253,7 @@ export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveI
                     onPress={() => setConfirm(null)}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.confirmCancelText}>रुको ✋</Text>
+                    <Text style={styles.confirmCancelText}>{t('Cancel')} ✋</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.confirmDangerBtn}
@@ -256,7 +261,7 @@ export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveI
                     activeOpacity={0.8}
                   >
                     <Text style={styles.confirmDangerText}>
-                      {confirm?.type === 'item' ? 'हाँ, डिलीट करें' : 'हाँ, मिटाएं'}
+                      {confirm?.type === 'item' ? t('Yes, delete') : t('Yes, clear')}
                     </Text>
                   </TouchableOpacity>
                 </View>

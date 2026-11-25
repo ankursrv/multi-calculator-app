@@ -10,8 +10,10 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function EmiCalculator() {
+  const { t } = useLanguage();
   const [loanAmount, setLoanAmount] = useState('500000');
   const [interestRate, setInterestRate] = useState('9.5');
   const [tenureYears, setTenureYears] = useState('5');
@@ -58,18 +60,18 @@ export default function EmiCalculator() {
         end={{ x: 1, y: 1 }}
         style={styles.heroCard}
       >
-        <Text style={styles.heroSubText}>हर महीने की EMI (Monthly EMI):</Text>
+        <Text style={styles.heroSubText}>{t('Monthly EMI')}:</Text>
         <Text style={styles.heroEmi}>₹{Math.round(emi).toLocaleString('en-IN')}</Text>
 
         <View style={styles.heroStatsRow}>
           <View style={styles.heroStat}>
-            <Text style={styles.statLabel}>कुल ब्याज (Total Interest):</Text>
+            <Text style={styles.statLabel}>{t('Total Interest')}:</Text>
             <Text style={styles.statVal}>
               ₹{Math.round(totalInterest).toLocaleString('en-IN')}
             </Text>
           </View>
           <View style={styles.heroStat}>
-            <Text style={styles.statLabel}>कुल राशि (Total Amount):</Text>
+            <Text style={styles.statLabel}>{t('Total Amount')}:</Text>
             <Text style={styles.statVal}>
               ₹{Math.round(totalPayment).toLocaleString('en-IN')}
             </Text>
@@ -81,7 +83,7 @@ export default function EmiCalculator() {
       <View style={styles.card}>
         {/* Loan Amount */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>लोन राशि (Principal Amount):</Text>
+          <Text style={styles.label}>{t('Principal Amount')}:</Text>
           <View style={styles.inputPrefixWrap}>
             <Text style={styles.prefix}>₹</Text>
             <TextInput
@@ -102,7 +104,7 @@ export default function EmiCalculator() {
                 onPress={() => setLoanAmount(item.val)}
               >
                 <Text style={[styles.chipText, loanAmount === item.val && styles.chipTextActive]}>
-                  {item.label}
+                  {t(item.label)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -111,7 +113,7 @@ export default function EmiCalculator() {
 
         {/* Interest Rate */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>ब्याज दर (Annual Interest Rate %):</Text>
+          <Text style={styles.label}>{t('Annual Interest Rate')} %:</Text>
           <View style={styles.inputPrefixWrap}>
             <Text style={styles.prefix}>%</Text>
             <TextInput
@@ -127,7 +129,7 @@ export default function EmiCalculator() {
 
         {/* Tenure */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>अवधि (Tenure in Years):</Text>
+          <Text style={styles.label}>{t('Tenure in Years')}:</Text>
           <View style={styles.inputPrefixWrap}>
             <Text style={styles.prefix}>📅</Text>
             <TextInput
@@ -143,7 +145,7 @@ export default function EmiCalculator() {
 
         {/* Breakdown bar */}
         <View style={styles.breakdownBox}>
-          <Text style={styles.breakdownTitle}>मूलधन vs ब्याज अनुपात:</Text>
+          <Text style={styles.breakdownTitle}>{t('Principal vs Interest Ratio')}:</Text>
           <View style={styles.bar}>
             <View
               style={[
@@ -162,13 +164,13 @@ export default function EmiCalculator() {
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: Colors.amber }]} />
               <Text style={styles.legendText}>
-                मूलधन ({totalPayment > 0 ? ((p / totalPayment) * 100).toFixed(0) : 0}%)
+                {t('Principal')} ({totalPayment > 0 ? ((p / totalPayment) * 100).toFixed(0) : 0}%)
               </Text>
             </View>
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: Colors.orange }]} />
               <Text style={styles.legendText}>
-                ब्याज ({totalPayment > 0 ? ((totalInterest / totalPayment) * 100).toFixed(0) : 0}%)
+                {t('Interest')} ({totalPayment > 0 ? ((totalInterest / totalPayment) * 100).toFixed(0) : 0}%)
               </Text>
             </View>
           </View>

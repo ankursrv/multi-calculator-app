@@ -11,8 +11,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function DiscountCalculator() {
+  const { language, t } = useLanguage();
   const [originalPrice, setOriginalPrice] = useState('1500');
   const [discountPercent, setDiscountPercent] = useState('20');
   const [gstPercent, setGstPercent] = useState('0');
@@ -48,19 +50,23 @@ export default function DiscountCalculator() {
         end={{ x: 1, y: 1 }}
         style={styles.heroCard}
       >
-        <Text style={styles.heroSubText}>आपको देना होगा (Final Payable Price):</Text>
+        <Text style={styles.heroSubText}>{t('Final Payable Price')}:</Text>
         <Text style={styles.heroPrice}>₹{finalPrice.toFixed(2)}</Text>
 
         <View style={styles.savingsBanner}>
           <Ionicons name="sparkles" size={16} color="#FFFFFF" />
           <Text style={styles.savingsText}>
-            कुल बचत: ₹{totalSavings.toFixed(2)} ({discountPercent}% OFF)
+            {language === 'hi'
+              ? `${t('Total Savings')}: ₹${totalSavings.toFixed(2)} (${discountPercent}% छूट)`
+              : `${t('Total Savings')}: ₹${totalSavings.toFixed(2)} (${discountPercent}% OFF)`}
           </Text>
         </View>
 
         {gst > 0 && (
           <Text style={styles.gstNote}>
-            (Includes {gst}% GST: +₹{gstAmount.toFixed(2)})
+            {language === 'hi'
+              ? `(इसमें ${gst}% ${t('GST')} शामिल: +₹${gstAmount.toFixed(2)})`
+              : `(Includes ${gst}% ${t('GST')}: +₹${gstAmount.toFixed(2)})`}
           </Text>
         )}
       </LinearGradient>
@@ -68,7 +74,7 @@ export default function DiscountCalculator() {
       {/* Input Card */}
       <View style={styles.card}>
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>असली दाम (Original Price):</Text>
+          <Text style={styles.label}>{t('Original Price')}:</Text>
           <View style={styles.inputWithPrefix}>
             <Text style={styles.prefix}>₹</Text>
             <TextInput
@@ -84,7 +90,7 @@ export default function DiscountCalculator() {
 
         {/* Discount % */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>डिस्काउंट (% छूट):</Text>
+          <Text style={styles.label}>{t('Discount')} (%):</Text>
           <View style={styles.inputWithPrefix}>
             <Text style={styles.prefix}>%</Text>
             <TextInput
@@ -114,7 +120,7 @@ export default function DiscountCalculator() {
 
         {/* GST % */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>GST Tax दर:</Text>
+          <Text style={styles.label}>{t('GST Rate')}:</Text>
           <View style={styles.chipsRow}>
             {gstOptions.map((val) => (
               <TouchableOpacity
@@ -123,7 +129,7 @@ export default function DiscountCalculator() {
                 onPress={() => setGstPercent(val)}
               >
                 <Text style={[styles.chipText, gstPercent === val && styles.chipTextActive]}>
-                  {val === '0' ? 'No GST' : `${val}% GST`}
+                  {val === '0' ? t('No GST') : `${val}% ${t('GST')}`}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -133,12 +139,12 @@ export default function DiscountCalculator() {
         {/* Summary Breakdown */}
         <View style={styles.breakdown}>
           <View style={styles.breakdownRow}>
-            <Text style={styles.breakdownLabel}>Original MRP:</Text>
+            <Text style={styles.breakdownLabel}>{t('Original MRP')}:</Text>
             <Text style={styles.breakdownVal}>₹{price.toFixed(2)}</Text>
           </View>
           <View style={styles.breakdownRow}>
             <Text style={[styles.breakdownLabel, { color: Colors.amber }]}>
-              Discount ({discount}%):
+              {t('Discount')} ({discount}%):
             </Text>
             <Text style={[styles.breakdownVal, { color: Colors.amber }]}>
               - ₹{discountAmount.toFixed(2)}
@@ -146,12 +152,12 @@ export default function DiscountCalculator() {
           </View>
           {gst > 0 && (
             <View style={styles.breakdownRow}>
-              <Text style={styles.breakdownLabel}>GST ({gst}%):</Text>
+              <Text style={styles.breakdownLabel}>{t('GST')} ({gst}%):</Text>
               <Text style={styles.breakdownVal}>+ ₹{gstAmount.toFixed(2)}</Text>
             </View>
           )}
           <View style={[styles.breakdownRow, styles.totalRow]}>
-            <Text style={styles.totalLabel}>Final Amount:</Text>
+            <Text style={styles.totalLabel}>{t('Final Amount')}:</Text>
             <Text style={styles.totalVal}>₹{finalPrice.toFixed(2)}</Text>
           </View>
         </View>

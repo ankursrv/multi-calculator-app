@@ -35,6 +35,81 @@ const ART_RULES = [
   [/एकदशी|एकादशी|अक्षय|मोक्ष|पंचमी|षष्ठी|सप्तमी|अष्टमी|नवमी|दशमी|द्वादशी|त्रयोदशी|चतुर्दशी|ओणम|कार्तिकै|गोवर्धन|वट/, 'kalash'],
 ];
 
+// panchang-ts gives every festival a stable key that does NOT change with the
+// language switch (names do: "संकष्टी चतुर्थी" / "Sankashti Chaturthi"). Resolve
+// the scene from that key first so the card illustration stays the same in both
+// languages; the Hindi name rules above remain a fallback for hand-added days.
+const ART_BY_KEY = {
+  republic_day: 'tiranga',
+  independence_day: 'tiranga',
+  gandhi_jayanti: 'tiranga',
+  ambedkar_jayanti: 'tiranga',
+  pradosha: 'trishul',
+  sankashti_chaturthi: 'trishul',
+  magha_shanivar: 'toran',
+  vaishnava_ekadashi: 'kalash',
+  smarta_ekadashi: 'kalash',
+  ekadashi: 'kalash',
+  sankranti: 'sun',
+  makar_sankranti: 'sun',
+  masik_shivaratri: 'trishul',
+  vinayaka_chaturthi: 'trishul',
+  vasant_panchami: 'peacock',
+  masik_karthigai: 'moon',
+  ravi_pushya: 'toran',
+  maha_shivaratri: 'trishul',
+  chandra_grahan: 'eclipse',
+  surya_grahan: 'eclipse',
+  holika_dahan: 'deep',
+  holi: 'peacock',
+  ugadi: 'flag',
+  rama_navami: 'kalash',
+  hanuman_jayanti: 'deep',
+  akshaya_tritiya: 'kalash',
+  parashurama_jayanti: 'deep',
+  vat_savitri_amavasya: 'moon',
+  vat_savitri_purnima: 'moon',
+  guru_pushya: 'toran',
+  jagannath_rath_yatra: 'flag',
+  dakshinayana: 'sun',
+  guru_purnima: 'moon',
+  shravan_somvar: 'trishul',
+  mangala_gauri: 'trishul',
+  hariyali_teej: 'moon',
+  nag_panchami: 'kalash',
+  onam: 'kalash',
+  rig_upakarma: 'flag',
+  raksha_bandhan: 'rakhi',
+  yajur_upakarma: 'flag',
+  kajari_teej: 'moon',
+  krishna_janmashtami: 'peacock',
+  sama_upakarma: 'flag',
+  ganesh_chaturthi: 'trishul',
+  hartalika_teej: 'moon',
+  anant_chaturdashi: 'kalash',
+  mahalaya_amavasya: 'moon',
+  navaratri: 'trishul',
+  durga_ashtami: 'trishul',
+  maha_navami: 'kalash',
+  dussehra: 'flag',
+  sharad_purnima: 'moon',
+  karva_chauth: 'moon',
+  kartik_somvar: 'trishul',
+  dhanteras: 'deep',
+  narak_chaturdashi: 'deep',
+  diwali: 'deep',
+  govardhan_puja: 'deep',
+  bhai_dooj: 'deep',
+  chhath_nahay_khay: 'deep',
+  chhath_kharna: 'deep',
+  chhath_sandhya_arghya: 'deep',
+  chhath_usha_arghya: 'deep',
+  kartika_purnima: 'moon',
+  guru_nanak_jayanti: 'flag',
+  dev_diwali: 'deep',
+  tripuri_purnima: 'trishul',
+};
+
 // Fallback per festival type, for a name the list above has not seen
 const ART_BY_TYPE = {
   national: 'tiranga',
@@ -64,9 +139,9 @@ const PALETTES = {
   toran: { bg: ['#2B0F14', '#4A1220', '#6B1A24'], ink: '#FDE68A' },
 };
 
-export function festivalArt(name, type) {
+export function festivalArt(name, type, festivalKey) {
   const hit = ART_RULES.find(([on]) => on.test(name || ''));
-  const key = hit ? hit[1] : ART_BY_TYPE[type] || 'toran';
+  const key = ART_BY_KEY[festivalKey] || (hit ? hit[1] : ART_BY_TYPE[type] || 'toran');
   return { key, ...PALETTES[key] };
 }
 
@@ -282,8 +357,8 @@ function Scene({ art }) {
  * `style` positions the layer inside the card (absolute, so the card's height
  * never depends on it).
  */
-export default function FestivalArt({ name, type, width = 132, height = 120, style }) {
-  const { key } = festivalArt(name, type);
+export default function FestivalArt({ name, type, festivalKey, width = 132, height = 120, style }) {
+  const { key } = festivalArt(name, type, festivalKey);
   return (
     <View style={[styles.wrap, style]} pointerEvents="none">
       <Svg width={width} height={height} viewBox="0 0 120 110" fill="none">

@@ -1,0 +1,25 @@
+const translations = {
+  Weight: { en: 'Weight', hi: 'वजन' },
+  Length: { en: 'Length', hi: 'लंबाई' },
+  Volume: { en: 'Volume', hi: 'मात्रा' },
+  'Value to convert': { en: 'Value to convert', hi: 'बदलने के लिए मान' },
+  From: { en: 'From', hi: 'से' },
+  To: { en: 'To', hi: 'में' },
+  'Swap Units': { en: 'Swap Units', hi: 'इकाइयाँ बदलें' },
+  'Kilogram (kg)': { en: 'Kilogram (kg)', hi: 'किलोग्राम (kg)' },
+  'Gram (g)': { en: 'Gram (g)', hi: 'ग्राम (g)' },
+  'Milligram (mg)': { en: 'Milligram (mg)', hi: 'मिलीग्राम (mg)' },
+  'Pound (lb)': { en: 'Pound (lb)', hi: 'पाउंड (lb)' },
+  'Quintal (100 kg)': { en: 'Quintal (100 kg)', hi: 'क्विंटल (100 kg)' },
+  'Kilometer (km)': { en: 'Kilometer (km)', hi: 'किलोमीटर (km)' },
+  'Meter (m)': { en: 'Meter (m)', hi: 'मीटर (m)' },
+  'Centimeter (cm)': { en: 'Centimeter (cm)', hi: 'सेंटीमीटर (cm)' },
+  'Millimeter (mm)': { en: 'Millimeter (mm)', hi: 'मिलीमीटर (mm)' },
+  'Foot (ft)': { en: 'Foot (ft)', hi: 'फुट (ft)' },
+  'Inch (in)': { en: 'Inch (in)', hi: 'इंच (in)' },
+  'Litre (L)': { en: 'Litre (L)', hi: 'लीटर (L)' },
+  'Millilitre (ml)': { en: 'Millilitre (ml)', hi: 'मिलीलीटर (ml)' },
+  'Gallon (US)': { en: 'Gallon (US)', hi: 'गैलन (US)' },
+};
+
+export default translations;

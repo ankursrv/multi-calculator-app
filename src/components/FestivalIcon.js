@@ -21,6 +21,13 @@ const PORTRAIT_RULES = [
   [/अंबेडकर जयंती/, require('../../assets/ambedkar.gif'), 'glow'],
 ];
 
+// The festival key is language-independent; the name is not. Look the portrait
+// up by key first so switching HI/EN never swaps the icon.
+const PORTRAIT_BY_KEY = {
+  gandhi_jayanti: [require('../../assets/gandhi.gif'), 'glow'],
+  ambedkar_jayanti: [require('../../assets/ambedkar.gif'), 'glow'],
+};
+
 const RULES = [
   // national days first — they are fixed dates
   [/गणतंत्र दिवस/, '🇮🇳', 'sway'],
@@ -79,6 +86,79 @@ const RULES = [
   [/प्रदोष/, '🕉️', 'pulse'],
 ];
 
+// Stable panchang-ts key -> [glyph, motion], matching what the Hindi rules
+// already draw. Names are translated on a language switch; keys are not.
+const ICON_BY_KEY = {
+  republic_day: ['🇮🇳', 'sway'],
+  independence_day: ['🇮🇳', 'sway'],
+  gandhi_jayanti: ['🧘', 'sway'],
+  ambedkar_jayanti: ['📖', 'pulse'],
+  pradosha: ['🕉️', 'pulse'],
+  sankashti_chaturthi: ['🐘', 'sway'],
+  magha_shanivar: ['🪐', 'pulse'],
+  vaishnava_ekadashi: ['📿', 'pulse'],
+  smarta_ekadashi: ['📿', 'pulse'],
+  ekadashi: ['📿', 'pulse'],
+  sankranti: ['☀️', 'glow'],
+  makar_sankranti: ['☀️', 'glow'],
+  masik_shivaratri: ['🔱', 'pulse'],
+  vinayaka_chaturthi: ['🐘', 'sway'],
+  vasant_panchami: ['🌸', 'pulse'],
+  masik_karthigai: ['💧', 'sway'],
+  ravi_pushya: ['⭐', 'glow'],
+  maha_shivaratri: ['🔱', 'pulse'],
+  chandra_grahan: ['🌘', 'dim'],
+  surya_grahan: ['🌑', 'dim'],
+  holika_dahan: ['🔥', 'flicker'],
+  holi: ['🎨', 'pulse'],
+  ugadi: ['🌅', 'glow'],
+  rama_navami: ['👑', 'pulse'],
+  hanuman_jayanti: ['💪', 'pulse'],
+  akshaya_tritiya: ['💎', 'pulse'],
+  parashurama_jayanti: ['🪓', 'sway'],
+  vat_savitri_amavasya: ['🌳', 'sway'],
+  vat_savitri_purnima: ['🌳', 'sway'],
+  guru_pushya: ['⭐', 'glow'],
+  jagannath_rath_yatra: ['🚩', 'sway'],
+  dakshinayana: ['☀️', 'glow'],
+  guru_purnima: ['🙏', 'pulse'],
+  shravan_somvar: ['🔱', 'pulse'],
+  mangala_gauri: ['🦁', 'sway'],
+  hariyali_teej: ['🌺', 'sway'],
+  nag_panchami: ['🐍', 'sway'],
+  onam: ['🌾', 'sway'],
+  rig_upakarma: ['📜', 'sway'],
+  raksha_bandhan: ['🧵', 'sway'],
+  yajur_upakarma: ['📜', 'sway'],
+  kajari_teej: ['🌺', 'sway'],
+  krishna_janmashtami: ['🦚', 'sway'],
+  sama_upakarma: ['📜', 'sway'],
+  ganesh_chaturthi: ['🐘', 'sway'],
+  hartalika_teej: ['🌺', 'sway'],
+  anant_chaturdashi: ['🐍', 'pulse'],
+  mahalaya_amavasya: ['🌑', 'pulse'],
+  navaratri: ['🦁', 'sway'],
+  durga_ashtami: ['🦁', 'sway'],
+  maha_navami: ['🦁', 'sway'],
+  dussehra: ['🏹', 'pulse'],
+  sharad_purnima: ['🌕', 'glow'],
+  karva_chauth: ['🌙', 'pulse'],
+  kartik_somvar: ['🔱', 'pulse'],
+  dhanteras: ['💰', 'pulse'],
+  narak_chaturdashi: ['🪔', 'flicker'],
+  diwali: ['🪔', 'flicker'],
+  govardhan_puja: ['🐄', 'sway'],
+  bhai_dooj: ['🤝', 'pulse'],
+  chhath_nahay_khay: ['🌊', 'sway'],
+  chhath_kharna: ['🌞', 'glow'],
+  chhath_sandhya_arghya: ['🌞', 'glow'],
+  chhath_usha_arghya: ['🌞', 'glow'],
+  kartika_purnima: ['🌕', 'glow'],
+  guru_nanak_jayanti: ['🙏', 'glow'],
+  dev_diwali: ['🪔', 'flicker'],
+  tripuri_purnima: ['🔱', 'pulse'],
+};
+
 // Fallback per festival type, for a name the list above has not seen yet
 const BY_TYPE = {
   national: ['🎖️', 'glow'],
@@ -105,8 +185,12 @@ const LOOPS = {
  * The picture a festival name maps to. Exported so the hero banner's
  * watermark paints the same deity/object the cell icon does, from one table.
  */
-export function getFestivalIcon(name, type) {
+export function getFestivalIcon(name, type, festivalKey) {
   // A rule is [test, glyph, motion]; a type fallback is [glyph, motion]
+  if (ICON_BY_KEY[festivalKey]) {
+    const [glyph, motion] = ICON_BY_KEY[festivalKey];
+    return { glyph, motion };
+  }
   const hit = RULES.find(([on]) => on.test(name || ''));
   if (hit) return { glyph: hit[1], motion: hit[2] };
   const [glyph, motion] = BY_TYPE[type] || BY_TYPE.minor;
@@ -200,14 +284,16 @@ function AnimatedPortrait({ source, motion, seed, size }) {
   );
 }
 
-export default function FestivalIcon({ name, type, seed = 0, size }) {
-  const portrait = PORTRAIT_RULES.find(([on]) => on.test(name || ''));
+export default function FestivalIcon({ name, type, festivalKey, seed = 0, size }) {
+  const byKey = PORTRAIT_BY_KEY[festivalKey];
+  const portrait = byKey || PORTRAIT_RULES.find(([on]) => on.test(name || ''));
   if (portrait) {
-    const [, source, motion] = portrait;
+    const source = byKey ? byKey[0] : portrait[1];
+    const motion = byKey ? byKey[1] : portrait[2];
     return <AnimatedPortrait source={source} motion={motion} seed={seed} size={size} />;
   }
 
-  const { glyph, motion } = getFestivalIcon(name, type);
+  const { glyph, motion } = getFestivalIcon(name, type, festivalKey);
   return <AnimatedGlyph glyph={glyph} motion={motion} seed={seed} size={size} />;
 }
 
