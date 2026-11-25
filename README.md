@@ -84,6 +84,16 @@ npx eas-cli build -p android --profile preview
 
 ---
 
+## 🔧 Cloud sync (optional)
+
+Family sync is off unless both `EXPO_PUBLIC_SUPABASE_URL` and
+`EXPO_PUBLIC_SUPABASE_ANON_KEY` are present. For local development, copy
+`.env.example` to `.env.local` and restart with `npx expo start -c`.
+
+For EAS builds the same two **public** values are already set in every build
+profile's `env` block in `eas.json`, so no extra setup is needed before
+`npx eas-cli build -p android --profile preview`.
+
 ## 📄 License
 MIT License
 

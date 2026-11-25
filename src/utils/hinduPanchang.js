@@ -260,16 +260,6 @@ function computeDayPanchang(year, month, day, city, language = 'hi') {
   return parsed;
 }
 
-export function getMonthDays(year, month, city, language = 'hi') {
-  const total = new Date(year, month, 0).getDate();
-  const list = [];
-  for (let d = 1; d <= total; d++) {
-    const day = getDayPanchang(year, month, d, city, language);
-    if (day) list.push(day);
-  }
-  return list;
-}
-
 /**
  * Warm the day cache one day per frame, so opening the calendar doesn't block
  * the JS thread with ~30+ synchronous panchang calculations. Returns a cancel

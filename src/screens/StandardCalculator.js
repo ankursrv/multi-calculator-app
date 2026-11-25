@@ -158,7 +158,6 @@ export default function StandardCalculator({ onBack }) {
         setDisplay('Error');
         return;
       }
-      // eslint-disable-next-line no-eval
       const result = Function(`"use strict"; return (${sanitized})`)();
       const rounded = Number.isInteger(result)
         ? result.toString()

@@ -77,8 +77,8 @@ export default function SmartKhataScreen({ billList = [], onClearBill, onRemoveI
     }
     try {
       await Share.share({ message: text });
-    } catch (e) {
-      // ignore
+    } catch {
+      // share cancelled — nothing to do
     }
   };
 

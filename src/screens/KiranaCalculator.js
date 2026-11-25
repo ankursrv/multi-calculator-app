@@ -16,7 +16,7 @@ import { Colors } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
 import { useLanguage } from '../context/LanguageContext';
 
-export default function KiranaCalculator({ onBack, onSaveToBill }) {
+export default function KiranaCalculator({ onBack }) {
   const { language, t } = useLanguage();
   const isHi = language === 'hi';
   // Mode: 'priceToWeight' (रुपये से वजन) or 'weightToPrice' (वजन से रुपये)
@@ -28,7 +28,6 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
   const [budget, setBudget] = useState('');
   const [weight, setWeight] = useState('');
   const [weightUnit, setWeightUnit] = useState('Gram'); // Gram, Kilogram, Litre, Millilitre
-  const [itemName, setItemName] = useState('चीनी (Sugar)');
 
   // Unit Dropdown modal
   const [unitModalVisible, setUnitModalVisible] = useState(false);
@@ -59,7 +58,6 @@ export default function KiranaCalculator({ onBack, onSaveToBill }) {
     setBudget('');
     setWeight('');
     setWeightUnit('Gram');
-    setItemName('चीनी (Sugar)');
   };
 
   // Base rate calculation per 1000 grams

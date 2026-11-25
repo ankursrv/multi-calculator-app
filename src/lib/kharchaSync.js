@@ -312,7 +312,7 @@ export async function pullRemote(data, meta, userScope = 'guest') {
 
   const snapshot = await readSnapshot(userScope);
   const index = {};
-  forEachEntry(data, (monthKey, entry) => {
+  forEachEntry(data, (_monthKey, entry) => {
     if (entry && entry.id) index[entry.id] = entry;
   });
 

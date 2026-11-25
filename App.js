@@ -301,13 +301,7 @@ function MainApp() {
           )}
 
           {currentScreen === 'kirana' && (
-            <KiranaCalculator
-              onBack={() => goBack()}
-              onSaveToBill={(item) => {
-                handleAddItemToBill(item);
-                navigateTo('bill');
-              }}
-            />
+            <KiranaCalculator onBack={() => goBack()} />
           )}
 
           {currentScreen === 'standard' && (
