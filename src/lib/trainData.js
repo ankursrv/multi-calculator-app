@@ -1,5 +1,7 @@
 // Live Indian Railways Dynamic Train Data Service (100% Dynamic - No Static Tables)
-// Connects to RailRadar live tracking telemetry with dynamic search by train name & number.
+// Primary: Supabase Edge Function (RailCore -> API.SH). Fallback: RailRadar.
+
+import { SUPABASE_URL, ANON_KEY, CLOUD_ENABLED } from './supabaseConfig';
 
 const MIN = 60 * 1000;
 
@@ -490,11 +492,42 @@ function normalizeRouteStation(r, _idx) {
   };
 }
 
-// Fetch real live train status from RailRadar
-export async function fetchLiveTrainStatus(trainNumber, dateString) {
-  const num = String(trainNumber || '').trim();
-  const date = dateString || getISTDateString(0);
+// =========================================================================
+// LIVE STATUS — Supabase Edge Function (RailCore -> API.SH) first, then
+// RailRadar. No static station tables, no fabricated data.
+// =========================================================================
+async function fetchEdgeLive(num, date) {
+  if (!CLOUD_ENABLED || !SUPABASE_URL) return null;
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 9000);
+    const url =
+      `${SUPABASE_URL}/functions/v1/train-live` +
+      `?number=${encodeURIComponent(num)}&date=${encodeURIComponent(date)}`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${ANON_KEY}`, apikey: ANON_KEY },
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    if (!res.ok) return null;
+    const body = await res.json();
+    if (!body || body.isLiveApi !== true || !Array.isArray(body.route)) return null;
 
+    // The edge function has no station dictionary — fill Hindi names here.
+    body.route.forEach((station) => {
+      const hindi = HINDI_STATION_MAP[station.stationCode];
+      if (hindi) station.stationHindi = hindi;
+    });
+    if (body.currentStation && HINDI_STATION_MAP[body.currentStation.stationCode]) {
+      body.currentStation.stationHindi = HINDI_STATION_MAP[body.currentStation.stationCode];
+    }
+    return body;
+  } catch (_e) {
+    return null;
+  }
+}
+
+async function fetchRailRadarLive(num, date) {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 6500);
@@ -504,12 +537,30 @@ export async function fetchLiveTrainStatus(trainNumber, dateString) {
 
     if (res.ok) {
       const json = await res.json();
-      if (json && json.success && json.data) {
-        return transformLiveRadarData(json.data, date);
-      }
+      if (json && json.success && json.data) return json.data;
     }
   } catch (_e) {
-    // API failed or offline
+    // primary feed failed or offline
+  }
+  return null;
+}
+
+// Fetch live train status: Supabase edge (RailCore -> API.SH) -> RailRadar.
+// If a paid/free key quota is exhausted or the edge function is down, the
+// app silently falls back to RailRadar (no key, no quota). No static data.
+export async function fetchLiveTrainStatus(trainNumber, dateString) {
+  const num = String(trainNumber || '').trim();
+  const date = dateString || getISTDateString(0);
+
+  const edgeLive = await fetchEdgeLive(num, date);
+  if (edgeLive) return edgeLive;
+
+  const data = await fetchRailRadarLive(num, date);
+  if (data) {
+    const live = transformLiveRadarData(data, date);
+    live.dataSource = 'RailRadar';
+    live.sourceCredit = 'Data from RailRadar';
+    return live;
   }
 
   return generateDynamicTrainSimulation(num, date);

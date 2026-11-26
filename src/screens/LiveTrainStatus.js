@@ -146,7 +146,9 @@ const STRINGS = {
     tapLive: 'Tap for live telemetry',
     liveCockpit: 'Live cockpit',
     horn: 'HORN',
-    onTime: 'RIGHT TIME',
+    onTime: 'On Time',
+    arrivalLabel: 'Arrival',
+    departureLabel: 'Departure',
     lateBy: (m) => `${m} MIN LATE`,
     earlyBy: (m) => `${m} MIN EARLY`,
     runningFast: 'Full steam ahead — the train is moving on track.',
@@ -156,10 +158,16 @@ const STRINGS = {
     tomorrow: 'Tomorrow',
     majorHalts: (c) => `Major Stops (${c})`,
     allStations: (c) => `All Stations (${c})`,
+    showIntermediate: (n) => `View ${n} passing station${n > 1 ? 's' : ''}`,
+    hideIntermediate: (n) => `Hide ${n} passing station${n > 1 ? 's' : ''}`,
     coachOrder: 'Coach Layout',
     engine: 'ENGINE',
     trackJourney: 'Railway Track Journey',
     trainIsHere: 'Train is here',
+    trainInSection: 'Train in this section',
+    demoCockpit: 'Demo telemetry',
+    demoBanner:
+      'Offline demo — live feed unavailable. Timings, platform, speed and coach shown here are sample data.',
     crossingTrains: (c) => `${c} Trains Crossing Nearby`,
     crossingSub: 'Trains on the opposite track currently in this section',
     syncingTelemetry: 'Syncing live telemetry from train...',
@@ -252,6 +260,8 @@ const STRINGS = {
     liveCockpit: 'लाइव कॉकपिट',
     horn: 'हॉर्न',
     onTime: 'समय पर',
+    arrivalLabel: 'आगमन',
+    departureLabel: 'प्रस्थान',
     lateBy: (m) => `${m} मि. देरी`,
     earlyBy: (m) => `${m} मि. पहले`,
     runningFast: 'छुक-छुक! ट्रेन पटरी पर दौड़ रही है।',
@@ -261,10 +271,16 @@ const STRINGS = {
     tomorrow: 'कल',
     majorHalts: (c) => `प्रमुख ठहराव (${c})`,
     allStations: (c) => `सभी स्टेशन (${c})`,
+    showIntermediate: (n) => `${n} बीच के स्टेशन देखें`,
+    hideIntermediate: (n) => `${n} बीच के स्टेशन छिपाएँ`,
     coachOrder: 'कोच क्रम',
     engine: 'इंजन',
     trackJourney: 'रेलवे ट्रैक टाइमलाइन',
     trainIsHere: 'ट्रेन यहाँ है',
+    trainInSection: 'ट्रेन इस सेक्शन में है',
+    demoCockpit: 'डेमो टेलीमेट्री',
+    demoBanner:
+      'ऑफ़लाइन डेमो — लाइव फ़ीड उपलब्ध नहीं। यहाँ दिए गए समय, प्लेटफ़ॉर्म, गति और कोच नमूना डेटा हैं।',
     crossingTrains: (c) => `${c} क्रॉसिंग ट्रेनें`,
     crossingSub: 'विपरीत दिशा की ट्रेनें जो इस समय आपके सेक्शन में हैं',
     syncingTelemetry: 'लाइव टेलीमेट्री जोड़ी जा रही है...',
@@ -770,6 +786,27 @@ function createStyles(c, drawerWidth) {
       fontSize: 10.5,
       color: c.rose,
       fontWeight: '600',
+    },
+    demoBanner: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+      backgroundColor: c.amberSoft,
+      borderWidth: 1,
+      borderColor: c.amberBorder,
+      borderRadius: 12,
+      padding: 11,
+      marginBottom: 12,
+    },
+    demoBannerText: {
+      flex: 1,
+      fontSize: 10.5,
+      lineHeight: 15,
+      fontWeight: '600',
+      color: c.amber,
+    },
+    demoLiveDot: {
+      backgroundColor: c.amber,
     },
 
     stationSuggestions: {
@@ -1625,6 +1662,14 @@ function createStyles(c, drawerWidth) {
     timelineSpacer: {
       flex: 1,
     },
+    timelineCredit: {
+      fontSize: 8.5,
+      fontWeight: '700',
+      color: c.textDim,
+      marginTop: -4,
+      marginBottom: 8,
+      letterSpacing: 0.2,
+    },
     timelineCount: {
       fontSize: 8.5,
       fontWeight: '800',
@@ -1634,35 +1679,164 @@ function createStyles(c, drawerWidth) {
       paddingVertical: 2,
       borderRadius: 20,
     },
-    stationRow: {
+    journeyRow: {
       flexDirection: 'row',
       alignItems: 'stretch',
-      borderRadius: 14,
-      paddingVertical: 4,
+      marginVertical: 3,
     },
-    stationRowCurrent: {
+    journeyCard: {
+      flex: 1,
+      backgroundColor: c.glass,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: c.border,
+      borderLeftWidth: 3,
+      borderLeftColor: c.amber,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      overflow: 'hidden',
+    },
+    journeyCardCurrent: {
       backgroundColor: c.emeraldSoft,
+      borderColor: c.emeraldBorder,
+      borderLeftColor: c.emerald,
     },
-    stationTimeCol: {
-      width: 58,
-      paddingTop: 6,
+    journeyCardHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
     },
-    stationTime: {
-      fontSize: 12.5,
+    journeyStationName: {
+      flexShrink: 1,
+      fontSize: 13,
       fontWeight: '800',
       color: c.text,
+      lineHeight: 18,
     },
-    stationTimeMuted: {
-      color: c.textDim,
+    journeyStationNameMuted: {
+      color: c.textMuted,
       fontWeight: '700',
     },
-    stationTimeCurrent: {
+    journeyStationNameCurrent: {
       color: c.emerald,
     },
-    stationScheduled: {
-      fontSize: 8,
+    journeyHeaderRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+      flexShrink: 0,
+    },
+    journeyPfBadge: {
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+      borderRadius: 5,
+      backgroundColor: c.emerald,
+    },
+    journeyPfBadgeText: {
+      fontSize: 9,
+      fontWeight: '800',
+      color: c.onEmerald,
+      letterSpacing: 0.2,
+    },
+    journeyStatusText: {
+      fontSize: 10,
+      fontWeight: '800',
+      color: c.emerald,
+    },
+    journeyStatusLate: {
+      color: c.amber,
+    },
+    journeyDivider: {
+      height: 1,
+      backgroundColor: c.border,
+      marginVertical: 8,
+    },
+    journeyTimesRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    journeyTimeBlock: {
+      flexShrink: 1,
+    },
+    journeyTimeBlockEnd: {
+      alignItems: 'flex-end',
+    },
+    journeyTimeLabel: {
+      fontSize: 8.5,
+      fontWeight: '800',
+      letterSpacing: 1,
+      color: c.textDim,
+      textTransform: 'uppercase',
+    },
+    journeyTimeValue: {
+      fontSize: 13,
+      fontWeight: '800',
+      color: c.text,
+      marginTop: 3,
+      letterSpacing: -0.2,
+    },
+    journeyTimeValueMuted: {
+      color: c.textMuted,
+    },
+    journeyScheduled: {
+      fontSize: 9.5,
+      fontWeight: '600',
       color: c.textDim,
       marginTop: 2,
+    },
+    journeyBadgeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    journeyHereChip: {
+      alignSelf: 'flex-start',
+      marginTop: 7,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 5,
+      backgroundColor: c.emerald,
+    },
+    journeyHereChipText: {
+      fontSize: 8.5,
+      fontWeight: '800',
+      color: c.onEmerald,
+      letterSpacing: 0.3,
+    },
+    journeyDelayChip: {
+      alignSelf: 'flex-start',
+      marginTop: 7,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 5,
+      backgroundColor: c.roseSoft,
+    },
+    journeyDelayChipText: {
+      fontSize: 8.5,
+      fontWeight: '800',
+      color: c.rose,
+    },
+    journeyCardTouch: {
+      flex: 1,
+    },
+    journeyExpandRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderTopWidth: 1,
+      borderTopColor: c.border,
+      marginTop: 8,
+      paddingTop: 7,
+    },
+    journeyExpandText: {
+      fontSize: 9.5,
+      fontWeight: '800',
+      color: c.emerald,
+      letterSpacing: 0.6,
+      textTransform: 'uppercase',
     },
     stationRailCol: {
       width: 26,
@@ -1711,91 +1885,6 @@ function createStyles(c, drawerWidth) {
       borderRadius: 8,
       backgroundColor: c.emerald,
       opacity: 0.32,
-    },
-    stationInfoCol: {
-      flex: 1,
-      paddingTop: 4,
-      paddingBottom: 6,
-      paddingLeft: 8,
-      paddingRight: 4,
-    },
-    stationNameRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    stationName: {
-      flex: 1,
-      fontSize: 12.5,
-      fontWeight: '700',
-      color: c.text,
-    },
-    stationNameMuted: {
-      color: c.textMuted,
-    },
-    stationNameCurrent: {
-      color: c.text,
-      fontWeight: '800',
-    },
-    stationCodeChip: {
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 5,
-      backgroundColor: c.glassSoft,
-      marginLeft: 6,
-    },
-    stationCode: {
-      fontSize: 8,
-      fontWeight: '800',
-      color: c.textDim,
-      letterSpacing: 0.5,
-    },
-    stationMetaRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginTop: 3,
-      flexWrap: 'wrap',
-    },
-    stationMeta: {
-      fontSize: 9,
-      color: c.textDim,
-      fontWeight: '600',
-    },
-    metaDot: {
-      width: 3,
-      height: 3,
-      borderRadius: 2,
-      backgroundColor: c.textDim,
-      opacity: 0.6,
-      marginHorizontal: 5,
-    },
-    stationBadgeRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginTop: 5,
-      gap: 6,
-    },
-    hereChip: {
-      paddingHorizontal: 7,
-      paddingVertical: 3,
-      borderRadius: 6,
-      backgroundColor: c.emerald,
-    },
-    hereChipText: {
-      fontSize: 8,
-      fontWeight: '800',
-      color: c.onEmerald,
-      letterSpacing: 0.3,
-    },
-    stationDelayChip: {
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 5,
-      backgroundColor: c.roseSoft,
-    },
-    stationDelayText: {
-      fontSize: 8,
-      fontWeight: '800',
-      color: c.rose,
     },
 
     liveLoading: {
@@ -2415,6 +2504,8 @@ function TelemetryHud({
   currentStationName = '',
   progress = 0,
   hasProgress = false,
+  speedBasis = '',
+  isSimulated = false,
   styles,
   c,
 }) {
@@ -2457,8 +2548,10 @@ function TelemetryHud({
     <LinearGradient colors={c.hudGradient} style={styles.hudCard}>
       <View style={styles.hudTopRow}>
         <View style={styles.hudLivePill}>
-          <View style={styles.hudLiveDot} />
-          <Text style={styles.hudLiveText}>{t.liveCockpit}</Text>
+          <View style={[styles.hudLiveDot, isSimulated && styles.demoLiveDot]} />
+          <Text style={[styles.hudLiveText, isSimulated && styles.demoBannerText]}>
+            {isSimulated ? t.demoCockpit : t.liveCockpit}
+          </Text>
         </View>
         <View style={[styles.delayChip, delayChipStyle]}>
           <Text style={[styles.delayText, delayTextStyle]}>{delayText}</Text>
@@ -2469,7 +2562,9 @@ function TelemetryHud({
         <View style={styles.speedBlock}>
           <View style={styles.speedValueRow}>
             <Text style={styles.speedValue}>{Math.round(speed)}</Text>
-            <Text style={styles.speedUnit}>km/h</Text>
+            <Text style={styles.speedUnit}>
+              {speedBasis === 'estimated' ? 'km/h est.' : 'km/h'}
+            </Text>
           </View>
           <Text style={styles.speedCaption}>{t.speedLabel}</Text>
           <View style={styles.speedTrack}>
@@ -2567,6 +2662,10 @@ function StationRow({
   isCurrent,
   isDeparted,
   pulseAnim,
+  hasNonHalts = 0,
+  isExpanded = false,
+  onToggle,
+  sectionLive = false,
   lang = 'en',
   styles,
   c,
@@ -2574,33 +2673,111 @@ function StationRow({
   const t = STRINGS[lang] || STRINGS.en;
   const arrTime = station.actualArrival || station.scheduledArrival || '--:--';
   const depTime = station.actualDeparture || station.scheduledDeparture || '--:--';
-  const hasDelay = station.delayArrival > 0 || station.delayDeparture > 0;
   const delayVal = Math.max(station.delayArrival || 0, station.delayDeparture || 0);
+  const hasDelay = delayVal > 0;
+  const showScheduledDep =
+    !!station.scheduledDeparture && station.scheduledDeparture !== depTime;
 
   const stationDisplayName =
     lang === 'hi' ? station.stationHindi || station.stationName : station.stationName;
-  const haltText = lang === 'hi' ? station.haltTextHi : station.haltTextEn;
-  const primaryTime = arrTime !== '--:--' ? arrTime : depTime;
-
-  return (
-    <View style={[styles.stationRow, isCurrent && styles.stationRowCurrent]}>
-      <View style={styles.stationTimeCol}>
+  // Never show a guessed platform number for stations where the feed has none.
+  const hasPlatform = !!station.platform && station.platform !== 'PF --';
+  const platformNum = String(station.platform || '').replace(/[^\d]/g, '');
+  const card = (
+    <View style={[styles.journeyCard, isCurrent && styles.journeyCardCurrent]}>
+      <View style={styles.journeyCardHeader}>
         <Text
           style={[
-            styles.stationTime,
-            isDeparted && styles.stationTimeMuted,
-            isCurrent && styles.stationTimeCurrent,
+            styles.journeyStationName,
+            isDeparted && styles.journeyStationNameMuted,
+            isCurrent && styles.journeyStationNameCurrent,
           ]}
+          numberOfLines={2}
         >
-          {primaryTime}
+          {stationDisplayName} ({station.stationCode})
         </Text>
-        {!!station.scheduledArrival && (
-          <Text style={styles.stationScheduled}>
-            {t.sch} {station.scheduledArrival}
+        <View style={styles.journeyHeaderRight}>
+          {hasPlatform && (
+            <View style={styles.journeyPfBadge}>
+              <Text style={styles.journeyPfBadgeText}>- PF {platformNum}</Text>
+            </View>
+          )}
+          <Text style={[styles.journeyStatusText, hasDelay && styles.journeyStatusLate]}>
+            {hasDelay ? t.lateBy(delayVal) : t.onTime}
           </Text>
-        )}
+        </View>
       </View>
 
+      <View style={styles.journeyDivider} />
+
+      <View style={styles.journeyTimesRow}>
+        <View style={styles.journeyTimeBlock}>
+          <Text style={styles.journeyTimeLabel}>{t.arrivalLabel}</Text>
+          <Text
+            style={[
+              styles.journeyTimeValue,
+              isDeparted && styles.journeyTimeValueMuted,
+              isCurrent && styles.journeyStationNameCurrent,
+            ]}
+          >
+            {arrTime}
+          </Text>
+        </View>
+        <View style={[styles.journeyTimeBlock, styles.journeyTimeBlockEnd]}>
+          <Text style={styles.journeyTimeLabel}>{t.departureLabel}</Text>
+          <Text
+            style={[
+              styles.journeyTimeValue,
+              isDeparted && styles.journeyTimeValueMuted,
+              isCurrent && styles.journeyStationNameCurrent,
+            ]}
+          >
+            {depTime}
+          </Text>
+          {showScheduledDep && (
+            <Text style={styles.journeyScheduled}>{station.scheduledDeparture}</Text>
+          )}
+        </View>
+      </View>
+
+      {(isCurrent || hasDelay) && (
+        <View style={styles.journeyBadgeRow}>
+          {isCurrent && (
+            <View style={styles.journeyHereChip}>
+              <Text style={styles.journeyHereChipText}>
+                {sectionLive ? t.trainInSection : t.trainIsHere}
+              </Text>
+            </View>
+          )}
+          {hasDelay && (
+            <View style={styles.journeyDelayChip}>
+              <Text style={styles.journeyDelayChipText}>
+                +{delayVal} {t.minShort}
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {hasNonHalts > 0 && (
+        <View style={styles.journeyExpandRow}>
+          <Text style={styles.journeyExpandText}>
+            {isExpanded
+              ? t.hideIntermediate(hasNonHalts)
+              : t.showIntermediate(hasNonHalts)}
+          </Text>
+          <Ionicons
+            name={isExpanded ? 'chevron-up' : 'chevron-down'}
+            size={13}
+            color={c.emerald}
+          />
+        </View>
+      )}
+    </View>
+  );
+
+  return (
+    <View style={styles.journeyRow}>
       <View style={styles.stationRailCol}>
         <View
           style={[
@@ -2638,58 +2815,18 @@ function StationRow({
         />
       </View>
 
-      <View style={styles.stationInfoCol}>
-        <View style={styles.stationNameRow}>
-          <Text
-            style={[
-              styles.stationName,
-              isDeparted && styles.stationNameMuted,
-              isCurrent && styles.stationNameCurrent,
-            ]}
-            numberOfLines={1}
-          >
-            {stationDisplayName}
-          </Text>
-          <View style={styles.stationCodeChip}>
-            <Text style={styles.stationCode}>{station.stationCode}</Text>
-          </View>
-        </View>
-
-        <View style={styles.stationMetaRow}>
-          {station.distanceKm != null && (
-            <>
-              <Text style={styles.stationMeta}>{station.distanceKm} km</Text>
-              <View style={styles.metaDot} />
-            </>
-          )}
-          <Text style={styles.stationMeta}>
-            {t.platformShort} {station.platform || '1'}
-          </Text>
-          {!!haltText && (
-            <>
-              <View style={styles.metaDot} />
-              <Text style={styles.stationMeta}>{haltText}</Text>
-            </>
-          )}
-        </View>
-
-        {(isCurrent || (hasDelay && delayVal > 0)) && (
-          <View style={styles.stationBadgeRow}>
-            {isCurrent && (
-              <View style={styles.hereChip}>
-                <Text style={styles.hereChipText}>{t.trainIsHere}</Text>
-              </View>
-            )}
-            {hasDelay && delayVal > 0 && (
-              <View style={styles.stationDelayChip}>
-                <Text style={styles.stationDelayText}>
-                  +{delayVal} {t.minShort}
-                </Text>
-              </View>
-            )}
-          </View>
-        )}
-      </View>
+      {hasNonHalts > 0 ? (
+        <TouchableOpacity
+          style={styles.journeyCardTouch}
+          onPress={onToggle}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+        >
+          {card}
+        </TouchableOpacity>
+      ) : (
+        card
+      )}
     </View>
   );
 }
@@ -2714,6 +2851,7 @@ export default function LiveTrainStatus({ onBack, onRegisterBack }) {
   const [isLoadingLive, setIsLoadingLive] = useState(false);
   const [selectedDateOffset, setSelectedDateOffset] = useState(0); // -1: Yesterday, 0: Today, 1: Tomorrow
   const [filterMode, setFilterMode] = useState('halts'); // 'halts' | 'all'
+  const [expandedHalts, setExpandedHalts] = useState({});
   const [crossings, setCrossings] = useState([]);
   const [hornCount, setHornCount] = useState(0);
 
@@ -3097,13 +3235,13 @@ export default function LiveTrainStatus({ onBack, onRegisterBack }) {
     [refreshAnim]
   );
 
-  // Poll live status every 15s if viewing train
+  // Poll every 60s — keeps free-tier API quotas (RailCore 100/day) usable.
   useEffect(() => {
     if (!selectedTrain) return;
     const num = selectedTrain.number || selectedTrain.trainNumber;
     const interval = setInterval(() => {
       loadTrainStatus(num, selectedDateOffset);
-    }, 15000);
+    }, 60000);
     return () => clearInterval(interval);
   }, [selectedTrain, selectedDateOffset, loadTrainStatus]);
 
@@ -3112,6 +3250,8 @@ export default function LiveTrainStatus({ onBack, onRegisterBack }) {
     (train) => {
       setSelectedTrain(train);
       setSelectedDateOffset(0);
+      setExpandedHalts({});
+      setFilterMode('halts');
       saveRecentSearch(train);
       const num = train.number || train.trainNumber;
       loadTrainStatus(num, 0);
@@ -3207,15 +3347,44 @@ export default function LiveTrainStatus({ onBack, onRegisterBack }) {
     }
   }, [t]);
 
-  // Station route to display
-  const displayRoute = useMemo(() => {
+  // Station route to display. In "halts" mode every row is a halt and carries
+  // the non-halting stations that follow it (up to the next halt). Tapping the
+  // halt reveals those pass-through stations instead of hiding them entirely.
+  const timelineItems = useMemo(() => {
     if (!live || !live.route) return [];
-    if (filterMode === 'halts') {
-      const halts = live.route.filter((r) => r.isHalt);
-      return halts.length > 0 ? halts : live.route;
+    const route = live.route;
+
+    if (filterMode === 'all') {
+      return route.map((station, i) => ({
+        key: `${station.sequence ?? i}-${station.stationCode ?? i}`,
+        station,
+        nonHalts: [],
+      }));
     }
-    return live.route;
+
+    const halts = route.filter((r) => r.isHalt);
+    const hasHalts = halts.length > 0;
+    const base = hasHalts ? halts : route;
+
+    return base.map((station, i) => {
+      let nonHalts = [];
+      if (hasHalts) {
+        const startIdx = route.indexOf(station) + 1;
+        let endIdx = startIdx;
+        while (endIdx < route.length && !route[endIdx].isHalt) endIdx += 1;
+        nonHalts = route.slice(startIdx, endIdx);
+      }
+      return {
+        key: `${station.sequence ?? i}-${station.stationCode ?? i}`,
+        station,
+        nonHalts,
+      };
+    });
   }, [live, filterMode]);
+
+  const toggleHalt = useCallback((key) => {
+    setExpandedHalts((prev) => ({ ...prev, [key]: !prev[key] }));
+  }, []);
 
   // ---- UI helpers (presentation only) ----------------------------------
 
@@ -3985,6 +4154,7 @@ export default function LiveTrainStatus({ onBack, onRegisterBack }) {
 
   const delayMinutes = live?.delayMin || 0;
   const currentStation = live?.currentStation;
+  const isSimulated = !!live?.isOfflineSimulation || live?.isLiveApi === false;
 
   const headline = lang === 'hi' ? live?.summaryHi : live?.summaryEn;
   const subdetail = lang === 'hi' ? live?.detailHi : live?.detailEn;
@@ -4068,6 +4238,14 @@ export default function LiveTrainStatus({ onBack, onRegisterBack }) {
         contentContainerStyle={styles.detailScrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* HONESTY BANNER — never present simulated data as live */}
+        {isSimulated && (
+          <View style={styles.demoBanner}>
+            <Ionicons name="information-circle-outline" size={16} color={c.amber} />
+            <Text style={styles.demoBannerText}>{t.demoBanner}</Text>
+          </View>
+        )}
+
         {/* DATE SELECTOR */}
         <View style={styles.dateTabs}>
           {[-1, 0, 1].map((offset) => {
@@ -4118,6 +4296,8 @@ export default function LiveTrainStatus({ onBack, onRegisterBack }) {
             currentStationName={currentStationName}
             progress={progress}
             hasProgress={hasProgress}
+            speedBasis={live?.speedBasis}
+            isSimulated={isSimulated}
             styles={styles}
             c={c}
           />
@@ -4185,14 +4365,18 @@ export default function LiveTrainStatus({ onBack, onRegisterBack }) {
             <MaterialCommunityIcons name="railroad-light" size={17} color={c.amber} />
             <Text style={styles.timelineTitle}>{t.trackJourney}</Text>
             <View style={styles.timelineSpacer} />
-            <Text style={styles.timelineCount}>{displayRoute.length}</Text>
+            <Text style={styles.timelineCount}>{timelineItems.length}</Text>
           </View>
+          {!!live?.sourceCredit && (
+            <Text style={styles.timelineCredit}>{live.sourceCredit}</Text>
+          )}
 
-          {displayRoute.map((st, idx) => {
+          {timelineItems.map((item, idx) => {
+            const { station: st, nonHalts, key } = item;
             const isFirst = idx === 0;
-            const isLast = idx === displayRoute.length - 1;
+            const isLast = idx === timelineItems.length - 1;
 
-            // displayRoute may be a filtered list (halts only) while
+            // timelineItems may be a filtered list (halts only) while
             // currentStationIndex points into the full live.route. Compare
             // positions inside live.route instead of the filtered index,
             // otherwise a second unrelated station also shows as "current".
@@ -4200,30 +4384,79 @@ export default function LiveTrainStatus({ onBack, onRegisterBack }) {
             const currentIdx =
               typeof live?.currentStationIndex === 'number' ? live.currentStationIndex : -1;
 
-            const isCurrent =
+            // The train can be at a non-halting station between two halts. In
+            // that case light up the halt whose segment contains the train so
+            // the live node never disappears from the track journey.
+            const nextHaltPos = routePos + nonHalts.length + 1;
+            const isActiveSegment =
+              filterMode === 'halts' &&
+              currentIdx >= 0 &&
+              routePos >= 0 &&
+              currentIdx >= routePos &&
+              currentIdx < nextHaltPos;
+
+            const exactlyHere =
               !!currentStation &&
               (st === currentStation ||
                 (currentIdx >= 0 && routePos === currentIdx) ||
-                (currentStation.sequence != null && st.sequence === currentStation.sequence));
+                (currentStation.sequence != null &&
+                  st.sequence === currentStation.sequence));
+            const isCurrent = isActiveSegment || exactlyHere;
 
             const isDeparted =
               !isCurrent &&
               (st.status === 'departed' ||
                 (currentIdx >= 0 && routePos >= 0 && routePos < currentIdx));
 
+            const isExpanded = !!expandedHalts[key];
+
             return (
-              <StationRow
-                key={`${st.stationCode}-${st.sequence || idx}`}
-                station={st}
-                isFirst={isFirst}
-                isLast={isLast}
-                isCurrent={isCurrent}
-                isDeparted={isDeparted}
-                pulseAnim={pulseAnim}
-                lang={lang}
-                styles={styles}
-                c={c}
-              />
+              <React.Fragment key={key}>
+                <StationRow
+                  station={st}
+                  isFirst={isFirst}
+                  isLast={isLast && nonHalts.length === 0}
+                  isCurrent={isCurrent}
+                  isDeparted={isDeparted}
+                  pulseAnim={pulseAnim}
+                  hasNonHalts={nonHalts.length}
+                  isExpanded={isExpanded}
+                  onToggle={() => toggleHalt(key)}
+                  sectionLive={isActiveSegment && !exactlyHere}
+                  lang={lang}
+                  styles={styles}
+                  c={c}
+                />
+                {isExpanded &&
+                  nonHalts.map((ns) => {
+                    const nsPos = Array.isArray(live?.route) ? live.route.indexOf(ns) : -1;
+                    const nsCurrent =
+                      !!currentStation &&
+                      (ns === currentStation ||
+                        (currentIdx >= 0 && nsPos === currentIdx) ||
+                        (currentStation.sequence != null &&
+                          ns.sequence === currentStation.sequence));
+                    const nsDeparted =
+                      !nsCurrent &&
+                      (ns.status === 'departed' ||
+                        (currentIdx >= 0 && nsPos >= 0 && nsPos < currentIdx));
+
+                    return (
+                      <StationRow
+                        key={`pass-${ns.sequence ?? nsPos}-${ns.stationCode}`}
+                        station={ns}
+                        isFirst={false}
+                        isLast={false}
+                        isCurrent={nsCurrent}
+                        isDeparted={nsDeparted}
+                        pulseAnim={pulseAnim}
+                        lang={lang}
+                        styles={styles}
+                        c={c}
+                      />
+                    );
+                  })}
+              </React.Fragment>
             );
           })}
         </View>

@@ -39,3 +39,11 @@ Docs: https://docs.expo.dev/eas/index.md
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+
+## Standing quality bar (user directive — always follow)
+
+- The app must show **no wrong and no missing information of any kind**. Verify every fact from a real source before stating it or writing it into code; never guess, estimate, or fabricate values (times, platforms, delays, stations, speeds, coach positions).
+- **Never present simulated/fallback/demo data as live.** Any offline/simulated state must be clearly labelled in the UI.
+- **Do not add hardcoded/static station tables, timetables, or data patches** to fill gaps in a live feed. Prefer real dynamic sources and cross-checks; if a source is unavailable, say so honestly rather than inventing data.
+- Use the latest stable, compatible technology available, but correctness beats cleverness. Before declaring work done: verify with real data/tests where possible, run `npx expo lint`, `npx expo-doctor`, and `npx tsc --noEmit` when a tsconfig exists.
+- When the user asks for a factual answer (train routes, counts, timings), double-check with an independent source and state clearly which source was used and what is uncertain. Admit and correct mistakes immediately instead of doubling down.

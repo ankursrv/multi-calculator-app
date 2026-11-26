@@ -21,7 +21,8 @@ export const CLOUD_ENABLED =
   looksLikeProjectUrl(rawUrl) && rawKey.length >= 40 && rawUrl.indexOf(PLACEHOLDER_MARK) === -1;
 
 // PostgREST base — Supabase auto-generates a CRUD API at <project>/rest/v1.
-export const REST_BASE = CLOUD_ENABLED ? `${rawUrl.replace(/\/+$/, '')}/rest/v1` : '';
+export const SUPABASE_URL = CLOUD_ENABLED ? rawUrl.replace(/\/+$/, '') : '';
+export const REST_BASE = CLOUD_ENABLED ? `${SUPABASE_URL}/rest/v1` : '';
 
 export const ANON_KEY = rawKey;
 
