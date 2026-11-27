@@ -1,3 +1,6 @@
+// @ts-nocheck — this file runs in Supabase's Deno runtime; app tsconfig
+// deliberately excludes supabase/functions, so editors using the app config
+// cannot resolve Deno globals (Deno, Response) here.
 // Supabase Edge Function: live train status with full station coverage.
 //
 // Keys live in Supabase secrets (RAILCORE_KEY, APISH_KEY) and are NEVER sent
@@ -54,7 +57,7 @@ async function getJson(url: string, headers: Record<string, string>, ms = 8000) 
     if (!res.ok) return null;
     const body = await res.json();
     return body && typeof body === 'object' ? body : null;
-  } catch (_e) {
+  } catch {
     return null;
   } finally {
     clearTimeout(timer);
@@ -118,6 +121,7 @@ async function fromRailCore(number: string, date: string) {
     statusText: d.status_text || '',
     progress: typeof d.progress_percent === 'number' ? d.progress_percent / 100 : 0,
     lastUpdatedAt: d.last_reported_at || new Date().toISOString(),
+    journeyDate: d.journey_date || d.start_date || istDate(),
     freshnessState: d.freshness?.state || '',
     dataSource: 'RailCore',
     sourceCredit: 'Data from RailCore',
@@ -135,6 +139,7 @@ async function fromApiSh(number: string, date: string) {
   if (!body || body.success === false) return null;
   const rawStops = Array.isArray(body.stations) ? body.stations : [];
   if (rawStops.length === 0) return null;
+  const passedStops = rawStops.filter((s: any) => s.passed).length;
 
   const route = rawStops.map((s: any, i: number) => {
     const isHalt = s.halt_min > 0;
@@ -173,8 +178,9 @@ async function fromApiSh(number: string, date: string) {
     speedBasis: '',
     statusRaw: body.status?.state || '',
     statusText: body.status?.message || body.status?.title || '',
-    progress: 0,
+    progress: rawStops.length > 0 ? passedStops / rawStops.length : 0,
     lastUpdatedAt: body.fetched_at || new Date().toISOString(),
+    journeyDate: body.start_date || istDate(),
     freshnessState: body.cached ? 'cached' : 'fresh',
     dataSource: 'API.SH',
     sourceCredit: 'Data from API.SH',
@@ -196,6 +202,7 @@ function assemble(o: {
   statusText: string;
   progress: number;
   lastUpdatedAt: string;
+  journeyDate: string;
   freshnessState: string;
   dataSource: string;
   sourceCredit: string;
@@ -203,14 +210,12 @@ function assemble(o: {
   const route = o.route;
   let currentIndex = route.findIndex((s) => s.stationCode === o.currentCode);
   if (currentIndex < 0) currentIndex = route.findIndex((s) => s.status === 'at-station');
-  if (currentIndex < 0) currentIndex = 0;
+  // -1 means "position unknown" — never mark a guessed station as current.
 
-  const current = route[currentIndex] || null;
+  const current = currentIndex >= 0 ? route[currentIndex] : null;
   const next = route.find((s) => s.stationCode === o.nextCode) || route[currentIndex + 1] || null;
   const prev = route.find((s) => s.stationCode === o.previousCode) || route[currentIndex - 1] || null;
   const halts = route.filter((s) => s.isHalt);
-
-  const name = (code: string) => route.find((s) => s.stationCode === code)?.stationName || code;
   const summaryEn = o.statusText || (next ? `Between ${current?.stationName || ''} and ${next.stationName}` : `Running on route`);
   const summaryHi = summaryEn;
   const detailEn = next ? `Next: ${next.stationName}` : `Journey in progress`;
@@ -222,7 +227,7 @@ function assemble(o: {
     trainNumber: o.number,
     trainName: o.trainName,
     trainNameHindi: o.trainName,
-    startDate: istDate(),
+    startDate: o.journeyDate,
     lastUpdatedAt: o.lastUpdatedAt,
     statusRaw: o.statusRaw,
     summaryEn,
